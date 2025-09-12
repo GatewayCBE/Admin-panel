@@ -1,0 +1,90 @@
+.dashboard {
+    display: flex;
+    gap: 20px;
+    padding: 20px;
+    background-color: #f5f5f5;
+    text-align: center;
+    justify-content: center;
+    padding: 2rem;
+    /* min-height: 80vh; */
+}
+
+.panel {
+    flex: 1;
+    /* Each panel takes 50% */
+    /* background-color: #2d6a4f;  */
+    color: #2d6a4f;
+    /* Your light green */
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.panel h2 {
+    margin-bottom: 15px;
+    color: #2d6a4f;
+}
+
+.panel ul {
+    list-style: none;
+    padding: 0;
+}
+
+.panel li {
+    width: 400px;
+    margin-bottom: 15px;
+    padding: 10px;
+    /* background-color: #7de6b7; */
+    /* hover color */
+    /* border-radius: 6px; */
+}
+
+.nested {
+  margin-top: 10px;
+  padding: 8px;
+  background: #1b4332;
+  border-radius: 6px;
+}
+
+.nested h4 {
+  margin-bottom: 5px;
+  font-size: 14px;
+  color: #95d5b2;
+}
+
+.nested ul {
+  list-style: disc;
+  padding-left: 20px;
+}
+
+.nested li {
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+/* src/pages/Style/Dashboard.css */
+
+
+.dashboard-links {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.dashboard-card {
+  display: block;
+  width: 250px;
+  padding: 1.5rem;
+  background-color: #2d6a4f;
+  color: #d8f3dc;
+  text-decoration: none;
+  border-radius: 10px;
+  transition: 0.3s;
+}
+
+.dashboard-card:hover {
+  background-color: #40916c;
+  transform: scale(1.05);
+}
+

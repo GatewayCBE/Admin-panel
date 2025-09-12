@@ -1,0 +1,27 @@
+.home {
+  height: calc(100vh - 0px); /* full screen minus navbar + footer */
+  background-image: url('/src/assets/p2.jpeg'); /* put your image inside public/assets */
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+}
+
+.home-overlay {
+  text-align: center;
+  background: rgba(0, 0, 0, 0.5); /* dark transparent overlay */
+  padding: 2rem;
+  border-radius: 10px;
+  color: white;
+}
+
+.home-title {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.home-subtitle {
+  font-size: 1.2rem;
+}

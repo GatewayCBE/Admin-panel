@@ -1,0 +1,26 @@
+.footer {
+  background-color: #3a5a40; 
+  color: #d8f3dc; 
+  text-align: center;
+  padding: 1rem;
+  font-size: 0.9rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.footer p {
+  margin: 0;
+}
+
+.footer-socials a {
+  margin: 0 0.5rem;
+  color: #d8f3dc;
+  font-size: 1.2rem;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.footer-socials a:hover {
+  color: #22c55e; /* green highlight */
+}

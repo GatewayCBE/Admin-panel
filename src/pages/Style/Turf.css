@@ -1,0 +1,29 @@
+.turf-page {
+  padding: 2rem;
+}
+
+.turf-title {
+  text-align: center;
+  margin-bottom: 2rem;
+  color: #1b4332;
+}
+
+.turf-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1.5rem;
+}
+
+.turf-card {
+  background: #2d6a4f;
+  color: #d8f3dc;
+  padding: 1.2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.turf-card:hover {
+  background: #40916c;
+  transform: scale(1.05);
+}

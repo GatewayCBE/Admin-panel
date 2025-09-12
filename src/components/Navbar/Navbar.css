@@ -1,0 +1,45 @@
+.navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* Push login button to the right */
+  padding: 1rem;
+  background-color: #2d6a4f;
+  color: #d8f3dc;
+}
+
+.navbar-logo {
+  font-size: 1.5rem;
+  font-weight: bolder;
+  margin-left: 20px;
+}
+
+.navbar-links {
+  flex: 1;
+  text-align: center;
+}
+
+.navbar-link {
+  margin: 0 1rem;
+  color: #d8f3dc;
+  font-size: 20px;
+  text-decoration: none;
+}
+
+.navbar-link:hover {
+  text-decoration: underline;
+}
+
+.navbar-button {
+  padding: 0.5rem 1rem;
+  background-color: #d8f3dc; /* Green button */
+  border-radius: 6px;
+  color: #2d6a4f;
+  font-weight: bold;
+  text-decoration: none;
+  transition: background-color 0.3s ease;
+}
+
+.navbar-button:hover {
+  background-color: #40916c;
+  color: #d8f3dc;
+}
