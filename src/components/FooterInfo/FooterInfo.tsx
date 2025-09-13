@@ -5,7 +5,7 @@ const FooterInfo: React.FC = () => {
   return (
     <div className="footer-info">
       <div className="footer-column">
-        <h3>About Us</h3><hr />
+        <h3>About Us</h3>
         <p>
           BookMyTurf helps you book and manage turf grounds with ease.<br/>
           A seamless platform for users and owners.
@@ -13,7 +13,7 @@ const FooterInfo: React.FC = () => {
       </div>
 
       <div className="footer-column">
-        <h3>Quick Links</h3><hr />
+        <h3>Quick Links</h3>
         <ul>
           <li><a href="/">Home</a></li>
           <li><a href="/about">About Us</a></li>
@@ -23,14 +23,14 @@ const FooterInfo: React.FC = () => {
       </div>
 
       <div className="footer-column">
-        <h3>Contact Us</h3><hr />
+        <h3>Contact Us</h3>
         <p>Email: support@bookmyturf.com</p>
         <p>Phone: +91 12345 67890</p>
         <p>Location: Chennai, Tamil Nadu</p>
       </div>
 
       <div className="footer-column">
-        <h3>Newsletter</h3> <hr />
+        <h3>Newsletter</h3> 
         <p>Subscribe to get the latest updates.</p>
         <form className="newsletter-form">
           <input type="email" placeholder="Enter your email" />

@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { getTurfs } from "../services/firestoreService";
-import "./Style/Turf.css"; // <-- Turf-specific CSS
+import { getTurfs } from "../../services/firestoreService";
+import { useNavigate } from "react-router-dom";
+import "../Style/Turf.css";
 
 interface Turf {
   turf_id: string;
   turf_name: string;
   turf_location: string;
-  turf_description: string;
   owner_id: string;
   turf_closing_hour: string;
   turf_opening_hour: string;
@@ -14,6 +14,7 @@ interface Turf {
 
 const Turf: React.FC = () => {
   const [turfs, setTurfs] = useState<Turf[]>([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -23,7 +24,6 @@ const Turf: React.FC = () => {
           turf_id: turf.turf_id ?? turf.id ?? "",
           turf_name: turf.turf_name ?? "",
           turf_location: turf.turf_location ?? "",
-          turf_description: turf.turf_description ?? "",
           owner_id: turf.owner_id ?? "",
           turf_closing_hour: turf.turf_closing_hour ?? "",
           turf_opening_hour: turf.turf_opening_hour ?? "",
@@ -41,13 +41,17 @@ const Turf: React.FC = () => {
       ) : (
         <div className="turf-grid">
           {turfs.map((turf) => (
-            <div key={turf.turf_id} className="turf-card">
+            <div
+              key={turf.turf_id}
+              className="turf-card"
+              onClick={() => navigate(`/slots/${turf.turf_id}`)} // ✅ Pass turf_id
+              style={{ cursor: "pointer" }}
+            >
               <h3>{turf.turf_name}</h3>
               <p>📍 {turf.turf_location}</p>
               <p>
                 🕒 {turf.turf_opening_hour} - {turf.turf_closing_hour}
               </p>
-              <p>{turf.turf_description}</p>
               <p>👤 Owner ID: {turf.owner_id}</p>
             </div>
           ))}
