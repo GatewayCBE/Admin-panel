@@ -55,6 +55,7 @@ const Slot: React.FC = () => {
       <h2 className="slot-title">Booked Slots for Turf: {turfId}</h2>
 
       {/* Calendar Date Picker */}
+      <div className="slot-date-container">
       <input
         type="date"
         className="slot-date-picker"
@@ -64,9 +65,10 @@ const Slot: React.FC = () => {
           setSelectedDate(formatDate(e.target.value));
         }}
       />
+      </div>
 
       {slots.length > 0 ? (
-        <div className="slot-grid">
+        <div className="slot-grid grid-layout">
           {slots.map((slot) => (
             <div key={slot.id} className="slot-card">
               <h3>{slot.slot_start_time}</h3>
