@@ -1,0 +1,48 @@
+/* Slot Page Container */
+.slot-page {
+  padding: 20px;
+}
+
+/* Title */
+.slot-title {
+  text-align: center;
+  margin-bottom: 20px;
+  color: #1b4332;
+}
+
+/* Slot Grid – responsive comes from App.css (.grid-layout) */
+.slot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 15px;
+}
+
+/* Card */
+.slot-card {
+  text-align: center;
+  background: #02613a;
+  color: #5ad79f;
+  padding: 12px;
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.slot-card:hover {
+  background: #5ad79f;
+  transform: scale(1.05);
+  color: #1b4332;
+}
+
+.slot-date-container {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.slot-date-picker {
+  padding: 8px;
+  border: 1px solid #1b4332;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+}
