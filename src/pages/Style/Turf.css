@@ -15,6 +15,7 @@
 }
 
 .turf-card {
+  text-align: center;
   background: #2d6a4f;
   color: #d8f3dc;
   padding: 1.2rem;

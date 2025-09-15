@@ -29,40 +29,106 @@ export const debugPath = async () => {
   }
 };
 
-export const getBookedSlots = async () => {
+export interface SlotData {
+  id: string;
+  amount: number;
+  booked_sports_name: string;
+  booking_id: string;
+  booking_username: string;
+  date: string;
+  owner_id: string;
+  paid_by: string;
+  payment_initiated_time: string;
+  payment_status: string;
+  payment_transaction_id: string;
+  slot_start_time: string;
+  turf_id: string;
+  turf_name: string;
+  user_id: string;
+  turf_closed: boolean | null;
+}
+
+export const getBookedSlots = async (
+  turfId: string,
+  date: string
+): Promise<SlotData[]> => {
   try {
-    const bookings: any[] = [];
+    const slotsRef = collection(
+      db,
+      "environment",
+      "testing",
+      "all_turfs_slot_booking",
+      turfId,
+      date
+    );
 
-    // Level 1: Turf collection
-    const turfCollection = collection(db, "environment", "testing", "all_turfs_slot_booking");
-    const turfSnapshot = await getDocs(turfCollection);
-    console.log("Turf docs found:", turfSnapshot.docs.map((d) => d.id));
+    const snapshot = await getDocs(slotsRef);
 
-    for (const turfDoc of turfSnapshot.docs) {
-      const turfId = turfDoc.id;
-
-      // Level 2: Date collections (⚠️ these are collections, not documents)
-      const dateCollectionRef = collection(db, "environment", "testing", "all_turfs_slot_booking", turfId, "07-Sep-2025");
-      const slotSnapshot = await getDocs(dateCollectionRef);
-      console.log(`Slots under ${turfId}/07-Sep-2025:`, slotSnapshot.docs.map((d) => d.id));
-
-      slotSnapshot.forEach((slotDoc) => {
-        bookings.push({
-          turfId,
-          date: "07-Sep-2025",
-          slot: slotDoc.id,
-          ...slotDoc.data(),
-        });
-      });
-    }
-
-    console.log("All Bookings fetched:", bookings);
-    return bookings;
+    return snapshot.docs.map(
+      (doc) =>
+        ({
+          id: doc.id,
+          ...doc.data(),
+        } as SlotData)
+    );
   } catch (error) {
     console.error("Error fetching booked slots:", error);
     return [];
   }
 };
+
+export const getAvailableDates = async (turfId: string): Promise<string[]> => {
+  try {
+    const datesRef = collection(
+      db,
+      "environment",
+      "testing",
+      "all_turfs_slot_booking",
+      turfId
+    );
+
+    const snapshot = await getDocs(datesRef);
+    return snapshot.docs.map((doc) => doc.id);
+  } catch (error) {
+    console.error("Error fetching available dates:", error);
+    return [];
+  }
+};
+
+// export const getBookedSlots = async () => {
+//   try {
+//     const bookings: any[] = [];
+
+//     // Level 1: Turf collection
+//     const turfCollection = collection(db, "environment", "testing", "all_turfs_slot_booking");
+//     const turfSnapshot = await getDocs(turfCollection);
+//     console.log("Turf docs found:", turfSnapshot.docs.map((d) => d.id));
+
+//     for (const turfDoc of turfSnapshot.docs) {
+//       const turfId = turfDoc.id;
+
+//       // Level 2: Date collections (⚠️ these are collections, not documents)
+//       const dateCollectionRef = collection(db, "environment", "testing", "all_turfs_slot_booking", turfId, "07-Sep-2025");
+//       const slotSnapshot = await getDocs(dateCollectionRef);
+//       console.log(`Slots under ${turfId}/07-Sep-2025:`, slotSnapshot.docs.map((d) => d.id));
+
+//       slotSnapshot.forEach((slotDoc) => {
+//         bookings.push({
+//           turfId,
+//           date: "07-Sep-2025",
+//           slot: slotDoc.id,
+//           ...slotDoc.data(),
+//         });
+//       });
+//     }
+
+//     console.log("All Bookings fetched:", bookings);
+//     return bookings;
+//   } catch (error) {
+//     console.error("Error fetching booked slots:", error);
+//     return [];
+//   }
+// };
 
 // Get Owners
 export const getOwners = async () => {
