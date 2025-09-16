@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { useOwner } from "./useOwner";
 
 const Owner: React.FC = () => {
