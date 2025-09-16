@@ -7,18 +7,26 @@ const FooterInfo: React.FC = () => {
       <div className="footer-column">
         <h3>About Us</h3>
         <p>
-          BookMyTurf helps you book and manage turf grounds with ease.<br/>
-          A seamless platform for users and owners.
+          BookMyTurf helps you book and manage turf grounds with ease.
+          <br />A seamless platform for users and owners.
         </p>
       </div>
 
       <div className="footer-column">
         <h3>Quick Links</h3>
         <ul>
-          <li><a href="/">Home</a></li>
-          <li><a href="/about">About Us</a></li>
-          <li><a href="/admin">Admin Panel</a></li>
-          <li><a href="/login">Sign In | Sign Up</a></li>
+          <li>
+            <a href="/">Home</a>
+          </li>
+          <li>
+            <a href="/about">About Us</a>
+          </li>
+          <li>
+            <a href="/admin">Admin Panel</a>
+          </li>
+          <li>
+            <a href="/login">Sign In | Sign Up</a>
+          </li>
         </ul>
       </div>
 
@@ -30,7 +38,7 @@ const FooterInfo: React.FC = () => {
       </div>
 
       <div className="footer-column">
-        <h3>Newsletter</h3> 
+        <h3>Newsletter</h3>
         <p>Subscribe to get the latest updates.</p>
         <form className="newsletter-form">
           <input type="email" placeholder="Enter your email" />

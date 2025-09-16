@@ -7,7 +7,7 @@ import Login from "../pages/auth/Login";
 import Register from "../pages/auth/Register";
 import Games from "../pages/Games";
 import Turf from "../pages/admin/Turf";
-import Owner from "../pages/admin/Owner";
+import Owner from "../pages/admin/Owner/Owner";
 import Slot from "../pages/admin/Slot";
 
 const AppRoutes: React.FC = () => {
