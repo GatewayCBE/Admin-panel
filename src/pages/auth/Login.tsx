@@ -1,7 +1,5 @@
 import React, { useState, ChangeEvent, FormEvent } from "react";
-import Input from "../../components/Common/Input";
-import Button from "../../components/Common/Button";
-import "./Style/Login.css"; 
+import { Link } from "react-router-dom";
 
 const Login: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -20,25 +18,60 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="auth-container">
-      <h2>Login</h2>
-      <form className="auth-form" onSubmit={handleSubmit}>
-        <Input
-          label="Email"
-          name="email"
-          type="email"
-          value={formData.email}
-          onChange={handleChange}
-        />
-        <Input
-          label="Password"
-          name="password"
-          type="password"
-          value={formData.password}
-          onChange={handleChange}
-        />
-        <Button type="submit" text="Login" />
-      </form>
+    <div className="container d-flex justify-content-center align-items-center vh-100">
+      <div className="card shadow p-4" style={{ maxWidth: "400px", width: "100%" }}>
+        <h2 className="text-center mb-4">Login</h2>
+        <form onSubmit={handleSubmit}>
+          {/* Email */}
+          <div className="mb-3">
+            <label className="form-label">Email</label>
+            <input
+              type="email"
+              name="email"
+              className="form-control"
+              value={formData.email}
+              onChange={handleChange}
+              placeholder="Enter your email"
+            />
+          </div>
+
+          {/* Password */}
+          <div className="mb-3">
+            <label className="form-label">Password</label>
+            <input
+              type="password"
+              name="password"
+              className="form-control"
+              value={formData.password}
+              onChange={handleChange}
+              placeholder="Enter your password"
+            />
+          </div>
+
+          {/* Submit */}
+          <button
+            type="submit"
+            style={{
+              backgroundColor: "rgb(26, 135, 84)",
+              border: "none",
+              color: "white",
+              borderRadius: "5px",
+              padding: "5px 15px",
+              width: "100%",
+            }}
+          >
+            Login
+          </button>
+        </form>
+
+        {/* Register link */}
+        <p className="text-center mt-3">
+          Don’t have an account?{" "}
+          <Link to="/register" className="text-decoration-none">
+            <span style={{ color: "rgb(26, 135, 84)" }}>Register</span>
+          </Link>
+        </p>
+      </div>
     </div>
   );
 };
