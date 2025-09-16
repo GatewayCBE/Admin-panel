@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { getBookedSlots } from "../../services/firestoreService";
-import "../Style/Slot.css";
+import "bootstrap/dist/css/bootstrap.min.css";
 
 interface SlotData {
-  id: string; // slot time
+  id: string;
   amount: number;
   booked_sports_name: string;
   booking_id: string;
@@ -22,7 +22,6 @@ interface SlotData {
   turf_closed: boolean | null;
 }
 
-// Format date to "dd-MMM-yyyy" (Firestore format)
 const formatDate = (date: string) => {
   const d = new Date(date);
   const day = d.getDate().toString().padStart(2, "0");
@@ -31,17 +30,15 @@ const formatDate = (date: string) => {
   return `${day}-${month}-${year}`;
 };
 
-// Get today's date in yyyy-mm-dd format for input[type="date"]
 const getTodayInputFormat = () => {
   const d = new Date();
-  return d.toISOString().split("T")[0]; // yyyy-mm-dd
+  return d.toISOString().split("T")[0];
 };
 
 const Slot: React.FC = () => {
   const { turfId } = useParams<{ turfId: string }>();
-
-  const [inputDate, setInputDate] = useState(getTodayInputFormat()); // yyyy-mm-dd
-  const [selectedDate, setSelectedDate] = useState(formatDate(getTodayInputFormat())); // dd-MMM-yyyy
+  const [inputDate, setInputDate] = useState(getTodayInputFormat());
+  const [selectedDate, setSelectedDate] = useState(formatDate(getTodayInputFormat()));
   const [slots, setSlots] = useState<SlotData[]>([]);
 
   useEffect(() => {
@@ -51,38 +48,45 @@ const Slot: React.FC = () => {
   }, [turfId, selectedDate]);
 
   return (
-    <div className="slot-page">
-      <h2 className="slot-title">Booked Slots for Turf: {turfId}</h2>
+    <div className="container my-4">
+      <h2 className="text-center text-success mb-4">Booked Slots for Turf: {turfId}</h2>
 
-      {/* Calendar Date Picker */}
-      <div className="slot-date-container">
-      <input
-        type="date"
-        className="slot-date-picker"
-        value={inputDate}
-        onChange={(e) => {
-          setInputDate(e.target.value);
-          setSelectedDate(formatDate(e.target.value));
-        }}
-      />
+      {/* Date Picker */}
+      <div className="d-flex justify-content-center mb-4">
+        <input
+          type="date"
+          className="form-control w-auto border-success"
+          value={inputDate}
+          onChange={(e) => {
+            setInputDate(e.target.value);
+            setSelectedDate(formatDate(e.target.value));
+          }}
+        />
       </div>
 
       {slots.length > 0 ? (
-        <div className="slot-grid grid-layout">
+        <div className="row g-4">
           {slots.map((slot) => (
-            <div key={slot.id} className="slot-card">
-              <h3>{slot.slot_start_time}</h3>
-              <p><strong>Sport:</strong> {slot.booked_sports_name}</p>
-              <p><strong>User:</strong> {slot.booking_username}</p>
-              <p><strong>Amount:</strong> ₹{slot.amount}</p>
-              <p><strong>Status:</strong> {slot.payment_status}</p>
-              <p><strong>Date:</strong> {slot.date}</p>
-              <p><strong>Turf:</strong> {slot.turf_name}</p>
+            <div key={slot.id} className="col-md-4 col-sm-6">
+              <div
+                className="card text-center shadow-sm border-0 h-100"
+                style={{ backgroundColor: "#02613a", color: "#5ad79f" }}
+              >
+                <div className="card-body">
+                  <h5 className="card-title">{slot.slot_start_time}</h5>
+                  <p><strong>Sport:</strong> {slot.booked_sports_name}</p>
+                  <p><strong>User:</strong> {slot.booking_username}</p>
+                  <p><strong>Amount:</strong> ₹{slot.amount}</p>
+                  <p><strong>Status:</strong> {slot.payment_status}</p>
+                  <p><strong>Date:</strong> {slot.date}</p>
+                  <p><strong>Turf:</strong> {slot.turf_name}</p>
+                </div>
+              </div>
             </div>
           ))}
         </div>
       ) : (
-        <p>No slots booked yet for {selectedDate}</p>
+        <p className="text-center text-muted">No slots booked yet for {selectedDate}</p>
       )}
     </div>
   );

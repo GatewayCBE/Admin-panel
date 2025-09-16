@@ -14,6 +14,7 @@ export const useOwner = () => {
       owner_id: owner.owner_id ?? owner.id ?? "",
       owner_name: owner.owner_name ?? "",
       owner_email: owner.owner_email ?? "",
+      owner_address: owner.owner_address ?? "",
       owner_mobile_number: owner.owner_mobile_number ?? "",
     }));
     setOwnersList(formattedOwners);

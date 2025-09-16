@@ -1,20 +1,44 @@
+// src/pages/Dashboard.tsx
 import React from "react";
 import { Link } from "react-router-dom";
-import "../Style/Dashboard.css";
+import "bootstrap/dist/css/bootstrap.min.css";
 
 const Dashboard: React.FC = () => {
   return (
-    <div className="dashboard">
-      <div className="dashboard-links">
-        <Link to="/dashboard/turfs" className="dashboard-card">
-          <h3>Turf Details</h3>
-          <p>Manage Turf information.</p>
-        </Link>
+    <div className="container py-5">
+      <div className="row g-4 justify-content-center text-center">
+        {/* Booked Slots */}
+        <div className="col-12 col-sm-6 col-md-4">
+          <Link
+            to="/dashboard/slots"
+            className="d-block p-4 bg-success text-light rounded shadow text-decoration-none h-100"
+          >
+            <h3 className="fw-bold">Booked Slots</h3>
+            <p className="mb-0">View all booked slots.</p>
+          </Link>
+        </div>
 
-        <Link to="/dashboard/owners" className="dashboard-card">
-          <h3>Channel Partner List</h3>
-          <p>View Turf Channel Partner and their information.</p>
-        </Link>
+        {/* Turf Details */}
+        <div className="col-12 col-sm-6 col-md-4">
+          <Link
+            to="/dashboard/turfs"
+            className="d-block p-4 bg-success text-light rounded shadow text-decoration-none h-100"
+          >
+            <h3 className="fw-bold">Turf Details</h3>
+            <p className="mb-0">Manage and view turf information.</p>
+          </Link>
+        </div>
+
+        {/* Owner Details */}
+        <div className="col-12 col-sm-6 col-md-4">
+          <Link
+            to="/dashboard/owners"
+            className="d-block p-4 bg-success text-light rounded shadow text-decoration-none h-100"
+          >
+            <h3 className="fw-bold">Owner Details</h3>
+            <p className="mb-0">View turf owners and their information.</p>
+          </Link>
+        </div>
       </div>
     </div>
   );
