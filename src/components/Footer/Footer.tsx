@@ -3,7 +3,7 @@ import "./Footer.css";
 
 const Footer: React.FC = () => {
   return (
-    <footer className="footer">
+    <footer className="container">
       <p>© {new Date().getFullYear()} BookMyTurf. All rights reserved.</p>
       <div className="footer-socials">
         <a href="https://facebook.com" target="_blank" rel="noopener noreferrer">
