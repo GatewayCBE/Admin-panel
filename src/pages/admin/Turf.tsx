@@ -47,7 +47,7 @@ const Turf: React.FC = () => {
       <div className="mb-4">
         <input
           type="text"
-          className="form-control shadow-sm"
+          className="form-control w-50 shadow-sm"
           placeholder="Search by Turf..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}

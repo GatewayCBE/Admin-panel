@@ -23,7 +23,7 @@ const Owner: React.FC = () => {
       <div className="mb-4">
         <input
           type="text"
-          className="form-control shadow-lg"
+          className="form-control w-50 shadow-lg"
           placeholder="Search by Partners..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
