@@ -4,12 +4,10 @@ import { Link } from "react-router-dom";
 const Navbar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
 
-  // Toggle navbar
   const handleToggle = () => {
     setIsOpen(!isOpen);
   };
 
-  // Close navbar when link clicked
   const handleNavItemClick = () => {
     setIsOpen(false);
   };
@@ -17,12 +15,10 @@ const Navbar: React.FC = () => {
   return (
     <nav className="navbar navbar-expand-lg navbar-dark" style={{ backgroundColor: "#2d6a4f" }}>
       <div className="container-fluid">
-        {/* Logo */}
         <Link className="navbar-brand fw-bold" to="/" onClick={handleNavItemClick}>
           BookMyTurf
         </Link>
 
-        {/* Toggler for mobile */}
         <button
           className="navbar-toggler"
           type="button"
@@ -34,7 +30,6 @@ const Navbar: React.FC = () => {
           <span className="navbar-toggler-icon"></span>
         </button>
 
-        {/* Nav Links */}
         <div className={`collapse navbar-collapse ${isOpen ? "show" : ""}`} id="navbarNav">
           <ul className="navbar-nav mx-auto">
             <li className="nav-item">
