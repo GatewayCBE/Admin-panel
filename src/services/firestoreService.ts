@@ -1,5 +1,5 @@
 import { db } from "../firebase";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, doc, getDocs } from "firebase/firestore";
 
 // Get all turf details
 export const getTurfs = async () => {
@@ -48,29 +48,46 @@ export interface SlotData {
   turf_closed: boolean | null;
 }
 
-export const getBookedSlots = async (
-  turfId: string,
-  date: string
-): Promise<SlotData[]> => {
+export const getBookedSlots = async (turfId: string, selectedDate: string) => {
   try {
-    const slotsRef = collection(
-      db,
-      "environment",
-      "testing",
-      "all_turfs_slot_booking",
-      turfId,
-      date
-    );
+    // ✅ Format helpers
+    const formatDate = (date: string) => {
+      const [year, month, day] = date.split("-");
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", 
+                          "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      return `${day}-${monthNames[parseInt(month) - 1]}-${year}`;
+    };
 
-    const snapshot = await getDocs(slotsRef);
+    // Two possibilities:
+    // 1. User gave ISO (2025-09-20)
+    // 2. Already formatted (20-Sep-2025)
+    const isoPattern = /^\d{4}-\d{2}-\d{2}$/;
+    const formattedDate = isoPattern.test(selectedDate)
+      ? formatDate(selectedDate)
+      : selectedDate;
 
-    return snapshot.docs.map(
-      (doc) =>
-        ({
+    // Paths to check
+    const pathsToTry = [
+      doc(db, "environment", "testing", "all_turfs_slot_booking", turfId, formattedDate),
+      doc(db, "environment", "testing", "all_turfs_slot_booking", turfId, selectedDate),
+    ];
+
+    let results: any[] = [];
+
+    for (const path of pathsToTry) {
+      const slotCollection = collection(path, "/");
+      const snapshot = await getDocs(slotCollection);
+
+      if (!snapshot.empty) {
+        results = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
-        } as SlotData)
-    );
+        }));
+        break; // ✅ Stop if found
+      }
+    }
+
+    return results;
   } catch (error) {
     console.error("Error fetching booked slots:", error);
     return [];
