@@ -1,5 +1,6 @@
 import { db } from "../firebase";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs } from "firebase/firestore";
+
 
 // Get all turf details
 export const getTurfs = async () => {
@@ -13,6 +14,22 @@ export const getTurfs = async () => {
     }));
   } catch (error) {
     console.error("Error fetching turfs:", error);
+    return [];
+  }
+};
+
+export const getTurfsByOwner = async (ownerId: string) => {
+  try {
+    const turfRef = collection(db, "environment", "testing", "turfs");
+    const q = query(turfRef, where("owner_id", "==", ownerId));
+    const snapshot = await getDocs(q);
+
+    return snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+  } catch (error) {
+    console.error("Error fetching turfs by owner:", error);
     return [];
   }
 };

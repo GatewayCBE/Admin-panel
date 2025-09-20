@@ -18,6 +18,7 @@ export const useOwner = () => {
       owner_mobile_number: owner.owner_mobile_number ?? "",
     }));
     setOwnersList(formattedOwners);
+
   };
 
   return { ownersList };

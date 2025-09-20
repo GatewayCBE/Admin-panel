@@ -10,18 +10,22 @@ import Slot from "../pages/admin/Slot";
 import Login from "../pages/auth/Login";
 import Register from "../pages/auth/Register";
 import Layout from "./Layout";
+import Turfowner from "../pages/admin/Owner/Turfowner";
 
 const AppRoutes: React.FC = () => {
   return (
     <Routes>
       {/* Routes with Header + Footer */}
-      <Route element={<Layout/>}>
+      <Route element={<Layout />}>
         <Route path="/" element={<Home />} />
         <Route path="/about" element={<About />} />
         <Route path="/games" element={<Games />} />
+
+        {/* Admin Dashboard routes */}
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/dashboard/turfs" element={<Turf />} />
         <Route path="/dashboard/owners" element={<Owner />} />
+        <Route path="/dashboard/owners/:ownerId" element={<Turfowner/>} />
         <Route path="/dashboard/slots" element={<Slot />} />
       </Route>
 
