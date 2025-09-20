@@ -62,15 +62,15 @@ const Owner: React.FC = () => {
                 <p className="mb-0">🆔 {owner.owner_id}</p>
               </div>
 
-              <div className="text-center">
-                {/* <span className="badge bg-light text-success rounded-pill px-3 py-2 mb-2">
+              {/* <div className="text-center">
+                <span className="badge bg-light text-success rounded-pill px-3 py-2 mb-2">
                   ID: {owner.owner_id}
-                </span> */}
+                </span>
                 <br />
                 <button className="btn btn-sm btn-light fw-bold text-success">
                   Activate Channel Partner
                 </button>
-              </div>
+              </div> */}
             </li>
           ))}
         </ul>
