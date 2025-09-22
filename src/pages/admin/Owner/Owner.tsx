@@ -37,7 +37,6 @@ const Owner: React.FC = () => {
         <ul className="list-group shadow-sm">
           {filteredOwners.map((owner) => (
             <div
-              
               className="list-group-item list-group-item-action d-flex justify-content-between align-items-center flex-wrap rounded-3 mb-3 border-0 shadow-sm"
               style={{
                 backgroundColor: "#02613a",
@@ -50,21 +49,6 @@ const Owner: React.FC = () => {
                 <p className="mb-0">📱 {owner.owner_mobile_number}</p>
                 <p className="mb-0">🆔 {owner.owner_id}</p>
               </div>
-  
-              <div className="d-flex justify-content-between align-items-center">
-  <Link
-    className="badge bg-light text-success rounded-pill px-3 py-2 me-3" // add me-3 for margin
-    key={owner.owner_id}
-    to={`/dashboard/owners/${owner.owner_id}`}
-    style={{ textDecoration: "none" }}
-  >
-    View Turf →
-  </Link>
-  <button className="btn btn-sm btn-light fw-bold text-success">
-    Activate Channel Partner
-  </button>
-</div>
-
             </div>
           ))}
         </ul>
