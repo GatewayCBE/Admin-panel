@@ -4,7 +4,7 @@ import Home from "../pages/Home";
 import About from "../pages/About";
 import Games from "../pages/Games";
 import Dashboard from "../pages/admin/Dashboard";
-import Turf from "../pages/admin/Turf";
+import Turf from "../pages/admin/Turf/Turf";
 import Owner from "../pages/admin/Owner/Owner";
 import Slot from "../pages/admin/Slot";
 import Login from "../pages/auth/Login";

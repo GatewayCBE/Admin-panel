@@ -1,37 +1,11 @@
-import React, { useEffect, useState } from "react";
-import { getTurfs } from "../../services/firestoreService";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-
-interface Turf {
-  turf_id: string;
-  turf_name: string;
-  turf_location: string;
-  owner_id: string;
-  turf_closing_hour: string;
-  turf_opening_hour: string;
-}
+import { useTurf } from "./useTurf";
 
 const Turf: React.FC = () => {
-  const [turfs, setTurfs] = useState<Turf[]>([]);
+  const { turfs } = useTurf();
   const [search, setSearch] = useState("");
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const fetchData = async () => {
-      const turfData = await getTurfs();
-      setTurfs(
-        turfData.map((turf: any) => ({
-          turf_id: turf.turf_id ?? turf.id ?? "",
-          turf_name: turf.turf_name ?? "",
-          turf_location: turf.turf_location ?? "",
-          owner_id: turf.owner_id ?? "",
-          turf_closing_hour: turf.turf_closing_hour ?? "",
-          turf_opening_hour: turf.turf_opening_hour ?? "",
-        }))
-      );
-    };
-    fetchData();
-  }, []);
 
   const filteredTurfs = turfs.filter(
     (turf) =>
@@ -44,19 +18,42 @@ const Turf: React.FC = () => {
     <div className="container py-4">
       <h2 className="text-center text-success mb-4 fw-bold">Turf Details</h2>
 
-      <div className="mb-4">
+      <div
+        className="mb-4"
+        style={{
+          position: "relative",
+          width: "100%",
+          maxWidth: "400px",
+          margin: "0 auto",
+        }}
+      >
         <input
           type="text"
-          className="form-control w-50 shadow-sm"
+          name="search"
+          className="form-control shadow-sm"
           placeholder="Search by Turf..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          // style={{ backgroundColor: "#2d6a4f",color:'white'}}
+          style={{ width: "100%", paddingRight: "40px" }}
         />
+        <span
+          style={{
+            position: "absolute",
+            right: "10px",
+            top: "50%",
+            transform: "translateY(-50%)",
+            cursor: "pointer",
+            color: "#888",
+          }}
+        >
+          🔍
+        </span>
       </div>
 
       {filteredTurfs.length === 0 ? (
-        <p className="text-center text-muted">No matching turf details found.</p>
+        <p className="text-center text-muted">
+          No matching turf details found.
+        </p>
       ) : (
         <ul className="list-group shadow-sm">
           {filteredTurfs.map((turf) => (

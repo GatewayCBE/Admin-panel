@@ -35,8 +35,8 @@ const Dashboard: React.FC = () => {
             to="/dashboard/owners"
             className="d-block p-4 bg-success text-light rounded shadow text-decoration-none h-100"
           >
-            <h3 className="fw-bold">Owner Details</h3>
-            <p className="mb-0">View turf owners and their information.</p>
+            <h3 className="fw-bold">Channel Partner Details</h3>
+            <p className="mb-0">View turf channel partner and their information.</p>
           </Link>
         </div>
       </div>

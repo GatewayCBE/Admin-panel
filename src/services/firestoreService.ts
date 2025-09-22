@@ -1,6 +1,5 @@
 import { db } from "../firebase";
-import { collection, query, where, getDocs } from "firebase/firestore";
-
+import { collection, doc, query, where, getDocs } from "firebase/firestore";
 
 // Get all turf details
 export const getTurfs = async () => {
@@ -8,9 +7,9 @@ export const getTurfs = async () => {
     const turfRef = collection(db, "environment/testing/turfs");
     const turfDocs = await getDocs(turfRef);
 
-    return turfDocs.docs.map(doc => ({
+    return turfDocs.docs.map((doc) => ({
       id: doc.id,
-      ...doc.data()
+      ...doc.data(),
     }));
   } catch (error) {
     console.error("Error fetching turfs:", error);
@@ -36,11 +35,21 @@ export const getTurfsByOwner = async (ownerId: string) => {
 
 export const debugPath = async () => {
   try {
-    const test1 = await getDocs(collection(db, "environment/testing/all_turfs_slot_booking"));
-    console.log("Test1 docs:", test1.docs.map(d => d.id));
+    const test1 = await getDocs(
+      collection(db, "environment/testing/all_turfs_slot_booking")
+    );
+    console.log(
+      "Test1 docs:",
+      test1.docs.map((d) => d.id)
+    );
 
-    const test2 = await getDocs(collection(db, "environment", "testing", "all_turfs_slot_booking"));
-    console.log("Test2 docs:", test2.docs.map(d => d.id));
+    const test2 = await getDocs(
+      collection(db, "environment", "testing", "all_turfs_slot_booking")
+    );
+    console.log(
+      "Test2 docs:",
+      test2.docs.map((d) => d.id)
+    );
   } catch (err) {
     console.error("Debug error:", err);
   }
@@ -65,29 +74,72 @@ export interface SlotData {
   turf_closed: boolean | null;
 }
 
-export const getBookedSlots = async (
-  turfId: string,
-  date: string
-): Promise<SlotData[]> => {
+export const getBookedSlots = async (turfId: string, selectedDate: string) => {
   try {
-    const slotsRef = collection(
-      db,
-      "environment",
-      "testing",
-      "all_turfs_slot_booking",
-      turfId,
-      date
-    );
+    // ✅ Format helpers
+    const formatDate = (date: string) => {
+      const [year, month, day] = date.split("-");
+      const monthNames = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+      ];
+      return `${day}-${monthNames[parseInt(month) - 1]}-${year}`;
+    };
 
-    const snapshot = await getDocs(slotsRef);
+    // Two possibilities:
+    // 1. User gave ISO (2025-09-20)
+    // 2. Already formatted (20-Sep-2025)
+    const isoPattern = /^\d{4}-\d{2}-\d{2}$/;
+    const formattedDate = isoPattern.test(selectedDate)
+      ? formatDate(selectedDate)
+      : selectedDate;
 
-    return snapshot.docs.map(
-      (doc) =>
-        ({
+    // Paths to check
+    const pathsToTry = [
+      doc(
+        db,
+        "environment",
+        "testing",
+        "all_turfs_slot_booking",
+        turfId,
+        formattedDate
+      ),
+      doc(
+        db,
+        "environment",
+        "testing",
+        "all_turfs_slot_booking",
+        turfId,
+        selectedDate
+      ),
+    ];
+
+    let results: any[] = [];
+
+    for (const path of pathsToTry) {
+      const slotCollection = collection(path, "/");
+      const snapshot = await getDocs(slotCollection);
+
+      if (!snapshot.empty) {
+        results = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
-        } as SlotData)
-    );
+        }));
+        break; // ✅ Stop if found
+      }
+    }
+
+    return results;
   } catch (error) {
     console.error("Error fetching booked slots:", error);
     return [];
