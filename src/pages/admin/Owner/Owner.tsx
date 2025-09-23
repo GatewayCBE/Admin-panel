@@ -21,14 +21,33 @@ const Owner: React.FC = () => {
         Channel Partner List
       </h2>
 
-      <div className="mb-4">
+      <div className="mb-4"
+       style={{
+          position: "relative",
+          width: "100%",
+          maxWidth: "400px",
+          margin: "0 auto",
+        }}>
         <input
           type="text"
-          className="form-control w-50 shadow-lg"
+          className="form-control shadow-sm"
           placeholder="Search by Partners..."
           value={searchTerm}
+                    style={{ width: "100%", paddingRight: "40px" }}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
+          <span
+          style={{
+            position: "absolute",
+            right: "10px",
+            top: "50%",
+            transform: "translateY(-50%)",
+            cursor: "pointer",
+            color: "#888",
+          }}
+        >
+          🔍
+        </span>
       </div>
 
       {filteredOwners.length === 0 ? (
@@ -47,7 +66,7 @@ const Owner: React.FC = () => {
                 <h5 className="fw-bold mb-1">{owner.owner_name}</h5>
                 <p className="mb-1">📧 {owner.owner_email}</p>
                 <p className="mb-0">📱 {owner.owner_mobile_number}</p>
-                <p className="mb-0">🆔 {owner.owner_id}</p>
+                {/* <p className="mb-0">🆔 {owner.owner_id}</p> */}
               </div>
               <div className="d-flex justify-content-between align-items-center">
                 <Link
