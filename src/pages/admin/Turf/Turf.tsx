@@ -55,7 +55,7 @@ const Turf: React.FC = () => {
           No matching turf details found.
         </p>
       ) : (
-        <ul className="list-group shadow-sm">
+        <ul className="list-group">
           {filteredTurfs.map((turf) => (
             <li
               key={turf.turf_id}
@@ -66,7 +66,7 @@ const Turf: React.FC = () => {
                 cursor: "pointer",
                 transition: "transform 0.2s ease, background 0.2s ease",
               }}
-              onClick={() => navigate(`/slots/${turf.turf_id}`)}
+              onClick={() => navigate(`/slotdetails/${turf.turf_id}`)}
               onMouseEnter={(e) => {
                 e.currentTarget.style.backgroundColor = "#40916c";
                 e.currentTarget.style.transform = "scale(1.02)";
