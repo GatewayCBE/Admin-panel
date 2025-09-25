@@ -144,28 +144,41 @@ const TurfDetails: React.FC = () => {
         </div>
       )}
 
-      {/* Price Chart */}
-      {typeof turf.sport_specific_price === "object" && (
-        <div className="card mb-4">
-          <div className="card-body">
-            <h5 className="card-title mb-3">💰 Price Chart</h5>
-            {Object.entries(turf.sport_specific_price).map(([sport, priceObj]) => (
-              <div key={sport} className="mb-3 ">
-                <strong>{sport}</strong>
-                <ul className="mb-0">
-                  {Object.entries(priceObj as Record<string, number>).map(
-                    ([dayType, amount]) => (
-                      <li key={dayType}>
-                        {dayType}: ₹{amount}
-                      </li>
-                    )
-                  )}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+
+{typeof turf.sport_specific_price === "object" && (
+  <div className="card mb-4">
+    <div className="card-body">
+      <h5 className="card-title mb-3">💰 Price Chart</h5>
+{Object.entries(turf.sport_specific_price).map(
+  ([sport, priceObj]: [string, any]) => (
+    <div key={sport} className="mb-3">
+      <strong>{sport}</strong>
+      <ul className="mb-0">
+        {/* Weekdays (Mon–Fri) */}
+        {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"].map((day) => (
+          <li key={day}>
+            {day}: ₹{priceObj?.weekday ?? "N/A"}
+          </li>
+        ))}
+
+        {/* Weekends (Sat–Sun) */}
+        {["Saturday", "Sunday"].map((day) => (
+          <li key={day}>
+            {day}: ₹{priceObj?.weekend ?? "N/A"}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+)}
+
+
+    </div>
+  </div>
+)}
+
+
+
 
       {/* About Venue */}
       {turf.turf_description && (
