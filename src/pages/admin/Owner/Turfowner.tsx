@@ -114,6 +114,16 @@ const Turfowner: React.FC = () => {
                     🕒 <strong>Hours:</strong> {turf.turf_opening_hour} -{" "}
                     {turf.turf_closing_hour}
                   </p>
+                  <button className="btn btn-light mt-3 text-success fw-bold">
+                    View Details
+                  </button> 
+                  <button className="btn btn-light mt-3 text-success fw-bold"
+                    onClick={() => {
+                      window.location.href = `/slot/${turf.turf_id}`;
+                    }}
+                  >
+                    View slots
+                  </button>
                 </div>
               </div>
             </div>
