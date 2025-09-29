@@ -78,3 +78,24 @@ export const getSlotsByPaymentStatus = async (status: string, turfId?: string) =
   }
 };
 
+export const getAvailableDates = async (turfId: string) => {
+  try {
+    // Go inside: environment/testing/all_turfs_slot_booking/{turfId}
+    const datesRef = collection(
+      db,
+      "environment",
+      "testing",
+      "all_turfs_slot_booking",
+      turfId
+    );
+
+    // Get all date collections under the turf
+    const datesSnapshot = await getDocs(datesRef);
+
+    // Extract IDs (ex: ["21-Sep-2025", "22-Sep-2025"])
+    return datesSnapshot.docs.map((dateDoc) => dateDoc.id);
+  } catch (error) {
+    console.error("Error fetching available dates:", error);
+    return [];
+  }
+};

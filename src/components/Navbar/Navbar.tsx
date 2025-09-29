@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
+import BackButton from "../Common/BackButton";
 
 const Navbar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -53,7 +54,7 @@ const Navbar: React.FC = () => {
               </Link>
             </li>
           </ul>
-
+          <BackButton />
           {/* Sign In / Sign Up button */}
           <div className="d-flex">
             <Link
