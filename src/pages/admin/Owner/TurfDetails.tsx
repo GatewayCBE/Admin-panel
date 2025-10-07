@@ -14,6 +14,8 @@ const TurfDetails: React.FC = () => {
         const turfs = await getTurfsByOwner(ownerId);
         const selectedTurf = turfs.find((t: any) => t.turf_id === turfId);
         setTurf(selectedTurf || null);
+        console.log('selectedTurf',turfs);
+        
       };
       fetchTurf();
     }
@@ -63,10 +65,10 @@ const handleActivateTurf = async () => {
           <div className="col-md-6">
             <h2 className="fw-bold">{turf.turf_name}</h2>
 
-            <div className="d-flex align-items-center gap-2">
-              <p className="text-muted mb-0">📍 {turf.turf_location}</p>
-              <span className="badge bg-warning text-dark">⭐ 4.5 / 5</span>
-              <span className="text-success">Rate Venue</span>
+            <div className="d-block align-items-center gap-3">
+              <p className="text-muted mb-2" style={{fontSize:'14px'}}>📍 {turf.turf_location}</p>
+              <span className="badge bg-warning text-dark me-2">⭐ 4.5 / 5</span>
+              <span className="text-success" style={{fontSize:'14px'}}>Rate Venue</span>
             </div>
           </div>
 
