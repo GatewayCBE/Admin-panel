@@ -180,6 +180,51 @@ const SlotDetails: React.FC = () => {
     );
   }
 
+  const getSlotTimeRange = (startTime?: string): string => {
+    if (!startTime) return "Time not available";
+
+    try {
+      // If time is in 24-hour format (e.g., "15:00")
+      if (/^\d{1,2}:\d{2}$/.test(startTime)) {
+        const [h, m] = startTime.split(":").map(Number);
+        const date = new Date();
+        date.setHours(h, m);
+        date.setMinutes(date.getMinutes() + 60);
+
+        const endHours = date.getHours().toString().padStart(2, "0");
+        const endMinutes = date.getMinutes().toString().padStart(2, "0");
+
+        return `${startTime} - ${endHours}:${endMinutes}`;
+      }
+
+      // If time is in 12-hour format (e.g., "3:00 PM")
+      const [time, meridian] = startTime.trim().split(" ");
+      if (!time || !meridian) return startTime;
+
+      let [hours, minutes] = time.split(":").map(Number);
+      if (meridian.toUpperCase() === "PM" && hours < 12) hours += 12;
+      if (meridian.toUpperCase() === "AM" && hours === 12) hours = 0;
+
+      const date = new Date();
+      date.setHours(hours, minutes);
+      date.setMinutes(date.getMinutes() + 60);
+
+      let endHours = date.getHours();
+      const endMeridian = endHours >= 12 ? "PM" : "AM";
+      endHours = endHours % 12 || 12;
+      const endMinutes = date.getMinutes().toString().padStart(2, "0");
+
+      const endTime = `${endHours}:${endMinutes} ${endMeridian}`;
+      return `${startTime} - ${endTime}`;
+    } catch {
+      return startTime;
+    }
+  };
+
+
+
+
+
   return (
     <div className="container py-4">
       <h2 className="text-center text-success fw-bold mb-4">Slots for Turf</h2>
@@ -193,8 +238,8 @@ const SlotDetails: React.FC = () => {
           value={selectedDate}
           onChange={handleDateChange}
         />
-        <button 
-          className="btn btn-success" 
+        <button
+          className="btn btn-success"
           onClick={handleApplyFilter}
           disabled={!selectedDate || selectedDate.length !== 10}
         >
@@ -217,16 +262,13 @@ const SlotDetails: React.FC = () => {
               onClick={() => setSelectedSlot(slot)}
             >
               <div className="card-header bg-light text-dark">
-                <strong>⏰ {slot.slot_start_time }</strong>
+                <strong>⏰ {getSlotTimeRange(slot.slot_start_time)}</strong>
               </div>
               <div className="card-body">
                 <div className="mb-1">
                   <strong>Sport:</strong> {slot.sport}
                 </div>
-                {/* <div className="mb-1">
-                  <strong>Booked by:</strong>{" "}
-                  {slot.booking_username || "Available"}
-                </div> */}
+
               </div>
             </div>
           </div>
