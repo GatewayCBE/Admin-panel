@@ -11,6 +11,8 @@ import Login from "../pages/auth/Login";
 import Register from "../pages/auth/Register";
 import Layout from "./Layout";
 import Turfowner from "../pages/admin/Owner/Turfowner";
+import TurfDetails from "../pages/admin/Owner/TurfDetails";
+import SlotDetails from "../pages/admin/Slot/SlotDetails";
 
 const AppRoutes: React.FC = () => {
   return (
@@ -26,7 +28,10 @@ const AppRoutes: React.FC = () => {
         <Route path="/dashboard/turfs" element={<Turf />} />
         <Route path="/dashboard/owners" element={<Owner />} />
         <Route path="/dashboard/owners/:ownerId" element={<Turfowner/>} />
+        <Route path="/dashboard/owners/:ownerId/:turfId" element={<TurfDetails/>} />
         <Route path="/dashboard/slots" element={<Slot />} />
+          <Route path="/slotdetails/:turfId" element={<SlotDetails/>} />
+        
       </Route>
 
       {/* Auth Routes (no Navbar/Footer) */}
