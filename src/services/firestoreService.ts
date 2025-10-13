@@ -58,6 +58,7 @@ export const debugPath = async () => {
 export interface SlotData {
   id: string;
   amount: number;
+  paid_amount?: number;
   booked_sports_name: string;
   booking_id: string;
   booking_username: string;
@@ -72,79 +73,58 @@ export interface SlotData {
   turf_name: string;
   user_id: string;
   turf_closed: boolean | null;
+  court?: string;
+  sport?: string;
 }
 
 export const getBookedSlots = async (turfId: string, selectedDate: string) => {
   try {
-    // ✅ Format helpers
-    const formatDate = (date: string) => {
-      const [year, month, day] = date.split("-");
-      const monthNames = [
-        "Jan",
-        "Feb",
-        "Mar",
-        "Apr",
-        "May",
-        "Jun",
-        "Jul",
-        "Aug",
-        "Sep",
-        "Oct",
-        "Nov",
-        "Dec",
-      ];
-      return `${day}-${monthNames[parseInt(month) - 1]}-${year}`;
-    };
+    const slots: any[] = [];
 
-    // Two possibilities:
-    // 1. User gave ISO (2025-09-20)
-    // 2. Already formatted (20-Sep-2025)
-    const isoPattern = /^\d{4}-\d{2}-\d{2}$/;
-    const formattedDate = isoPattern.test(selectedDate)
-      ? formatDate(selectedDate)
-      : selectedDate;
+    // Reference to date collection under turf
+    const dateRef = collection(
+      db,
+      "environment",
+      "testing",
+      "all_turfs_slot_booking",
+      turfId,
+      selectedDate
+    );
 
-    // Paths to check
-    const pathsToTry = [
-      doc(
-        db,
-        "environment",
-        "testing",
-        "all_turfs_slot_booking",
-        turfId,
-        formattedDate
-      ),
-      doc(
-        db,
-        "environment",
-        "testing",
-        "all_turfs_slot_booking",
-        turfId,
-        selectedDate
-      ),
-    ];
+    // Get all sports under that date
+    const sportsSnap = await getDocs(dateRef);
 
-    let results: any[] = [];
+    for (const sportDoc of sportsSnap.docs) {
+      const sportName = sportDoc.id; // cricket, football, etc.
 
-    for (const path of pathsToTry) {
-      const slotCollection = collection(path, "/");
-      const snapshot = await getDocs(slotCollection);
+      const courtsRef = collection(dateRef, sportName);
+      const courtsSnap = await getDocs(courtsRef);
 
-      if (!snapshot.empty) {
-        results = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        break; // ✅ Stop if found
+      for (const courtDoc of courtsSnap.docs) {
+        const courtName = courtDoc.id;
+
+        const timeslotsRef = collection(courtsRef, courtName);
+        const timeslotsSnap = await getDocs(timeslotsRef);
+
+        timeslotsSnap.forEach((slotDoc) => {
+          slots.push({
+            id: slotDoc.id,
+            sport: sportName,
+            court: courtName,
+            ...slotDoc.data(),
+          });
+        });
       }
     }
 
-    return results;
-  } catch (error) {
-    console.error("Error fetching booked slots:", error);
+    return slots;
+  } catch (err) {
+    console.error("Error fetching slots:", err);
     return [];
   }
 };
+
+
 
 export const getAvailableDates = async (turfId: string): Promise<string[]> => {
   try {
