@@ -1,5 +1,5 @@
 import { db } from "../firebase";
-import { collection, doc, query, where, getDocs } from "firebase/firestore";
+import { collection, doc, getDoc, query, where, getDocs } from "firebase/firestore";
 
 // Get all turf details
 export const getTurfs = async () => {
@@ -78,24 +78,24 @@ export const getSlotsByPaymentStatus = async (status: string, turfId?: string) =
   }
 };
 
-export const getAvailableDates = async (turfId: string) => {
+export async function getAvailableDates(turfId: string) {
   try {
-    // Go inside: environment/testing/all_turfs_slot_booking/{turfId}
-    const datesRef = collection(
-      db,
-      "environment",
-      "testing",
-      "all_turfs_slot_booking",
-      turfId
-    );
+    // Reference the nested document path
+    const docRef = doc(db, "environment/testing/all_turfs_slot_booking", turfId);
 
-    // Get all date collections under the turf
-    const datesSnapshot = await getDocs(datesRef);
+    // Fetch document
+    const docSnap = await getDoc(docRef);
 
-    // Extract IDs (ex: ["21-Sep-2025", "22-Sep-2025"])
-    return datesSnapshot.docs.map((dateDoc) => dateDoc.id);
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      console.log("Available Dates:", data.dates);
+      return data.dates;
+    } else {
+      console.log("No such document!");
+      return [];
+    }
   } catch (error) {
-    console.error("Error fetching available dates:", error);
+    console.error("Error fetching turf data:", error);
     return [];
   }
-};
+}
