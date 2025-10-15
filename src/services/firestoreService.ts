@@ -1,5 +1,5 @@
 import { db } from "../firebase";
-import { collection, doc, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs } from "firebase/firestore";
 
 // Get all turf details
 export const getTurfs = async () => {
@@ -124,6 +124,33 @@ export const getBookedSlots = async (turfId: string, selectedDate: string) => {
   }
 };
 
+// Get all slots across all users by payment status
+export const getSlotsByPaymentStatus = async (status: string, turfId?: string) => {
+  try {
+    const usersRef = collection(db, "environment/testing/users");
+    const userSnapshot = await getDocs(usersRef);
+    const allSlots: any[] = [];
+
+    userSnapshot.docs.forEach((userDoc) => {
+      const userData = userDoc.data();
+      const paymentCopies = userData.payment_copies || [];
+
+      // Filter by status (and turfId if provided)
+      const filteredSlots = paymentCopies.filter((slot: any) => {
+        const statusMatch = slot.payment_status === status;
+        const turfMatch = turfId ? slot.turf_id === turfId : true;
+        return statusMatch && turfMatch;
+      });
+
+      allSlots.push(...filteredSlots);
+    });
+
+    return allSlots;
+  } catch (error) {
+    console.error("Error fetching slots by payment status:", error);
+    return [];
+  }
+};
 
 
 export const getAvailableDates = async (turfId: string): Promise<string[]> => {
@@ -144,41 +171,6 @@ export const getAvailableDates = async (turfId: string): Promise<string[]> => {
   }
 };
 
-// export const getBookedSlots = async () => {
-//   try {
-//     const bookings: any[] = [];
-
-//     // Level 1: Turf collection
-//     const turfCollection = collection(db, "environment", "testing", "all_turfs_slot_booking");
-//     const turfSnapshot = await getDocs(turfCollection);
-//     console.log("Turf docs found:", turfSnapshot.docs.map((d) => d.id));
-
-//     for (const turfDoc of turfSnapshot.docs) {
-//       const turfId = turfDoc.id;
-
-//       // Level 2: Date collections (⚠️ these are collections, not documents)
-//       const dateCollectionRef = collection(db, "environment", "testing", "all_turfs_slot_booking", turfId, "07-Sep-2025");
-//       const slotSnapshot = await getDocs(dateCollectionRef);
-//       console.log(`Slots under ${turfId}/07-Sep-2025:`, slotSnapshot.docs.map((d) => d.id));
-
-//       slotSnapshot.forEach((slotDoc) => {
-//         bookings.push({
-//           turfId,
-//           date: "07-Sep-2025",
-//           slot: slotDoc.id,
-//           ...slotDoc.data(),
-//         });
-//       });
-//     }
-
-//     console.log("All Bookings fetched:", bookings);
-//     return bookings;
-//   } catch (error) {
-//     console.error("Error fetching booked slots:", error);
-//     return [];
-//   }
-// };
-
 // Get Owners
 export const getOwners = async () => {
   try {
@@ -194,3 +186,21 @@ export const getOwners = async () => {
     return [];
   }
 };
+
+
+// export async function getSlotByBookingId(turfId: string, bookingId: string) {
+//   try {
+//     const ref = collection(db, "environment/testing/all_turfs_slot_booking");
+//     const q = query(ref, where("turf_id", "==", turfId), where("booking_id", "==", bookingId));
+//     const snapshot = await getDocs(q);
+
+//     if (!snapshot.empty) {
+//       return snapshot.docs[0].data();
+//     } else {
+//       return null;
+//     }
+//   } catch (error) {
+//     console.error("Error fetching slot:", error);
+//     return null;
+//   }
+// }
