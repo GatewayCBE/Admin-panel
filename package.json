@@ -8,10 +8,17 @@
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^13.5.0",
     "bootstrap": "^5.3.8",
+<<<<<<< HEAD
     "bootstrap-icons": "^1.13.1",
     "firebase": "^12.2.1",
     "react": "^19.1.1",
     "react-bootstrap": "^2.10.10",
+=======
+    "date-fns": "^4.1.0",
+    "firebase": "^12.2.1",
+    "react": "^19.1.1",
+    "react-datepicker": "^8.7.0",
+>>>>>>> c89ac71b04f3352627db470bf24cd50cf0be315d
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.8.2",
     "react-scripts": "5.0.1",

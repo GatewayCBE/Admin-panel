@@ -6,7 +6,6 @@ import Games from "../pages/Games";
 import Dashboard from "../pages/admin/Dashboard";
 import Turf from "../pages/admin/Turf/Turf";
 import Owner from "../pages/admin/Owner/Owner";
-// import Slot from "../pages/admin/Slot";
 import Login from "../pages/auth/Login";
 import Register from "../pages/auth/Register";
 import Layout from "./Layout";
@@ -31,7 +30,7 @@ const AppRoutes: React.FC = () => {
         <Route path="/dashboard/owners/:ownerId" element={<Turfowner/>} />
         <Route path="/dashboard/owners/:ownerId/:turfId" element={<TurfDetails/>} />
         <Route path="/dashboard/slots" element={<Slots />} />
-        <Route path="/slotdetails/:turfId" element={<SlotDetails/>} />
+          <Route path="/slotdetails/:turfId" element={<SlotDetails/>} />
         
       </Route>
 
