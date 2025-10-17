@@ -14,6 +14,8 @@ const TurfDetails: React.FC = () => {
         const turfs = await getTurfsByOwner(ownerId);
         const selectedTurf = turfs.find((t: any) => t.turf_id === turfId);
         setTurf(selectedTurf || null);
+        console.log('selectedTurf',turfs);
+        
       };
       fetchTurf();
     }
@@ -63,10 +65,10 @@ const handleActivateTurf = async () => {
           <div className="col-md-6">
             <h2 className="fw-bold">{turf.turf_name}</h2>
 
-            <div className="d-flex align-items-center gap-2">
-              <p className="text-muted mb-0">📍 {turf.turf_location}</p>
-              <span className="badge bg-warning text-dark">⭐ 4.5 / 5</span>
-              <span className="text-success">Rate Venue</span>
+            <div className="d-block align-items-center gap-3">
+              <p className="text-muted mb-2" style={{fontSize:'14px'}}>📍 {turf.turf_location}</p>
+              <span className="badge bg-warning text-dark me-2">⭐ 4.5 / 5</span>
+              <span className="text-success" style={{fontSize:'14px'}}>Rate Venue</span>
             </div>
           </div>
 
@@ -91,27 +93,63 @@ const handleActivateTurf = async () => {
       <div className="container-fluid px-5">
         <div className="row justify-content-between">
           <div className="col-md-6">
-            {turf.turf_images?.length > 0 && (
-              <img
-                src={turf.turf_images[0]}
-                alt={turf.turf_name}
-                className="img-fluid"
-                style={{
-                  objectFit: "cover",
-                  width: "100%",
-                  height: "auto",
-                  maxHeight: "450px",
-                }}
-              />
-            )}
+            <div id="turfCarousel" className="carousel slide" data-bs-ride="carousel" data-bs-interval="2000">
+              <div className="carousel-inner">
+                {turf.turf_images.map((img: string, index: number) => (
+                  <div
+                    key={index}
+                    className={`carousel-item ${index === 0 ? "active" : ""}`}
+                    style={{ height: "450px" }}
+                  >
+                    <img
+                      src={img}
+                      className="d-block w-100 h-100"
+                      style={{ objectFit: "cover" }}
+                      alt={`Turf Image ${index + 1}`}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {turf.turf_images.length > 1 && (
+                <>
+                  <button
+                    className="carousel-control-prev"
+                    type="button"
+                    data-bs-target="#turfCarousel"
+                    data-bs-slide="prev"
+                  >
+                    <span className="carousel-control-prev-icon" aria-hidden="true"></span>
+                    <span className="visually-hidden">Previous</span>
+                  </button>
+                  <button
+                    className="carousel-control-next"
+                    type="button"
+                    data-bs-target="#turfCarousel"
+                    data-bs-slide="next"
+                  >
+                    <span className="carousel-control-next-icon" aria-hidden="true"></span>
+                    <span className="visually-hidden">Next</span>
+                  </button>
+                </>
+              )}
+            </div>
           </div>
+  
+      
 
           <div className="col-md-5 bg-white p-4 shadow-sm">
             <div className="mb-4">
-              <h6 className="fw-semibold">🕒 Timings</h6>
-              <p>
-                {turf.turf_opening_hour} - {turf.turf_closing_hour}
-              </p>
+              <h6 className="fw-semibold">🕒 Sport Timings :</h6>
+              {Object.entries(turf.sport_specific_timing).map(([sport, timing]: [string, any]) => (
+                    <div key={sport} className="mb-2">
+                      <strong>{sport} : </strong> 
+                     <span style={{fontSize:'14px'}}> {timing.opening_time} - {timing.closing_time}{" "}
+                      {timing.sport_available ? "(Available)" : "(Closed)"}
+                    </span>
+                   
+                    </div>
+                  ))}
             </div>
             <div>
               <h6 className="fw-semibold">📍 Location Map</h6>
