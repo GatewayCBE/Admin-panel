@@ -6,12 +6,13 @@ import Games from "../pages/Games";
 import Dashboard from "../pages/admin/Dashboard";
 import Turf from "../pages/admin/Turf/Turf";
 import Owner from "../pages/admin/Owner/Owner";
-import Slot from "../pages/admin/Slot";
 import Login from "../pages/auth/Login";
 import Register from "../pages/auth/Register";
 import Layout from "./Layout";
 import Turfowner from "../pages/admin/Owner/Turfowner";
 import TurfDetails from "../pages/admin/Owner/TurfDetails";
+import SlotDetails from "../pages/admin/Slot/SlotDetails";
+import Slots from "../pages/admin/Slot/Slots";
 
 const AppRoutes: React.FC = () => {
   return (
@@ -28,7 +29,8 @@ const AppRoutes: React.FC = () => {
         <Route path="/dashboard/owners" element={<Owner />} />
         <Route path="/dashboard/owners/:ownerId" element={<Turfowner/>} />
         <Route path="/dashboard/owners/:ownerId/:turfId" element={<TurfDetails/>} />
-        <Route path="/dashboard/slots" element={<Slot />} />
+        <Route path="/dashboard/slots" element={<Slots />} />
+          <Route path="/slotdetails/:turfId" element={<SlotDetails/>} />
         
       </Route>
 
