@@ -300,7 +300,7 @@ const AnalyticsPanel: React.FC = () => {
       />
 
       <main
-        className="flex-grow-1"
+        className="flex-grow-1" style={{ marginLeft: "250px", transition: "margin-left 0.3s ease" }}
       >
         {/* Remove left margin on mobile */}
         <style>{`
