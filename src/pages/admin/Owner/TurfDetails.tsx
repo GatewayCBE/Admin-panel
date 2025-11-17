@@ -193,28 +193,36 @@ const handleActivateTurf = async () => {
 
             {/* Price Chart ✅ */}
             {typeof turf.sport_specific_price === "object" && (
-              <div className="card mb-4">
-                <div className="card-body">
-                  <h5 className="card-title mb-3">💰 Price Chart</h5>
-                  {Object.entries(turf.sport_specific_price).map(
-                    ([sport, priceObj]: [string, any]) => (
-                      <div key={sport} className="mb-3">
-                        <strong>{sport}</strong>
-                        <ul className="mb-0">
-                          {Object.entries(priceObj).map(
-                            ([dayNumber, price]: [string, any]) => (
-                              <li key={dayNumber}>
-                                {dayMap[Number(dayNumber)]}: ₹{price}
-                              </li>
-                            )
-                          )}
-                        </ul>
-                      </div>
-                    )
-                  )}
-                </div>
-              </div>
-            )}
+  <div className="card mb-4">
+    <div className="card-body">
+      <h5 className="card-title mb-3">💰 Price Chart</h5>
+
+      {Object.entries(turf.sport_specific_price).map(
+        ([sport, priceObj]: [string, any]) => (
+          <div key={sport} className="mb-3">
+            <strong>{sport}</strong>
+            <ul className="mb-0">
+              {Object.entries(priceObj).map(([dayNumber, price]: [string, any]) => (
+                <li key={dayNumber}>
+                  {dayMap[Number(dayNumber)]}:
+                  <span className="ms-2">
+                    {typeof price === "object" ? (
+                      <>
+                        🌞 Day: ₹{price.day} | 🌙 Night: ₹{price.night}
+                      </>
+                    ) : (
+                      <>₹{price}</> // fallback if it's a number
+                    )}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )
+      )}
+    </div>
+  </div>
+)}
 
             {/* About Venue */}
             {turf.turf_description && (
