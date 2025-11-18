@@ -32,7 +32,7 @@ const AdminSidebar: React.FC<Props> = ({ isOpen, closeSidebar }) => {
             📊 Dashboard
           </Link>
 
-          <Link to="/admin/bookings" className="nav-link text-dark px-3 py-2 rounded">
+          <Link to="/admin/recentbookings" className="nav-link text-dark px-3 py-2 rounded">
             📅 Bookings
           </Link>
 

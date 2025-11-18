@@ -46,6 +46,13 @@ const Turfowner: React.FC = () => {
                 <div className="d-flex justify-content-between align-items-center">
 
                   <Link
+                    to={`/admin/bookedslots/${turf.turf_id}`}
+                    className="badge bg-light text-success rounded-pill px-3 py-2 me-3"
+                    style={{ textDecoration: "none" }}
+                  >
+                    View Slots →
+                  </Link>
+                  <Link
                     to={`/dashboard/owners/${ownerId}/${turf.turf_id}`}
                     className="badge bg-light text-success rounded-pill px-3 py-2 me-3"
                     style={{ textDecoration: "none" }}

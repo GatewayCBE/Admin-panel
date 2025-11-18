@@ -1,14 +1,14 @@
-import React, { useEffect, useState } from "react";
+// import React, { useEffect, useState } from "react";
 
 
 
-const SlotDetails: React.FC = () => {
+// const SlotDetails: React.FC = () => {
   
-  return (
-    <div className="container py-4">
+//   return (
+//     <div className="container py-4">
       
-    </div>
-  );
-};
+//     </div>
+//   );
+// };
 
-export default SlotDetails;
+// export default SlotDetails;
