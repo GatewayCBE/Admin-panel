@@ -1,7 +1,7 @@
 // src/pages/admin/Analytics/RecentBookingsPage.tsx
 import React, { useEffect, useState, useMemo } from "react";
 import AdminSidebar from "../Analytics/AdminSidebar";
-import { getRecentBookings } from "../../../services/firestoreService";
+import { getAllBookings } from "../../../services/firestoreService";
 
 type BookingRow = {
   booking_id: string;
@@ -50,9 +50,7 @@ const RecentBookingsPage: React.FC = () => {
       setLoading(true);
       try {
         // fetch 200 latest across turfs/days; we'll paginate client-side
-        const rec = await getRecentBookings(200, 14);
-        if (!mounted) return;
-        setBookings(rec);
+        getAllBookings().then(setBookings);
       } catch (err) {
         console.error("Failed to fetch recent bookings:", err);
       } finally {

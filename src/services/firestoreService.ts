@@ -1,5 +1,6 @@
 import { db } from "../firebase";
 import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
+import { getFunctions, httpsCallable, connectFunctionsEmulator } from "firebase/functions";
 
 // Get all turf details
 export const getTurfs = async () => {
@@ -469,100 +470,31 @@ export async function getSportsAndCourts(turfId: string, date: string) {
   }
 }
 
-export async function getRecentBookings(
-  limit = 20,
-  days = 7
-): Promise<BookedSlot[]> {
+// NEW — SUPER FAST Cloud Function version
+const functions = getFunctions(); // Automatically uses your project
+// Auto-detect environment
+if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+  connectFunctionsEmulator(functions, "localhost", 5001);
+  console.log("Connected to Firebase Functions Emulator (localhost:5001)");
+}
+
+const getRecentBookingsFn = httpsCallable(functions, "getRecentBookings");
+
+export async function getAllBookings(): Promise<BookedSlot[]> {
   try {
-    const turfsCol = collection(db, "environment", "testing", "turfs");
-    const turfDocs = await getDocs(turfsCol);
-
-    if (turfDocs.empty) return [];
-
-    const results: BookedSlot[] = [];
-
-    // Build last N dates
-    const dates: string[] = [];
-    for (let i = 0; i < days; i++) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const formatted = d
-        .toLocaleDateString("en-GB", {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-        })
-        .replace(/ /g, "-");
-      dates.push(formatted);
-    }
-
-    // Loop through turfs
-    for (const turfDoc of turfDocs.docs) {
-      const turfId = turfDoc.id;
-      const turfData = turfDoc.data() || {};
-      const turfName: string = turfData.turf_name || turfId;
-
-      for (const dateKey of dates) {
-        try {
-          const sports: any[] = await getSportsAndCourts(turfId, dateKey);
-          if (!sports || sports.length === 0) continue;
-
-          const jobPromises: Promise<BookedSlot[]>[] = [];
-
-          sports.forEach((s) => {
-            (s.courts || []).forEach((court: string) => {
-              jobPromises.push(
-                getAllBookedSlots(turfId, dateKey, s.sport, court)
-              );
-            });
-          });
-
-          const allSlotGroups: BookedSlot[][] = await Promise.all(jobPromises);
-
-          allSlotGroups.forEach((slotArr: BookedSlot[]) => {
-            slotArr.forEach((slot: BookedSlot) => {
-              results.push({
-                ...slot,
-                turfId,
-                turfName,
-                date: dateKey,
-                time: slot.slot_start_time || slot.time || "",
-              });
-            });
-          });
-
-          // Early stop
-          if (results.length >= limit * 2) break;
-        } catch (err) {
-          console.warn(
-            `Skipping turf ${turfId} on ${dateKey} due to error`,
-            err
-          );
-        }
-      }
-    }
-
-    // Deduplicate
-    const unique = new Map<string, BookedSlot>();
-    results.forEach((r) => {
-      const key = `${r.booking_id}-${r.slot_start_time}`;
-      unique.set(key, r);
-    });
-
-    const finalResults = [...unique.values()];
-
-    // Sort by newest payment time
-    finalResults.sort((a, b) => {
-      const ta =
-        parseStringTimestampToDate(a.payment_initiated_time)?.getTime() || 0;
-      const tb =
-        parseStringTimestampToDate(b.payment_initiated_time)?.getTime() || 0;
-      return tb - ta;
-    });
-
-    return finalResults.slice(0, limit);
-  } catch (err) {
-    console.error("❌ getRecentBookings failed:", err);
+    console.log("Fetching recent bookings via Cloud Function...");
+    const result = await getRecentBookingsFn();
+    
+    // The function returns { success: true, bookings: [...] }
+    const bookings = (result.data as any).bookings || [];
+    
+    console.log(`Loaded ${bookings.length} bookings instantly`);
+    return bookings;
+  } catch (error: any) {
+    console.error("Failed to fetch bookings from Cloud Function:", error);
+    // Optional: fallback to old method only during transition
+    // alert("Using fallback method — please refresh in a minute");
+    // return oldSlowMethod(); // you can keep as backup temporarily
     return [];
   }
 }

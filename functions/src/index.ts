@@ -1,4 +1,4 @@
-// index.ts
+// functions/src/index.ts
 import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import * as admin from "firebase-admin";
 
@@ -6,6 +6,10 @@ if (admin.apps.length === 0) admin.initializeApp();
 
 const db = admin.firestore();
 
+/**
+ * Main analytics + courts fix trigger
+ * Triggers on every new paid booking
+ */
 export const onSlotCreated = onDocumentCreated(
   {
     region: "asia-south1",
@@ -13,24 +17,21 @@ export const onSlotCreated = onDocumentCreated(
       "environment/testing/all_turfs_slot_booking/{turfId}/{dateId}/{sport}/{court}/{time}",
   },
   async (event) => {
-    const { turfId, dateId } = event.params;
+    const { turfId, dateId, sport } = event.params;
     const slotData = event.data?.data();
 
     if (!slotData) {
-      console.warn("⚠️ No slot data found, skipping operations.");
+      console.warn("No slot data found, skipping operations.");
       return;
     }
 
     const validStatuses = ["Paid", "paymentSuccess"];
     if (!validStatuses.includes(slotData.payment_status)) {
-      console.log(
-        `🟡 Skipping analytics (payment_status = ${slotData.payment_status})`
-      );
+      console.log(`Skipping analytics (payment_status = ${slotData.payment_status})`);
       return;
     }
 
     const amount = slotData.paid_amount || slotData.amount || 0;
-    // userId might be stored in a few places in your payload:
     const userId =
       slotData.user_id ||
       slotData.booking_user_id ||
@@ -38,16 +39,19 @@ export const onSlotCreated = onDocumentCreated(
       "unknown_user";
 
     console.log(
-      `📊 Updating analytics: turf=${turfId} date=${dateId} user=${userId} amount=${amount}`
+      `Updating analytics: turf=${turfId} date=${dateId} user=${userId} amount=${amount}`
     );
 
     const basePath = `environment/testing/analytics/data`;
     const batch = db.batch();
 
-    // --- read turf profile for name if exists ---
+    // === Resolve turf name ===
     let turfName = "Unknown Turf";
     try {
-      const turfDoc = await db.collection("environment/testing/turfs").doc(turfId).get();
+      const turfDoc = await db
+        .collection("environment/testing/turfs")
+        .doc(turfId)
+        .get();
       if (turfDoc.exists) {
         const t = turfDoc.data();
         turfName = t?.turf_name || t?.name || turfName;
@@ -56,23 +60,23 @@ export const onSlotCreated = onDocumentCreated(
       console.warn("Could not read turf profile:", e);
     }
 
-    // --- read user profile for name if exists ---
+    // === Resolve user name ===
     let userName = "Unknown User";
     try {
-      // If your users collection stores doc keyed by phone (like +91...), try doc lookup first
-      // But if in some situations userId is like 'USID_xxx' and stored in a doc field, we also try query.
       let userDocSnap = null;
       try {
-        userDocSnap = await db.collection("environment/testing/users").doc(userId).get();
-      } catch (e) {
+        userDocSnap = await db
+          .collection("environment/testing/users")
+          .doc(userId)
+          .get();
+      } catch {
         userDocSnap = null;
       }
 
-      if (userDocSnap && userDocSnap.exists) {
+      if (userDocSnap?.exists) {
         const ud = userDocSnap.data();
         userName = ud?.user_name || ud?.user || ud?.name || userName;
       } else {
-        // fallback to query by user_id field (if your schema uses user_id field inside doc)
         const userQuery = await db
           .collection("environment/testing/users")
           .where("user_id", "==", userId)
@@ -88,7 +92,7 @@ export const onSlotCreated = onDocumentCreated(
     }
 
     try {
-      // --- Global summary (top-level) ---
+      // === 1. Global summary ===
       const globalRef = db.doc(`${basePath}/global/summary`);
       batch.set(
         globalRef,
@@ -100,9 +104,8 @@ export const onSlotCreated = onDocumentCreated(
         { merge: true }
       );
 
-      // --- Daily totals ---
+      // === 2. Daily totals + nested breakdowns ===
       const dailyRef = db.doc(`${basePath}/daily/${dateId}`);
-      // Increment totals at daily doc
       batch.set(
         dailyRef,
         {
@@ -110,34 +113,21 @@ export const onSlotCreated = onDocumentCreated(
           total_revenue: admin.firestore.FieldValue.increment(amount),
           total_bookings: admin.firestore.FieldValue.increment(1),
           last_updated: admin.firestore.FieldValue.serverTimestamp(),
+
+          // Nested turf breakdown
+          [`turfs.${turfId}.revenue`]: admin.firestore.FieldValue.increment(amount),
+          [`turfs.${turfId}.bookings`]: admin.firestore.FieldValue.increment(1),
+          [`turfs.${turfId}.turf_name`]: turfName,
+
+          // Nested user breakdown
+          [`users.${userId}.spent`]: admin.firestore.FieldValue.increment(amount),
+          [`users.${userId}.bookings`]: admin.firestore.FieldValue.increment(1),
+          [`users.${userId}.user_name`]: userName,
         },
         { merge: true }
       );
 
-      // --- Also store per-day nested breakdown for turfs & users so front-end can filter ---
-      // Use dynamic merge to increment nested fields:
-      const turfNestedKeyRevenue = `turfs.${turfId}.revenue`;
-      const turfNestedKeyBookings = `turfs.${turfId}.bookings`;
-      const turfNestedKeyName = `turfs.${turfId}.turf_name`;
-
-      const userNestedKeySpent = `users.${userId}.spent`;
-      const userNestedKeyBookings = `users.${userId}.bookings`;
-      const userNestedKeyName = `users.${userId}.user_name`;
-
-      // Use batch.set with merge to update nested fields (contains FieldValue.increment)
-      const dailySetObj: any = {
-        // top-level date & totals already set above; include the nested increments:
-        [turfNestedKeyRevenue]: admin.firestore.FieldValue.increment(amount),
-        [turfNestedKeyBookings]: admin.firestore.FieldValue.increment(1),
-        [turfNestedKeyName]: turfName,
-        [userNestedKeySpent]: admin.firestore.FieldValue.increment(amount),
-        [userNestedKeyBookings]: admin.firestore.FieldValue.increment(1),
-        [userNestedKeyName]: userName,
-      };
-
-      batch.set(dailyRef, dailySetObj, { merge: true });
-
-      // --- Turf summary (aggregate) ---
+      // === 3. Turf aggregate ===
       const turfAnalyticsRef = db.doc(`${basePath}/turf/${turfId}`);
       batch.set(
         turfAnalyticsRef,
@@ -151,7 +141,7 @@ export const onSlotCreated = onDocumentCreated(
         { merge: true }
       );
 
-      // --- User summary (aggregate) ---
+      // === 4. User aggregate ===
       const userRef = db.doc(`${basePath}/users/${userId}`);
       batch.set(
         userRef,
@@ -166,10 +156,30 @@ export const onSlotCreated = onDocumentCreated(
         { merge: true }
       );
 
+      // === 5. FIX COURTS ARRAY AUTOMATICALLY ===
+      const sportDocRef = db
+        .collection("environment/testing/all_turfs_slot_booking")
+        .doc(turfId)
+        .collection(dateId)
+        .doc(sport);
+
+      let courtNames: string[] = [];
+      try {
+        const collections = await sportDocRef.listCollections();
+        courtNames = collections.map((col) => col.id);
+        if (courtNames.length > 0) {
+          batch.set(sportDocRef, { courts: courtNames }, { merge: true });
+          console.log(`Updated courts for ${sport}:`, courtNames.join(", "));
+        }
+      } catch (e) {
+        console.warn("Failed to update courts array:", e);
+      }
+
       await batch.commit();
-      console.log("✅ Analytics (global/daily/turf/user) updated successfully");
+      console.log("Analytics + courts updated successfully");
     } catch (err) {
-      console.error("Error updating analytics:", err);
+      console.error("Error in onSlotCreated:", err);
     }
   }
 );
+export { getRecentBookings } from "./getRecentBookings";
