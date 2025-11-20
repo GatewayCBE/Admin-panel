@@ -1,10 +1,10 @@
 import { db } from "../firebase";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
 
 // Get all turf details
 export const getTurfs = async () => {
   try {
-    const turfRef = collection(db, "environment/testing/turfs");
+    const turfRef = collection(db, "environment", "testing", "turfs");
     const turfDocs = await getDocs(turfRef);
 
     return turfDocs.docs.map((doc) => ({
@@ -36,7 +36,7 @@ export const getTurfsByOwner = async (ownerId: string) => {
 export const debugPath = async () => {
   try {
     const test1 = await getDocs(
-      collection(db, "environment/testing/all_turfs_slot_booking")
+      collection(db, "environment", "testing", "all_turfs_slot_booking")
     );
     console.log(
       "Test1 docs:",
@@ -76,53 +76,6 @@ export interface SlotData {
   court?: string;
   sport?: string;
 }
-
-export const getBookedSlots = async (turfId: string, selectedDate: string) => {
-  try {
-    const slots: any[] = [];
-
-    // Reference to date collection under turf
-    const dateRef = collection(
-      db,
-      "environment",
-      "testing",
-      "all_turfs_slot_booking",
-      turfId,
-      selectedDate
-    );
-
-    // Get all sports under that date
-    const sportsSnap = await getDocs(dateRef);
-
-    for (const sportDoc of sportsSnap.docs) {
-      const sportName = sportDoc.id; // cricket, football, etc.
-
-      const courtsRef = collection(dateRef, sportName);
-      const courtsSnap = await getDocs(courtsRef);
-
-      for (const courtDoc of courtsSnap.docs) {
-        const courtName = courtDoc.id;
-
-        const timeslotsRef = collection(courtsRef, courtName);
-        const timeslotsSnap = await getDocs(timeslotsRef);
-
-        timeslotsSnap.forEach((slotDoc) => {
-          slots.push({
-            id: slotDoc.id,
-            sport: sportName,
-            court: courtName,
-            ...slotDoc.data(),
-          });
-        });
-      }
-    }
-
-    return slots;
-  } catch (err) {
-    console.error("Error fetching slots:", err);
-    return [];
-  }
-};
 
 // Get all slots across all users by payment status
 export const getSlotsByPaymentStatus = async (status: string, turfId?: string) => {
@@ -187,20 +140,429 @@ export const getOwners = async () => {
   }
 };
 
+export const getTurfDates = async (turfId: string) => {
+  const snapshot = await getDocs(
+    collection(db, "environment", "testing", "all_turfs_slot_booking", turfId)
+  );
+  return snapshot.docs.map((d) => d.id);
+};
 
-// export async function getSlotByBookingId(turfId: string, bookingId: string) {
-//   try {
-//     const ref = collection(db, "environment/testing/all_turfs_slot_booking");
-//     const q = query(ref, where("turf_id", "==", turfId), where("booking_id", "==", bookingId));
-//     const snapshot = await getDocs(q);
+export const getSportsForDate = async (turfId: string, date: string) => {
+  const snapshot = await getDocs(
+    collection(db, "environment", "testing", "all_turfs_slot_booking", turfId, date)
+  );
+  return snapshot.docs.map((d) => d.id);
+};
 
-//     if (!snapshot.empty) {
-//       return snapshot.docs[0].data();
-//     } else {
-//       return null;
-//     }
-//   } catch (error) {
-//     console.error("Error fetching slot:", error);
-//     return null;
-//   }
-// }
+export const getCourtsForSport = async (turfId: string, date: string, sport: string) => {
+  const snapshot = await getDoc(
+    doc(db, "environment", "testing", "all_turfs_slot_booking", turfId, date, sport)
+  );
+  return snapshot.exists() ? snapshot.data()?.courts || [] : [];
+};
+
+
+export const getBookedSlotTimes = async (
+  turfId: string,
+  date: string,
+  sport: string,
+  court: string
+) => {
+  const snapshot = await getDocs(
+    collection(db, "environment", "testing", "all_turfs_slot_booking", turfId, date, sport, court)
+  );
+  return snapshot.docs.map((d) => d.id);
+};
+
+export const getSlotDetails = async (
+  turfId: string,
+  date: string,
+  sport: string,
+  court: string,
+  slotTime: string
+) => {
+  const slotDoc = doc(
+    db,
+    "environment",
+    "testing",
+    "all_turfs_slot_booking",
+    turfId,
+    date,
+    sport,
+    court,
+    slotTime
+  );
+  const snapshot = await getDoc(slotDoc);
+  return snapshot.exists() ? snapshot.data() : null;
+};
+
+export interface BookedSlot {
+  booking_id: string;
+  booking_username?: string;
+  booked_sports_name?: string;
+  court?: string;
+  turf_name?: string;
+  date?: string;
+
+  slot_start_time?: string;
+  slot_end_time?: string;
+  time?: string;
+
+  paid_amount?: number;
+  unpaid_amount?: number;
+  payment_status?: string;
+  payment_initiated_time?: string;
+
+  owner_id?: string;
+  turfId?: string;
+  turfName?: string;
+
+  [key: string]: any;
+}
+
+export async function getAllBookedSlots(
+  turfId: string,
+  date: string,
+  sport: string,
+  court: string
+): Promise<BookedSlot[]> {
+  try {
+    const slotsRef = collection(
+      db,
+      "environment",
+      "testing",
+      "all_turfs_slot_booking",
+      turfId,
+      date,
+      sport,
+      court
+    );
+
+    const snapshot = await getDocs(slotsRef);
+
+    if (snapshot.empty) {
+      console.warn(`⚠️ No slots found for ${sport}/${court}`);
+      return [];
+    }
+
+    const slots: BookedSlot[] = snapshot.docs.map((doc) => {
+      const data = doc.data() || {};
+
+      return {
+        booking_id: doc.id,
+        booking_username: data.booking_username || "",
+        sport: sport,
+
+        booked_sports_name: data.booked_sports_name || sport,
+        court: data.court || court,
+        date: data.date || date,
+        turf_name: data.turf_name || "",
+
+        slot_start_time: data.slot_start_time || doc.id,
+        slot_end_time: data.slot_end_time || null,
+        time: data.slot_start_time || data.time || doc.id,
+
+        paid_amount: Number(data.paid_amount ?? 0),
+        unpaid_amount: Number(data.unpaid_amount ?? 0),
+        payment_status: data.payment_status || "unknown",
+        payment_initiated_time: data.payment_initiated_time || "",
+
+        owner_id: data.owner_id || "",
+
+        ...data // keep remaining Firestore fields
+      };
+    });
+
+    return slots;
+  } catch (err) {
+    console.error("❌ Error fetching booked slots:", err);
+    return [];
+  }
+}
+
+export async function getAllDatesAndSlots(turfId: string) {
+  try {
+    const turfRef = collection(
+      db,
+      "environment",
+      "testing",
+      "all_turfs_slot_booking",
+      turfId
+    );
+
+    const dateSnapshots = await getDocs(turfRef);
+
+    if (dateSnapshots.empty) {
+      console.warn("⚠️ No dates found for turf:", turfId);
+      return [];
+    }
+
+    const results: any[] = [];
+
+    for (const dateDoc of dateSnapshots.docs) {
+      const date = dateDoc.id;
+      const sportsSnapshot = await getDocs(collection(turfRef, date));
+
+      const sportsData = [];
+
+      for (const sportDoc of sportsSnapshot.docs) {
+        const sport = sportDoc.id;
+        const courtsSnapshot = await getDocs(collection(turfRef, date, sport));
+
+        const courtData = [];
+
+        for (const courtDoc of courtsSnapshot.docs) {
+          const court = courtDoc.id;
+          const slotsSnapshot = await getDocs(
+            collection(turfRef, date, sport, court)
+          );
+          const slots = slotsSnapshot.docs.map((doc) => ({
+            time: doc.id,
+            ...doc.data(),
+          }));
+          courtData.push({ court, slots });
+        }
+
+        sportsData.push({ sport, courts: courtData });
+      }
+
+      results.push({ date, sports: sportsData });
+    }
+
+    console.log("📅 All booked slots for turf:", results);
+    return results;
+  } catch (err) {
+    console.error("❌ Error fetching all booked slots:", err);
+    return [];
+  }
+}
+
+// Global
+export const getGlobalAnalytics = async () => {
+  try {
+    const ref = doc(db, "environment/testing/analytics/data/global/summary");
+    const snap = await getDoc(ref);
+    if (snap.exists()) {
+      const data = snap.data();
+      return {
+        total_revenue: data.total_revenue ?? 0,
+        total_bookings: data.total_bookings ?? 0,
+      };
+    }
+    return { total_revenue: 0, total_bookings: 0 };
+  } catch (error) {
+    console.error("Error fetching global analytics:", error);
+    return { total_revenue: 0, total_bookings: 0 };
+  }
+};
+
+// Daily: return the whole daily object (including nested turfs/users maps)
+export const getDailyAnalytics = async () => {
+  try {
+    const ref = collection(db, "environment/testing/analytics/data/daily");
+    const snap = await getDocs(ref);
+    return snap.docs.map((d) => {
+      const data = d.data();
+      return {
+        id: d.id,
+        // keep original totals
+        total_revenue: data.total_revenue ?? 0,
+        total_bookings: data.total_bookings ?? 0,
+        // include nested breakdown maps (may be undefined)
+        turfs: data.turfs ?? {},
+        users: data.users ?? {},
+        date: data.date ?? d.id,
+      };
+    });
+  } catch (error) {
+    console.error("Error fetching daily analytics:", error);
+    return [];
+  }
+};
+
+// Turf & users summary (overall aggregates)
+export const getTurfAnalytics = async () => {
+  try {
+    const ref = collection(db, "environment/testing/analytics/data/turf");
+    const snap = await getDocs(ref);
+    return snap.docs.map((d) => {
+      const data = d.data();
+      return {
+        id: d.id,
+        turf_id: data.turf_id ?? d.id,
+        turf_name: data.turf_name ?? "Unknown Turf",
+        total_revenue: data.total_revenue ?? 0,
+        total_bookings: data.total_bookings ?? 0,
+      };
+    });
+  } catch (error) {
+    console.error("Error fetching turf analytics:", error);
+    return [];
+  }
+};
+
+export const getUserAnalytics = async () => {
+  try {
+    const colRef = collection(db, "environment/testing/analytics/data/users");
+    const snapshot = await getDocs(colRef);
+    return snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        user_id: data.user_id ?? doc.id,
+        user_name: data.user_name ?? "Unknown User",
+        total_spent: data.total_spent ?? 0,
+        total_bookings: data.total_bookings ?? 0,
+      };
+    });
+  } catch (error) {
+    console.error("Error fetching user analytics:", error);
+    return [];
+  }
+};
+
+function parseStringTimestampToDate(s?: string): Date | null {
+  if (!s || typeof s !== "string") return null;
+  const fixed = s.replace(" ", "T").replace(/(\.\d{3})\d+/, "$1");
+  const d = new Date(fixed);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+/**
+ * Fetch all booked slots for a given turf and date (across all sports)
+ */
+export async function getSportsAndCourts(turfId: string, date: string) {
+  try {
+    // console.log("🔎 Fetching sports & courts for Turf:", turfId, "Date:", date);
+
+    const dateCollectionRef = collection(
+      db,
+      "environment",
+      "testing",
+      "all_turfs_slot_booking",
+      turfId,
+      date
+    );
+
+    const sportsSnapshot = await getDocs(dateCollectionRef);
+
+    if (sportsSnapshot.empty) {
+      // console.warn("⚠️ No sports found for this date!");
+      return [];
+    }
+
+    const result: any[] = [];
+
+    for (const sportDoc of sportsSnapshot.docs) {
+      const data = sportDoc.data();
+      const sportName = sportDoc.id;
+      const courts = data.courts || [];
+
+      result.push({ sport: sportName, courts });
+    }
+
+    console.log("✅ Sports & courts fetched:", result);
+    return result;
+  } catch (err) {
+    console.error("❌ Error fetching sports & courts:", err);
+    return [];
+  }
+}
+
+export async function getRecentBookings(
+  limit = 20,
+  days = 7
+): Promise<BookedSlot[]> {
+  try {
+    const turfsCol = collection(db, "environment", "testing", "turfs");
+    const turfDocs = await getDocs(turfsCol);
+
+    if (turfDocs.empty) return [];
+
+    const results: BookedSlot[] = [];
+
+    // Build last N dates
+    const dates: string[] = [];
+    for (let i = 0; i < days; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const formatted = d
+        .toLocaleDateString("en-GB", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        })
+        .replace(/ /g, "-");
+      dates.push(formatted);
+    }
+
+    // Loop through turfs
+    for (const turfDoc of turfDocs.docs) {
+      const turfId = turfDoc.id;
+      const turfData = turfDoc.data() || {};
+      const turfName: string = turfData.turf_name || turfId;
+
+      for (const dateKey of dates) {
+        try {
+          const sports: any[] = await getSportsAndCourts(turfId, dateKey);
+          if (!sports || sports.length === 0) continue;
+
+          const jobPromises: Promise<BookedSlot[]>[] = [];
+
+          sports.forEach((s) => {
+            (s.courts || []).forEach((court: string) => {
+              jobPromises.push(
+                getAllBookedSlots(turfId, dateKey, s.sport, court)
+              );
+            });
+          });
+
+          const allSlotGroups: BookedSlot[][] = await Promise.all(jobPromises);
+
+          allSlotGroups.forEach((slotArr: BookedSlot[]) => {
+            slotArr.forEach((slot: BookedSlot) => {
+              results.push({
+                ...slot,
+                turfId,
+                turfName,
+                date: dateKey,
+                time: slot.slot_start_time || slot.time || "",
+              });
+            });
+          });
+
+          // Early stop
+          if (results.length >= limit * 2) break;
+        } catch (err) {
+          console.warn(
+            `Skipping turf ${turfId} on ${dateKey} due to error`,
+            err
+          );
+        }
+      }
+    }
+
+    // Deduplicate
+    const unique = new Map<string, BookedSlot>();
+    results.forEach((r) => {
+      const key = `${r.booking_id}-${r.slot_start_time}`;
+      unique.set(key, r);
+    });
+
+    const finalResults = [...unique.values()];
+
+    // Sort by newest payment time
+    finalResults.sort((a, b) => {
+      const ta =
+        parseStringTimestampToDate(a.payment_initiated_time)?.getTime() || 0;
+      const tb =
+        parseStringTimestampToDate(b.payment_initiated_time)?.getTime() || 0;
+      return tb - ta;
+    });
+
+    return finalResults.slice(0, limit);
+  } catch (err) {
+    console.error("❌ getRecentBookings failed:", err);
+    return [];
+  }
+}

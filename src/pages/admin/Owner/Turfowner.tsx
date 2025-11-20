@@ -52,6 +52,13 @@ const Turfowner: React.FC = () => {
                   >
                     View Details →
                   </Link>
+                  <Link
+  to={`/dashboard/owners/${ownerId}/${turf.turf_id}/slots`}
+  className="badge bg-warning text-dark rounded-pill px-3 py-2"
+  style={{ textDecoration: "none" }}
+>
+  View Slots 🔎
+</Link>
                 </div>
 
            
