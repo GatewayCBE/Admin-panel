@@ -14,8 +14,7 @@ const TurfDetails: React.FC = () => {
         const turfs = await getTurfsByOwner(ownerId);
         const selectedTurf = turfs.find((t: any) => t.turf_id === turfId);
         setTurf(selectedTurf || null);
-        console.log('selectedTurf',turfs);
-        
+        console.log("selectedTurf", turfs);
       };
       fetchTurf();
     }
@@ -30,22 +29,21 @@ const TurfDetails: React.FC = () => {
     );
   }
 
-const handleActivateTurf = async () => {
-  if (!turfId) return;
-  try {
-    const turfRef = doc(db, "environment", "testing", "turfs", turfId);
-    await updateDoc(turfRef, {
-      turf_active_status: true,
-    });
+  const handleActivateTurf = async () => {
+    if (!turfId) return;
+    try {
+      const turfRef = doc(db, "environment", "testing", "turfs", turfId);
+      await updateDoc(turfRef, {
+        turf_active_status: true,
+      });
 
-    setTurf({ ...turf, turf_active_status: true }); 
-    alert("Turf activated successfully!")
-    console.log("Turf activated successfully!");
-  } catch (error) {
-    console.error("Error activating turf:", error);
-  }
-};
-
+      setTurf({ ...turf, turf_active_status: true });
+      alert("Turf activated successfully!");
+      console.log("Turf activated successfully!");
+    } catch (error) {
+      console.error("Error activating turf:", error);
+    }
+  };
 
   const dayMap: Record<number, string> = {
     1: "Monday",
@@ -66,9 +64,15 @@ const handleActivateTurf = async () => {
             <h2 className="fw-bold">{turf.turf_name}</h2>
 
             <div className="d-block align-items-center gap-3">
-              <p className="text-muted mb-2" style={{fontSize:'14px'}}>📍 {turf.turf_location}</p>
-              <span className="badge bg-warning text-dark me-2">⭐ 4.5 / 5</span>
-              <span className="text-success" style={{fontSize:'14px'}}>Rate Venue</span>
+              <p className="text-muted mb-2" style={{ fontSize: "14px" }}>
+                📍 {turf.turf_location}
+              </p>
+              <span className="badge bg-warning text-dark me-2">
+                ⭐ 4.5 / 5
+              </span>
+              <span className="text-success" style={{ fontSize: "14px" }}>
+                Rate Venue
+              </span>
             </div>
           </div>
 
@@ -93,7 +97,12 @@ const handleActivateTurf = async () => {
       <div className="container-fluid px-5">
         <div className="row justify-content-between">
           <div className="col-md-6">
-            <div id="turfCarousel" className="carousel slide" data-bs-ride="carousel" data-bs-interval="2000">
+            <div
+              id="turfCarousel"
+              className="carousel slide"
+              data-bs-ride="carousel"
+              data-bs-interval="2000"
+            >
               <div className="carousel-inner">
                 {turf.turf_images.map((img: string, index: number) => (
                   <div
@@ -119,7 +128,10 @@ const handleActivateTurf = async () => {
                     data-bs-target="#turfCarousel"
                     data-bs-slide="prev"
                   >
-                    <span className="carousel-control-prev-icon" aria-hidden="true"></span>
+                    <span
+                      className="carousel-control-prev-icon"
+                      aria-hidden="true"
+                    ></span>
                     <span className="visually-hidden">Previous</span>
                   </button>
                   <button
@@ -128,28 +140,32 @@ const handleActivateTurf = async () => {
                     data-bs-target="#turfCarousel"
                     data-bs-slide="next"
                   >
-                    <span className="carousel-control-next-icon" aria-hidden="true"></span>
+                    <span
+                      className="carousel-control-next-icon"
+                      aria-hidden="true"
+                    ></span>
                     <span className="visually-hidden">Next</span>
                   </button>
                 </>
               )}
             </div>
           </div>
-  
-      
 
           <div className="col-md-5 bg-white p-4 shadow-sm">
             <div className="mb-4">
               <h6 className="fw-semibold">🕒 Sport Timings :</h6>
-              {Object.entries(turf.sport_specific_timing).map(([sport, timing]: [string, any]) => (
-                    <div key={sport} className="mb-2">
-                      <strong>{sport} : </strong> 
-                     <span style={{fontSize:'14px'}}> {timing.opening_time} - {timing.closing_time}{" "}
+              {Object.entries(turf.sport_specific_timing).map(
+                ([sport, timing]: [string, any]) => (
+                  <div key={sport} className="mb-2">
+                    <strong>{sport} : </strong>
+                    <span style={{ fontSize: "14px" }}>
+                      {" "}
+                      {timing.opening_time} - {timing.closing_time}{" "}
                       {timing.sport_available ? "(Available)" : "(Closed)"}
                     </span>
-                   
-                    </div>
-                  ))}
+                  </div>
+                )
+              )}
             </div>
             <div>
               <h6 className="fw-semibold">📍 Location Map</h6>
@@ -196,6 +212,7 @@ const handleActivateTurf = async () => {
               <div className="card mb-4">
                 <div className="card-body">
                   <h5 className="card-title mb-3">💰 Price Chart</h5>
+
                   {Object.entries(turf.sport_specific_price).map(
                     ([sport, priceObj]: [string, any]) => (
                       <div key={sport} className="mb-3">
@@ -204,7 +221,17 @@ const handleActivateTurf = async () => {
                           {Object.entries(priceObj).map(
                             ([dayNumber, price]: [string, any]) => (
                               <li key={dayNumber}>
-                                {dayMap[Number(dayNumber)]}: ₹{price}
+                                {dayMap[Number(dayNumber)]}:
+                                <span className="ms-2">
+                                  {typeof price === "object" ? (
+                                    <>
+                                      🌞 Day: ₹{price.day} | 🌙 Night: ₹
+                                      {price.night}
+                                    </>
+                                  ) : (
+                                    <>₹{price}</> // fallback if it's a number
+                                  )}
+                                </span>
                               </li>
                             )
                           )}
