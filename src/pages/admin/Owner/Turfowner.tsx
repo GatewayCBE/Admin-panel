@@ -42,28 +42,24 @@ const Turfowner: React.FC = () => {
                 <p className="mb-1">
                   📍 <strong>Location:</strong> {turf.turf_location}
                 </p>
-   </div>
-                <div className="d-flex justify-content-between align-items-center">
-
-                  <Link
-                    to={`/dashboard/owners/${ownerId}/${turf.turf_id}`}
-                    className="badge bg-light text-success rounded-pill px-3 py-2 me-3"
-                    style={{ textDecoration: "none" }}
-                  >
-                    View Details →
-                  </Link>
-                  <Link
-  to={`/dashboard/owners/${ownerId}/${turf.turf_id}/slots`}
-  className="badge bg-warning text-dark rounded-pill px-3 py-2"
-  style={{ textDecoration: "none" }}
->
-  View Slots 🔎
-</Link>
-                </div>
-
-           
+              </div>
+              <div className="d-flex justify-content-between align-items-center">
+                <Link
+                  to={`/dashboard/owners/${ownerId}/${turf.turf_id}`}
+                  className="badge bg-light text-success rounded-pill px-3 py-2 me-3"
+                  style={{ textDecoration: "none" }}
+                >
+                  View Details →
+                </Link>
+                <Link
+                  to={`/dashboard/owners/${ownerId}/${turf.turf_id}/slots`}
+                  className="badge bg-warning text-dark rounded-pill px-3 py-2"
+                  style={{ textDecoration: "none" }}
+                >
+                  View Slots 🔎
+                </Link>
+              </div>
             </div>
-
           ))}
         </ul>
       )}

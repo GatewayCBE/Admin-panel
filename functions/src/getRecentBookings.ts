@@ -1,52 +1,92 @@
-// functions/src/getRecentBookings.ts
-import { onCall } from "firebase-functions/v2/https";
-import { setGlobalOptions } from "firebase-functions/v2";
+import { onRequest } from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 
-setGlobalOptions({ region: "asia-south1" }); // or put in firebase.json
+if (!admin.apps.length) admin.initializeApp();
 
-if (admin.apps.length === 0) admin.initializeApp();
 const db = admin.firestore();
 
-export const getRecentBookings = onCall(
+export const getRecentBookings = onRequest(
   {
-    cors: true, // ← THIS IS THE KEY LINE
     region: "asia-south1",
+    cors: true,
+    timeoutSeconds: 60,
+    memory: "512MiB",
   },
-  async (request) => {
+  async (req, res): Promise<void> => {
     try {
-      const snapshot = await db
-        .collectionGroup("time")
-        .orderBy("payment_initiated_time", "desc")
-        .limit(500)
-        .get();
+      let bookings: any[] = [];
 
-      const bookings = snapshot.docs.map((doc) => {
-        const data = doc.data();
-        const path = doc.ref.path.split("/");
+      // Get turf IDs
+      const turfDocs = await db.collection("environment/testing/turfs").get();
+      const turfIds = turfDocs.docs.map((d) => d.id);
 
-        return {
-          booking_id: doc.id,
-          turfId: path[5],
-          date: path[7],
-          sport: path[8],
-          court: path[10],
-          slot_start_time: data.slot_start_time || doc.id,
-          booking_username: data.booking_username || "Unknown",
-          paid_amount: data.paid_amount || 0,
-          unpaid_amount: data.unpaid_amount || 0,
-          payment_status: data.payment_status,
-          payment_initiated_time: data.payment_initiated_time,
-          turf_name: data.turf_name || "Unknown Turf",
-          user_name: data.user_name || data.booking_username,
-          ...data,
-        };
+      for (const turfId of turfIds) {
+        // Loop all date collections inside turf
+        const dateCollections = await db
+          .collection("environment/testing/all_turfs_slot_booking")
+          .doc(turfId)
+          .listCollections();
+
+        for (const dateCol of dateCollections) {
+          const dateId = dateCol.id;
+
+          // Loop sports in date
+          const sportsDocs = await dateCol.listDocuments();
+
+          for (const sportDoc of sportsDocs) {
+            const sport = sportDoc.id;
+            const sportData = (await sportDoc.get()).data() || {};
+            const courts: string[] = sportData.courts || []; // use courts array
+
+            // Loop all courts
+            for (const court of courts) {
+              const slotsSnapshot = await sportDoc
+                .collection(court)
+                .orderBy("payment_initiated_time", "desc")
+                .get();
+
+              slotsSnapshot.forEach((slotDoc) => {
+                const slotData = slotDoc.data();
+
+                bookings.push({
+                  booking_id: slotDoc.id,
+                  turfId,
+                  date: dateId,
+                  sport,
+                  court,
+                  slot_start_time: slotData.slot_start_time || slotDoc.id,
+                  booking_username: slotData.booking_username || "Unknown",
+                  paid_amount: slotData.paid_amount || 0,
+                  unpaid_amount: slotData.unpaid_amount || 0,
+                  payment_status: slotData.payment_status || "unknown",
+                  payment_initiated_time: slotData.payment_initiated_time,
+                  ...slotData,
+                });
+              });
+            }
+          }
+        }
+      }
+
+      // Sort newest → oldest
+      bookings.sort((a, b) => {
+        const ta = new Date(a.payment_initiated_time || "").getTime() || 0;
+        const tb = new Date(b.payment_initiated_time || "").getTime() || 0;
+        return tb - ta;
       });
 
-      return { success: true, bookings };
-    } catch (error) {
-      console.error("getRecentBookings error:", error);
-      throw new Error("Failed to load bookings");
+      // ⚠ DO NOT return `res.json(...)`
+      res.status(200).json({
+        success: true,
+        total: bookings.length,
+        bookings,
+      });
+    } catch (error: any) {
+      console.error("getRecentBookings ERROR:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+      });
     }
   }
 );

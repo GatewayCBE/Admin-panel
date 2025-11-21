@@ -11,9 +11,9 @@ import Register from "../pages/auth/Register";
 import Layout from "./Layout";
 import Turfowner from "../pages/admin/Owner/Turfowner";
 import TurfDetails from "../pages/admin/Owner/TurfDetails";
-import BookedSlots from "../pages/admin/Slot/BookedSlots";
 import AnalyticsPanel from "../pages/admin/Analytics/AnalyticsPanel";
 import RecentBookingsPage from "../pages/admin/Analytics/RecentBookingsPage";
+import TurfBookingsPage from "../pages/admin/Slot/TurfBookingsPage";
 
 const AppRoutes: React.FC = () => {
   return (
@@ -35,7 +35,7 @@ const AppRoutes: React.FC = () => {
         />
         <Route
           path="/dashboard/owners/:ownerId/:turfId/slots"
-          element={<BookedSlots />}
+          element={<TurfBookingsPage />}
         />
         <Route path="/admin/analytics" element={<AnalyticsPanel />} />
         <Route path="/admin/recentbookings" element={<RecentBookingsPage />} />

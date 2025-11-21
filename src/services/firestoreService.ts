@@ -1,6 +1,7 @@
 import { db } from "../firebase";
 import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
 import { getFunctions, httpsCallable, connectFunctionsEmulator } from "firebase/functions";
+import { getApp } from "firebase/app";
 
 // Get all turf details
 export const getTurfs = async () => {
@@ -470,31 +471,27 @@ export async function getSportsAndCourts(turfId: string, date: string) {
   }
 }
 
-// NEW — SUPER FAST Cloud Function version
-const functions = getFunctions(); // Automatically uses your project
-// Auto-detect environment
-if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
-  connectFunctionsEmulator(functions, "localhost", 5001);
-  console.log("Connected to Firebase Functions Emulator (localhost:5001)");
-}
+const app = getApp();
+const functions = getFunctions(app, "asia-south1");
 
-const getRecentBookingsFn = httpsCallable(functions, "getRecentBookings");
+// Use direct fetch — works perfectly with onRequest + emulator + production
+const baseUrl = "https://asia-south1-play-arena-e83d8.cloudfunctions.net";
 
-export async function getAllBookings(): Promise<BookedSlot[]> {
+export async function getAllBookings(): Promise<any[]> {
   try {
-    console.log("Fetching recent bookings via Cloud Function...");
-    const result = await getRecentBookingsFn();
-    
-    // The function returns { success: true, bookings: [...] }
-    const bookings = (result.data as any).bookings || [];
-    
-    console.log(`Loaded ${bookings.length} bookings instantly`);
-    return bookings;
+    console.log("Fetching recent bookings...");
+    const response = await fetch(`${baseUrl}/getRecentBookings`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const result = await response.json();
+    console.log(`Loaded ${result.bookings?.length || 0} bookings`);
+    return result.bookings || [];
   } catch (error: any) {
-    console.error("Failed to fetch bookings from Cloud Function:", error);
-    // Optional: fallback to old method only during transition
-    // alert("Using fallback method — please refresh in a minute");
-    // return oldSlowMethod(); // you can keep as backup temporarily
+    console.error("Failed to fetch bookings:", error);
     return [];
   }
 }
