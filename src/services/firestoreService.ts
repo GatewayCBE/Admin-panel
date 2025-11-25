@@ -365,15 +365,31 @@ export const getDailyAnalytics = async () => {
     const snap = await getDocs(ref);
     return snap.docs.map((d) => {
       const data = d.data();
+
       return {
         id: d.id,
-        // keep original totals
         total_revenue: data.total_revenue ?? 0,
         total_bookings: data.total_bookings ?? 0,
-        // include nested breakdown maps (may be undefined)
         turfs: data.turfs ?? {},
         users: data.users ?? {},
         date: data.date ?? d.id,
+
+        // ⬇ FIXED: Convert flat fields to nested format
+        time_split: {
+          day: {
+            bookings: data["time_split.day.bookings"] ?? 0,
+            revenue: data["time_split.day.revenue"] ?? 0,
+          },
+          night: {
+            bookings: data["time_split.night.bookings"] ?? 0,
+            revenue: data["time_split.night.revenue"] ?? 0,
+          },
+        },
+
+        weekday_bookings: data.weekday_bookings ?? 0,
+        weekday_revenue: data.weekday_revenue ?? 0,
+        weekend_bookings: data.weekend_bookings ?? 0,
+        weekend_revenue: data.weekend_revenue ?? 0,
       };
     });
   } catch (error) {
@@ -381,6 +397,8 @@ export const getDailyAnalytics = async () => {
     return [];
   }
 };
+
+
 
 // Turf & users summary (overall aggregates)
 export const getTurfAnalytics = async () => {

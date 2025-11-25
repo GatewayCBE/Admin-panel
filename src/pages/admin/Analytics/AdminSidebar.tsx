@@ -26,70 +26,35 @@ const AdminSidebar: React.FC<Props> = ({ isOpen, closeSidebar }) => {
             ✖
           </button>
         </div>
-
-        <nav className="nav flex-column px-3">
-          <Link to="/admin/analytics" className="nav-link text-dark px-3 py-2 rounded">
-            📊 Dashboard
-          </Link>
-
-          <Link to="/admin/recentbookings" className="nav-link text-dark px-3 py-2 rounded">
-            📅 Bookings
-          </Link>
-
-          <Link to="/admin/turfs" className="nav-link text-dark px-3 py-2 rounded">
-            🏟️ Turfs
-          </Link>
-
-          <Link to="/admin/users" className="nav-link text-dark px-3 py-2 rounded">
-            👥 Users
-          </Link>
-        </nav>
       </aside>
+
+      <nav className="admin-navbar d-none d-lg-flex align-items-center px-4 py-2 shadow-sm" style={{ backgroundColor: "#2d6a4f" }}>
+  <Link className="navbar-brand text-white fw-bold" to="/">BookYourTurf</Link>
+
+  <ul className="nav ms-4">
+    <li className="nav-item"><Link className="nav-link text-white" to="/admin/analytics">Dashboard</Link></li>
+    <li className="nav-item"><Link className="nav-link text-white" to="/admin/recentbookings">Bookings</Link></li>
+    <li className="nav-item"><Link className="nav-link text-white" to="/dashboard/turfs">Turfs</Link></li>
+    <li className="nav-item"><Link className="nav-link text-white" to="/dashboard/owners">Users</Link></li>
+  </ul>
+</nav>
 
       {/* Styles */}
       <style>{`
-        .admin-sidebar {
-          width: 400px;
-          height: 100vh;
-          position: fixed;
-          top: 0;
-          left: 0;
-          padding-top: 80px;
-          transition: transform 0.3s ease-in-out;
-        }
+        .admin-navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 65px;
+  z-index: 1050;
+}
 
-        /* Desktop: always visible */
-        @media (min-width: 992px) {
-          .admin-sidebar {
-            transform: translateX(0);
-            position: sticky;
-          }
-        }
-
-        /* Mobile: hidden initially */
-        @media (max-width: 991px) {
-          .admin-sidebar {
-            transform: translateX(-100%);
-            z-index: 1040;
-            padding-top: 20px;
-          }
-          .admin-sidebar.open {
-            transform: translateX(0);
-          }
-          .sidebar-overlay {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(0,0,0,0.45);
-            opacity: 0; visibility: hidden;
-            transition: 0.3s;
-            z-index: 1030;
-          }
-          .sidebar-overlay.show {
-            opacity: 1;
-            visibility: visible;
-          }
-        }
+@media (max-width: 991px) {
+  .admin-navbar {
+    display: none;
+  }
+}
       `}</style>
     </>
   );

@@ -2,7 +2,11 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { getTurfsByOwner } from "../../../services/firestoreService";
 import { doc, updateDoc } from "firebase/firestore";
-import { db } from "../../../firebase"; // adjust path
+import { db } from "../../../firebase";
+import AdminNavbar from "../Analytics/AdminNavbar";
+import "bootstrap/dist/js/bootstrap.bundle.min";
+import badmintonImg from "../../../assets/badminton.png";
+import cricketImg from "../../../assets/boxcricket_football.png";
 
 const TurfDetails: React.FC = () => {
   const { ownerId, turfId } = useParams<{ ownerId: string; turfId: string }>();
@@ -10,13 +14,11 @@ const TurfDetails: React.FC = () => {
 
   useEffect(() => {
     if (ownerId && turfId) {
-      const fetchTurf = async () => {
+      (async () => {
         const turfs = await getTurfsByOwner(ownerId);
         const selectedTurf = turfs.find((t: any) => t.turf_id === turfId);
         setTurf(selectedTurf || null);
-        console.log("selectedTurf", turfs);
-      };
-      fetchTurf();
+      })();
     }
     window.scrollTo(0, 0);
   }, [ownerId, turfId]);
@@ -33,230 +35,214 @@ const TurfDetails: React.FC = () => {
     if (!turfId) return;
     try {
       const turfRef = doc(db, "environment", "testing", "turfs", turfId);
-      await updateDoc(turfRef, {
-        turf_active_status: true,
-      });
-
+      await updateDoc(turfRef, { turf_active_status: true });
       setTurf({ ...turf, turf_active_status: true });
       alert("Turf activated successfully!");
-      console.log("Turf activated successfully!");
     } catch (error) {
       console.error("Error activating turf:", error);
     }
   };
 
-  const dayMap: Record<number, string> = {
-    1: "Monday",
-    2: "Tuesday",
-    3: "Wednesday",
-    4: "Thursday",
-    5: "Friday",
-    6: "Saturday",
-    7: "Sunday",
+  const firstTiming = Object.values(turf.sport_specific_timing)[0] as {
+    opening_time?: string;
+    closing_time?: string;
+    sport_available?: boolean;
+  };
+
+  const priceValues = Object.values(turf.sport_specific_price)
+    .flatMap((sportPrices: any) =>
+      Object.values(sportPrices).flatMap((p: any) => [p.day, p.night])
+    )
+    .filter((v) => typeof v === "number");
+
+  const minPrice = priceValues.length ? Math.min(...priceValues) : 0;
+  const maxPrice = priceValues.length ? Math.max(...priceValues) : 0;
+
+  const sportImageMap: Record<string, string> = {
+    badminton: badmintonImg,
+    cricket: cricketImg,
   };
 
   return (
-    <div className="" style={{ fontFamily: "Poppins, sans-serif" }}>
-      {/* Header Section */}
-      <div className="container py-4">
-        <div className="row align-items-center">
-          <div className="col-md-6">
-            <h2 className="fw-bold">{turf.turf_name}</h2>
+    <div style={{ fontFamily: "Poppins, sans-serif" }}>
+      <AdminNavbar />
 
-            <div className="d-block align-items-center gap-3">
-              <p className="text-muted mb-2" style={{ fontSize: "14px" }}>
-                📍 {turf.turf_location}
-              </p>
-              <span className="badge bg-warning text-dark me-2">
-                ⭐ 4.5 / 5
-              </span>
-              <span className="text-success" style={{ fontSize: "14px" }}>
-                Rate Venue
-              </span>
+      {/* Details Section */}
+      <div className="container mt-4">
+        <div className="row">
+          {/* LEFT: IMAGE */}
+          <div className="col-lg-5">
+            <div className="card shadow-sm mb-4">
+              <img
+                src={turf.turf_images?.[0]}
+                alt="Turf Preview"
+                className="img-fluid rounded"
+                style={{ width: "100%", height: "350px", objectFit: "cover" }}
+              />
             </div>
           </div>
 
-          <div className="col-md-4 text-md-end mt-3 mt-md-0">
-            {turf.turf_active_status ? (
-              <button className="btn btn-danger" disabled>
-                Turf Active
-              </button>
-            ) : (
-              <button
-                className="btn btn-outline-success"
-                onClick={handleActivateTurf}
-              >
-                Activate Turf
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Image & Sidebar */}
-      <div className="container-fluid px-5">
-        <div className="row justify-content-between">
-          <div className="col-md-6">
-            <div
-              id="turfCarousel"
-              className="carousel slide"
-              data-bs-ride="carousel"
-              data-bs-interval="2000"
-            >
-              <div className="carousel-inner">
-                {turf.turf_images.map((img: string, index: number) => (
-                  <div
-                    key={index}
-                    className={`carousel-item ${index === 0 ? "active" : ""}`}
-                    style={{ height: "450px" }}
-                  >
-                    <img
-                      src={img}
-                      className="d-block w-100 h-100"
-                      style={{ objectFit: "cover" }}
-                      alt={`Turf Image ${index + 1}`}
-                    />
-                  </div>
-                ))}
+          {/* RIGHT: DETAILS */}
+          <div className="col-lg-7">
+            {/* Quick Info */}
+            <div className="row g-3 mb-3">
+              <div className="col-md-4">
+                <div className="card text-center p-3 shadow-sm">
+                  <h6>👥 Max Players</h6>
+                  <strong>{`${Number(
+                    Object.values(turf.sports_specific_person_count)[0]
+                  )}+`}</strong>
+                </div>
               </div>
 
-              {turf.turf_images.length > 1 && (
-                <>
-                  <button
-                    className="carousel-control-prev"
-                    type="button"
-                    data-bs-target="#turfCarousel"
-                    data-bs-slide="prev"
-                  >
-                    <span
-                      className="carousel-control-prev-icon"
-                      aria-hidden="true"
-                    ></span>
-                    <span className="visually-hidden">Previous</span>
-                  </button>
-                  <button
-                    className="carousel-control-next"
-                    type="button"
-                    data-bs-target="#turfCarousel"
-                    data-bs-slide="next"
-                  >
-                    <span
-                      className="carousel-control-next-icon"
-                      aria-hidden="true"
-                    ></span>
-                    <span className="visually-hidden">Next</span>
-                  </button>
-                </>
+              <div className="col-md-4">
+                <div className="card text-center p-3 shadow-sm">
+                  <h6>🕒 Timings</h6>
+                  <strong>
+                    {firstTiming?.opening_time && firstTiming?.closing_time
+                      ? `${firstTiming.opening_time} – ${firstTiming.closing_time}`
+                      : "N/A"}
+                  </strong>
+                </div>
+              </div>
+
+              <div className="col-md-4">
+                <div className="card text-center p-3 shadow-sm">
+                  <h6>💰 Price Range</h6>
+                  <strong>From ₹{minPrice}</strong>
+                </div>
+              </div>
+            </div>
+
+            {/* Sport Timings */}
+            <div className="row g-3">
+              {Object.entries(turf.sport_specific_timing).map(
+                ([sport, timing]: any) => {
+                  const sportKey = sport.toLowerCase().trim();
+                  const sportImage =
+                    sportImageMap[sportKey] || "/assets/default.png";
+
+                  return (
+                    <div className="col-md-6" key={sport}>
+                      <div className="card shadow-sm p-3 d-flex align-items-center">
+                        <img
+                          src={sportImage}
+                          alt={sport}
+                          style={{
+                            width: "50px",
+                            height: "50px",
+                            objectFit: "contain",
+                          }}
+                          className="mb-2"
+                        />
+                        <h6 className="fw-semibold mb-1 text-center">
+                          {sport}
+                        </h6>
+                        <p
+                          className="mb-1 text-center"
+                          style={{ fontSize: "14px" }}
+                        >
+                          {timing?.opening_time} – {timing?.closing_time}
+                        </p>
+                        <span
+                          className={`badge ${
+                            timing.sport_available ? "bg-success" : "bg-danger"
+                          }`}
+                        >
+                          {timing.sport_available ? "Available" : "Closed"}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                }
               )}
             </div>
           </div>
+        </div>
 
-          <div className="col-md-5 bg-white p-4 shadow-sm">
-            <div className="mb-4">
-              <h6 className="fw-semibold">🕒 Sport Timings :</h6>
-              {Object.entries(turf.sport_specific_timing).map(
-                ([sport, timing]: [string, any]) => (
-                  <div key={sport} className="mb-2">
-                    <strong>{sport} : </strong>
-                    <span style={{ fontSize: "14px" }}>
-                      {" "}
-                      {timing.opening_time} - {timing.closing_time}{" "}
-                      {timing.sport_available ? "(Available)" : "(Closed)"}
-                    </span>
+        {/* Price Chart */}
+        <div className="card mb-3 shadow-sm">
+          <div
+            className="card-header d-flex justify-content-between align-items-center"
+            data-bs-toggle="collapse"
+            data-bs-target="#priceChartCollapse"
+            style={{ cursor: "pointer" }}
+          >
+            <h5 className="fw-semibold mb-0">💰 Price Chart</h5>
+            <span className="text-primary">▼</span>
+          </div>
+
+          <div id="priceChartCollapse" className="collapse">
+            <div className="card-body">
+              {Object.entries(turf.sport_specific_price).map(
+                ([sport, priceObj]: any) => (
+                  <div key={sport} className="mb-3">
+                    <h6 className="text-primary">{sport}</h6>
+
+                    <table className="table table-sm mb-0">
+                      <thead>
+                        <tr>
+                          <th>Day</th>
+                          <th>🌞 Day Price</th>
+                          <th>🌙 Night Price</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.entries(priceObj).map(([day, price]: any) => (
+                          <tr key={day}>
+                            <td>
+                              {day.charAt(0).toUpperCase() + day.slice(1)}
+                            </td>
+                            <td>₹{price.day}</td>
+                            <td>₹{price.night}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 )
               )}
             </div>
-            <div>
-              <h6 className="fw-semibold">📍 Location Map</h6>
-              <iframe
-                src={`https://www.google.com/maps?q=${encodeURIComponent(
-                  turf.turf_location
-                )}&output=embed`}
-                width="100%"
-                height="250"
-                style={{ border: 0 }}
-                allowFullScreen
-                loading="lazy"
-                title="turf-map"
-              ></iframe>
+          </div>
+        </div>
+
+        {/* Location */}
+        <div className="card mb-3 shadow-sm">
+          <div className="card-body">
+            <h5 className="fw-semibold mb-3">📍 Location</h5>
+            <iframe
+              src={`https://www.google.com/maps?q=${encodeURIComponent(
+                turf.turf_location
+              )}&output=embed`}
+              width="100%"
+              height="350"
+              style={{ border: 0 }}
+              allowFullScreen
+              loading="lazy"
+              title="turf-map"
+            ></iframe>
+          </div>
+        </div>
+
+        {/* About Venue */}
+        {turf.turf_description && (
+          <div className="card mb-4 shadow-sm">
+            <div className="card-body">
+              <h5 className="fw-semibold mb-3">📝 About Venue</h5>
+              <p style={{ whiteSpace: "pre-line" }}>{turf.turf_description}</p>
             </div>
           </div>
-        </div>
+        )}
       </div>
-
-      {/* Details */}
-      <div className="container py-5">
-        <div className="row">
-          <div className="col-lg-12">
-            {/* Player Capacity */}
-            {typeof turf.sports_specific_person_count === "object" && (
-              <div className="card mb-4">
-                <div className="card-body">
-                  <h5 className="card-title mb-3">👥 Player Capacity</h5>
-                  <ul className="mb-0">
-                    {Object.entries(turf.sports_specific_person_count).map(
-                      ([sport, count]) => (
-                        <li key={sport} className="mb-1">
-                          {sport}: {Number(count)} players
-                        </li>
-                      )
-                    )}
-                  </ul>
-                </div>
-              </div>
-            )}
-
-            {/* Price Chart ✅ */}
-            {typeof turf.sport_specific_price === "object" && (
-              <div className="card mb-4">
-                <div className="card-body">
-                  <h5 className="card-title mb-3">💰 Price Chart</h5>
-
-                  {Object.entries(turf.sport_specific_price).map(
-                    ([sport, priceObj]: [string, any]) => (
-                      <div key={sport} className="mb-3">
-                        <strong>{sport}</strong>
-                        <ul className="mb-0">
-                          {Object.entries(priceObj).map(
-                            ([dayNumber, price]: [string, any]) => (
-                              <li key={dayNumber}>
-                                {dayMap[Number(dayNumber)]}:
-                                <span className="ms-2">
-                                  {typeof price === "object" ? (
-                                    <>
-                                      🌞 Day: ₹{price.day} | 🌙 Night: ₹
-                                      {price.night}
-                                    </>
-                                  ) : (
-                                    <>₹{price}</> // fallback if it's a number
-                                  )}
-                                </span>
-                              </li>
-                            )
-                          )}
-                        </ul>
-                      </div>
-                    )
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* About Venue */}
-            {turf.turf_description && (
-              <div className="card mb-4">
-                <div className="card-body">
-                  <h5 className="card-title mb-3">📝 About Venue</h5>
-                  <p className="mb-0" style={{ whiteSpace: "pre-line" }}>
-                    {turf.turf_description}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      <style>{`
+        .card-header[aria-expanded="true"] span {
+  transform: rotate(180deg);
+  transition: 0.3s;
+}
+.card-header span {
+  transition: 0.3s;
+}
+      `}</style>
     </div>
   );
 };

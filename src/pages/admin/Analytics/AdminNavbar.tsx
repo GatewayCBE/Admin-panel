@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 
-const Navbar: React.FC = () => {
+const AdminNavbar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   const handleToggle = () => {
@@ -38,18 +38,23 @@ const Navbar: React.FC = () => {
               </Link>
             </li>
             <li className="nav-item">
-              <Link className="nav-link text-white fs-5" to="/about" onClick={handleNavItemClick}>
-                About
+              <Link className="nav-link text-white fs-5" to="/admin/analytics" onClick={handleNavItemClick}>
+                Dashboard
               </Link>
             </li>
             <li className="nav-item">
-              <Link className="nav-link text-white fs-5" to="/games" onClick={handleNavItemClick}>
-                Games
+              <Link className="nav-link text-white fs-5" to="/admin/recentbookings" onClick={handleNavItemClick}>
+                Bookings
               </Link>
             </li>
             <li className="nav-item">
-              <Link className="nav-link text-white fs-5" to="/dashboard" onClick={handleNavItemClick}>
-                Admin
+              <Link className="nav-link text-white fs-5" to="/admin/turfs" onClick={handleNavItemClick}>
+                Turfs
+              </Link>
+            </li>
+            <li className="nav-item">
+              <Link className="nav-link text-white fs-5" to="/admin/users" onClick={handleNavItemClick}>
+                Users
               </Link>
             </li>
           </ul>
@@ -71,4 +76,4 @@ const Navbar: React.FC = () => {
   );
 };
 
-export default Navbar;
+export default AdminNavbar;

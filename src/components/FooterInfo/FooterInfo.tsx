@@ -12,7 +12,7 @@ const FooterInfo: React.FC = () => {
           <h5 className="fw-bold">About Us</h5>
           <hr className="border-light w-50" />
           <p>
-            BookMyTurf helps you book and manage turf grounds with ease.  
+            BookYourTurf helps you book and manage turf grounds with ease.  
             A seamless platform for users and owners.
           </p>
         </div>
@@ -33,7 +33,7 @@ const FooterInfo: React.FC = () => {
         <div className="col-md-3 mb-4">
           <h5 className="fw-bold">Contact Us</h5>
           <hr className="border-light w-50" />
-          <p>Email: support@bookmyturf.com</p>
+          <p>Email: support@bookyourturf.com</p>
           <p>Phone: +91 12345 67890</p>
           <p>Location: Chennai, Tamil Nadu</p>
         </div>
