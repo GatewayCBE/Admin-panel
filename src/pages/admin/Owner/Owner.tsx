@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { useOwner } from "./useOwner";
+import AdminNavbar from "../Analytics/AdminNavbar";
 
 const Owner: React.FC = () => {
   const { ownersList } = useOwner();
@@ -16,7 +17,8 @@ const Owner: React.FC = () => {
   );
 
   return (
-    <div className="container py-4">
+    <div className="admin-page-container">
+      <AdminNavbar />
       <h2 className="text-center text-success mb-4 fw-bold">
         Channel Partner List
       </h2>
@@ -58,8 +60,10 @@ const Owner: React.FC = () => {
             <div
               className="list-group-item list-group-item-action d-flex justify-content-between align-items-center flex-wrap rounded-3 mb-3 border-0 shadow-sm"
               style={{
-                backgroundColor: "#02613a",
-                color: "#5ad79f",
+                marginLeft: "130px",
+                width: "80%",
+                backgroundColor: "#5ad79f",
+                color: "#02613a",
               }}
             >
               <div>

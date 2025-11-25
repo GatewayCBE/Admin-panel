@@ -1,19 +1,17 @@
 import React from "react";
-import fbimage from "../assets/football2-removebg-preview.png";
-import cricket from "../assets/cricket1-removebg-preview.png";
-import basketball from "../assets/bb-removebg-preview.png";
-import archery from "../assets/archery1-removebg-preview.png";
-import pickleball from "../assets/pickleball1-removebg-preview.png";
-import tennis from "../assets/tennis1-removebg-preview.png";
+import cricket from "../assets/boxcricket_football.png";
+import tennis from "../assets/tennis.png";
+import volleyball from "../assets/volleyball.png";
+import badminton from "../assets/badminton.png";
+import football from "../assets/football.png";
 
 // Sample sports data
 const sports = [
-  { name: "Football", image: fbimage },
+  { name: "Football", image: football },
   { name: "Cricket", image: cricket },
-  { name: "Basketball", image: basketball },
-  { name: "Archery", image: archery },
-  { name: "Table Tennis", image: pickleball },
+  { name: "Volleyball", image: volleyball },
   { name: "Tennis", image: tennis },
+  { name: "Badminton", image: badminton },
 ];
 
 const Games: React.FC = () => {
@@ -27,17 +25,17 @@ const Games: React.FC = () => {
       <div
         className="card shadow-sm border-0 text-center h-100"
         style={{
-          backgroundColor: "#02613a",
+          backgroundColor: "#5ad79f",
           borderRadius: "12px",
           transition: "transform 0.3s ease, background 0.3s ease",
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.transform = "translateY(-8px)";
-          e.currentTarget.style.backgroundColor = "#5ad79f";
+          e.currentTarget.style.backgroundColor = "#54a784e0";
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.transform = "translateY(0)";
-          e.currentTarget.style.backgroundColor = "#02613a";
+          e.currentTarget.style.backgroundColor = "#5ad79f";
         }}
       >
         <div className="card-body d-flex flex-column align-items-center">
@@ -49,9 +47,7 @@ const Games: React.FC = () => {
           />
           <p
             className="fw-bold mb-0"
-            style={{ color: "#d8f3dc", transition: "color 0.3s ease" }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = "#1b4332")}
-            onMouseLeave={(e) => (e.currentTarget.style.color = "#d8f3dc")}
+            style={{ color: "#1b4332" }}
           >
             {sport.name}
           </p>

@@ -2,10 +2,13 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
+import AdminSidebar from "./Analytics/AdminSidebar";
+import AdminNavbar from "./Analytics/AdminNavbar";
 
 const Dashboard: React.FC = () => {
   return (
-    <div className="container py-5">
+    <div className="admin-page-container">
+      <AdminNavbar />
       <div className="row g-4 justify-content-center text-center">
         {/* Owner Details */}
         <div className="col-12 col-sm-6 col-md-4">
@@ -20,7 +23,7 @@ const Dashboard: React.FC = () => {
         {/* Analytics Panel */}
         <div className="col-12 col-sm-6 col-md-4">
           <Link
-            to="/admin/analytics"
+            to="/admin/reports/*"
             className="d-block p-4 bg-success text-light rounded shadow text-decoration-none h-100"
           >
             <h3 className="fw-bold">Analytics Dashboard</h3>

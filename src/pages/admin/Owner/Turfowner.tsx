@@ -2,6 +2,8 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getTurfsByOwner } from "../../../services/firestoreService";
+import AdminSidebar from "../Analytics/AdminSidebar";
+import AdminNavbar from "../Analytics/AdminNavbar";
 
 const Turfowner: React.FC = () => {
   const { ownerId } = useParams<{ ownerId: string }>();
@@ -20,7 +22,8 @@ const Turfowner: React.FC = () => {
   }, [ownerId]);
 
   return (
-    <div className="container py-4">
+    <div className="admin-page-container">
+          <AdminNavbar />
       <h2 className="fw-bold text-success text-center mb-5">
         Turfs List of Owner
       </h2>
@@ -33,8 +36,10 @@ const Turfowner: React.FC = () => {
             <div
               className="list-group-item list-group-item-action d-flex justify-content-between align-items-center flex-wrap rounded-3 mb-3 border-0 shadow-sm"
               style={{
-                backgroundColor: "#02613a",
-                color: "#5ad79f",
+                marginLeft: "130px",
+                width: "80%",
+                backgroundColor: "#5ad79f",
+                color: "#02613a",
               }}
             >
               <div>
@@ -53,7 +58,7 @@ const Turfowner: React.FC = () => {
                 </Link>
                 <Link
                   to={`/dashboard/owners/${ownerId}/${turf.turf_id}/slots`}
-                  className="badge bg-warning text-dark rounded-pill px-3 py-2"
+                  className="badge bg-light text-success rounded-pill px-3 py-2"
                   style={{ textDecoration: "none" }}
                 >
                   View Slots 🔎

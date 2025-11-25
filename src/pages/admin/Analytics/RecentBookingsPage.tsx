@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import AdminSidebar from "../Analytics/AdminSidebar";
 import { getAllBookings } from "../../../services/firestoreService";
+import AdminNavbar from "./AdminNavbar";
 
 type BookingRow = {
   booking_id: string;
@@ -73,28 +74,8 @@ const RecentBookingsPage: React.FC = () => {
   }, [search, statusFilter, pageSize]);
 
   return (
-    <div className="d-flex" style={{ minHeight: "100vh", background: "#f8f9fc" }}>
-      <AdminSidebar isOpen={mobileSidebarOpen} closeSidebar={() => setMobileSidebarOpen(false)} />
-
-      <main className="flex-grow-1">
-        <style>{`
-          @media (max-width: 991px) {
-            main { margin-left: 0 !important; }
-          }
-          .table-hover tbody tr:hover {
-            background-color: #f0f7ff !important;
-            transform: scale(1.01);
-            transition: all 0.2s;
-          }
-          .shadow-card {
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-            transition: all 0.3s;
-          }
-          .shadow-card:hover {
-            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
-          }
-        `}</style>
-
+    <div className="admin-page-container">
+      <AdminNavbar />
         <div className="container-fluid py-5 px-4">
           {/* Header */}
           <div className="d-flex align-items-center justify-content-between mb-5">
@@ -250,7 +231,6 @@ const RecentBookingsPage: React.FC = () => {
             </div>
           </div>
         </div>
-      </main>
     </div>
   );
 };

@@ -23,23 +23,23 @@ const AppRoutes: React.FC = () => {
         <Route path="/" element={<Home />} />
         <Route path="/about" element={<About />} />
         <Route path="/games" element={<Games />} />
-
-        {/* Admin Dashboard routes */}
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/dashboard/turfs" element={<Turf />} />
-        <Route path="/dashboard/owners" element={<Owner />} />
-        <Route path="/dashboard/owners/:ownerId" element={<Turfowner />} />
-        <Route
-          path="/dashboard/owners/:ownerId/:turfId"
-          element={<TurfDetails />}
-        />
-        <Route
-          path="/dashboard/owners/:ownerId/:turfId/slots"
-          element={<TurfBookingsPage />}
-        />
-        <Route path="/admin/analytics" element={<AnalyticsPanel />} />
-        <Route path="/admin/recentbookings" element={<RecentBookingsPage />} />
       </Route>
+
+      {/* Admin Dashboard routes */}
+      <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/dashboard/turfs" element={<Turf />} />
+      <Route path="/dashboard/owners" element={<Owner />} />
+      <Route path="/dashboard/owners/:ownerId" element={<Turfowner />} />
+      <Route
+        path="/dashboard/owners/:ownerId/:turfId"
+        element={<TurfDetails />}
+      />
+      <Route
+        path="/dashboard/owners/:ownerId/:turfId/slots"
+        element={<TurfBookingsPage />}
+      />
+      <Route path="/admin/reports/*" element={<AnalyticsPanel />} />
+      <Route path="/admin/recentbookings" element={<RecentBookingsPage />} />
 
       {/* Auth Routes (no Navbar/Footer) */}
       <Route path="/login" element={<Login />} />

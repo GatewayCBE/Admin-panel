@@ -14,7 +14,7 @@ const Footer: React.FC = () => {
         <div className="container d-flex justify-content-between align-items-center">
           {/* Left: Copyright */}
           <p className="mb-0">
-            © {new Date().getFullYear()} BookMyTurf. All rights reserved.
+            © {new Date().getFullYear()} BookYourTurf. All rights reserved.
           </p>
 
           {/* Right: Social Icons */}
