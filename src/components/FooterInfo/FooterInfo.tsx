@@ -12,8 +12,7 @@ const FooterInfo: React.FC = () => {
           <h5 className="fw-bold">About Us</h5>
           <hr className="border-light w-50" />
           <p>
-            BookYourTurf helps you book and manage turf grounds with ease.  
-            A seamless platform for users and owners.
+            BookYourTurf is a complete digital solution created to simplify turf management and player booking
           </p>
         </div>
 
@@ -33,9 +32,9 @@ const FooterInfo: React.FC = () => {
         <div className="col-md-3 mb-4">
           <h5 className="fw-bold">Contact Us</h5>
           <hr className="border-light w-50" />
-          <p>Email: support@bookyourturf.com</p>
-          <p>Phone: +91 12345 67890</p>
-          <p>Location: Chennai, Tamil Nadu</p>
+          <p>Email: nottaminfotech@gmail.com</p>
+          <p>Phone: +91 9842154045</p>
+          <p>Location: Tamil Nadu</p>
         </div>
 
         {/* Newsletter */}

@@ -1,7 +1,88 @@
 import { db } from "../firebase";
-import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
-import { getFunctions, httpsCallable, connectFunctionsEmulator } from "firebase/functions";
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  doc,
+  getDoc,
+  setDoc,
+  QuerySnapshot,
+  DocumentData,
+} from "firebase/firestore";
+import {
+  getFunctions,
+  httpsCallable,
+  connectFunctionsEmulator,
+} from "firebase/functions";
 import { getApp } from "firebase/app";
+
+/**
+ * Generate Custom ID exactly like Flutter app
+ * e.g., USID_rah_02122025163011 or OID_Rak_02122025163222
+ */
+export const generateCustomId = (role: "user" | "owner", name: string): string => {
+  const prefix = role === "user" ? "USID_" : "OID_";
+  const namePart = name.trim().slice(0, 3);
+  const now = new Date();
+
+  const dd = String(now.getDate()).padStart(2, "0");
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const yyyy = now.getFullYear();
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mins = String(now.getMinutes()).padStart(2, "0");
+  const ss = String(now.getSeconds()).padStart(2, "0");
+
+  const timestamp = `${dd}${mm}${yyyy}${hh}${mins}${ss}`;
+  return `${prefix}${namePart}_${timestamp}`;
+};
+
+/**
+ * Save User/Owner to Firestore
+ */
+export const saveUserProfile = async (
+  role: "user" | "owner",
+  data: { name: string; email: string; mobile: string; uid: string }
+) => {
+  const customId = generateCustomId(role, data.name);
+  const now = new Date();
+  const collectionName = role === "user" ? "users" : "owners";
+
+  const userData: any = {
+    [role === "user" ? "user_id" : "owner_id"]: customId,
+    [role === "user" ? "user_name" : "owner_name"]: data.name,
+    [role === "user" ? "user_email" : "owner_email"]: data.email,
+    [role === "user" ? "user_mobile_number" : "owner_mobile_number"]: data.mobile,
+    has_accepted_terms: true,
+    terms_accepted_at: now.toISOString(),
+    created_at: now.toISOString(),
+    firebase_uid: data.uid,
+    ...(role === "user"
+      ? { user_address: null, user_profile_image_url: null }
+      : { owner_location: null, owner_profile_image: null }),
+  };
+
+  const docRef = doc(db, "environment", "testing", collectionName, data.mobile);
+  await setDoc(docRef, userData);
+
+  return customId;
+};
+
+/**
+ * Check if mobile is already registered
+ */
+export const isMobileRegistered = async (mobile: string): Promise<boolean> => {
+  const usersRef = collection(db, "environment", "testing", "users");
+  const ownersRef = collection(db, "environment", "testing", "owners");
+
+  const [userSnap, ownerSnap]: [QuerySnapshot<DocumentData>, QuerySnapshot<DocumentData>] =
+    await Promise.all([
+      getDocs(query(usersRef, where("user_mobile_number", "==", mobile))),
+      getDocs(query(ownersRef, where("owner_mobile_number", "==", mobile))),
+    ]);
+
+  return !userSnap.empty || !ownerSnap.empty;
+};
 
 // Get all turf details
 export const getTurfs = async () => {
@@ -80,7 +161,10 @@ export interface SlotData {
 }
 
 // Get all slots across all users by payment status
-export const getSlotsByPaymentStatus = async (status: string, turfId?: string) => {
+export const getSlotsByPaymentStatus = async (
+  status: string,
+  turfId?: string
+) => {
   try {
     const usersRef = collection(db, "environment/testing/users");
     const userSnapshot = await getDocs(usersRef);
@@ -106,7 +190,6 @@ export const getSlotsByPaymentStatus = async (status: string, turfId?: string) =
     return [];
   }
 };
-
 
 export const getAvailableDates = async (turfId: string): Promise<string[]> => {
   try {
@@ -151,18 +234,36 @@ export const getTurfDates = async (turfId: string) => {
 
 export const getSportsForDate = async (turfId: string, date: string) => {
   const snapshot = await getDocs(
-    collection(db, "environment", "testing", "all_turfs_slot_booking", turfId, date)
+    collection(
+      db,
+      "environment",
+      "testing",
+      "all_turfs_slot_booking",
+      turfId,
+      date
+    )
   );
   return snapshot.docs.map((d) => d.id);
 };
 
-export const getCourtsForSport = async (turfId: string, date: string, sport: string) => {
+export const getCourtsForSport = async (
+  turfId: string,
+  date: string,
+  sport: string
+) => {
   const snapshot = await getDoc(
-    doc(db, "environment", "testing", "all_turfs_slot_booking", turfId, date, sport)
+    doc(
+      db,
+      "environment",
+      "testing",
+      "all_turfs_slot_booking",
+      turfId,
+      date,
+      sport
+    )
   );
   return snapshot.exists() ? snapshot.data()?.courts || [] : [];
 };
-
 
 export const getBookedSlotTimes = async (
   turfId: string,
@@ -171,7 +272,16 @@ export const getBookedSlotTimes = async (
   court: string
 ) => {
   const snapshot = await getDocs(
-    collection(db, "environment", "testing", "all_turfs_slot_booking", turfId, date, sport, court)
+    collection(
+      db,
+      "environment",
+      "testing",
+      "all_turfs_slot_booking",
+      turfId,
+      date,
+      sport,
+      court
+    )
   );
   return snapshot.docs.map((d) => d.id);
 };
@@ -271,7 +381,7 @@ export async function getAllBookedSlots(
 
         owner_id: data.owner_id || "",
 
-        ...data // keep remaining Firestore fields
+        ...data, // keep remaining Firestore fields
       };
     });
 
@@ -397,8 +507,6 @@ export const getDailyAnalytics = async () => {
     return [];
   }
 };
-
-
 
 // Turf & users summary (overall aggregates)
 export const getTurfAnalytics = async () => {

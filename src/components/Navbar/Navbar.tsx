@@ -57,7 +57,7 @@ const Navbar: React.FC = () => {
           {/* Sign In / Sign Up button */}
           <div className="d-flex">
             <Link
-              to="/login"
+              to="/auth"
               className="btn fw-bold"
               style={{ backgroundColor: "#d8f3dc", color: "#2d6a4f" }}
               onClick={handleNavItemClick}
