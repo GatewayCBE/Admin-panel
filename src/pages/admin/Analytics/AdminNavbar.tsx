@@ -38,7 +38,7 @@ const AdminNavbar: React.FC = () => {
               </Link>
             </li>
             <li className="nav-item">
-              <Link className="nav-link text-white fs-5" to="/admin/analytics" onClick={handleNavItemClick}>
+              <Link className="nav-link text-white fs-5" to="/admin/reports/*" onClick={handleNavItemClick}>
                 Dashboard
               </Link>
             </li>
@@ -47,7 +47,7 @@ const AdminNavbar: React.FC = () => {
                 Bookings
               </Link>
             </li>
-            <li className="nav-item">
+            {/* <li className="nav-item">
               <Link className="nav-link text-white fs-5" to="/admin/turfs" onClick={handleNavItemClick}>
                 Turfs
               </Link>
@@ -56,20 +56,8 @@ const AdminNavbar: React.FC = () => {
               <Link className="nav-link text-white fs-5" to="/admin/users" onClick={handleNavItemClick}>
                 Users
               </Link>
-            </li>
+            </li> */}
           </ul>
-
-          {/* Sign In / Sign Up button */}
-          <div className="d-flex">
-            <Link
-              to="/login"
-              className="btn fw-bold"
-              style={{ backgroundColor: "#d8f3dc", color: "#2d6a4f" }}
-              onClick={handleNavItemClick}
-            >
-              Sign In | Sign Up
-            </Link>
-          </div>
         </div>
       </div>
     </nav>

@@ -14,6 +14,7 @@ import TurfDetails from "../pages/admin/Owner/TurfDetails";
 import AnalyticsPanel from "../pages/admin/Analytics/AnalyticsPanel";
 import RecentBookingsPage from "../pages/admin/Analytics/RecentBookingsPage";
 import TurfBookingsPage from "../pages/admin/Slot/TurfBookingsPage";
+import AuthContainer from "../pages/auth/AuthContainer";
 
 const AppRoutes: React.FC = () => {
   return (
@@ -43,6 +44,7 @@ const AppRoutes: React.FC = () => {
 
       {/* Auth Routes (no Navbar/Footer) */}
       <Route path="/login" element={<Login />} />
+      <Route path="/auth" element={<AuthContainer />} />
       <Route path="/register" element={<Register />} />
     </Routes>
   );

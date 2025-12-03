@@ -1,7 +1,6 @@
 // src/pages/admin/Analytics/UserReport.tsx
 
 import React, { useEffect, useState, useMemo } from "react";
-import AdminNavbar from "../AdminNavbar";
 import { getDailyAnalytics, getUserAnalytics } from "../../../../services/firestoreService";
 
 import {
@@ -102,7 +101,6 @@ const UserReport: React.FC<UserReportProps> = ({users}) => {
 
   return (
     <div>
-      <AdminNavbar />
 
       <div className="container mt-4">
         <h2 className="fw-bold mb-3">User Report Analytics</h2>

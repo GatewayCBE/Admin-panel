@@ -1,0 +1,122 @@
+/* wrapper */
+.auth-wrapper {
+  max-width: 420px;
+  margin: 3.5rem auto;
+  font-family: "Segoe UI", sans-serif;
+  padding: 0 12px;
+}
+
+/* Toggle buttons */
+.switch-horizontal {
+  display: flex;
+  margin-bottom: 1.6rem;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+.authbutton {
+  flex: 1;
+  padding: 10px 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  border: none;
+  background: #e9ecef;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.25s;
+}
+.authbutton.active {
+  background: #1a8754;
+  color: white;
+}
+
+/* viewport that masks the slider */
+.auth-slider-viewport {
+  width: 100%;
+  height: 520px; /* fixed height as you had before */
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+  background: #fff;
+}
+
+/* horizontal inner strip: 2 panels side-by-side */
+.auth-slider-inner {
+  width: 200%; /* two panels */
+  height: 100%;
+  display: flex;
+  transition: transform 450ms cubic-bezier(.2,.9,.3,1);
+}
+
+/* each panel is 50% of the wide inner strip */
+.panel {
+  width: 50%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 0;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+}
+
+/* vertical sliding inside each panel */
+.inner-slider {
+  width: 100%;
+  height: 200%; /* holds two stacked cards (signin + signup) */
+  transition: transform 450ms cubic-bezier(.2,.9,.3,1);
+  display: flex;
+  flex-direction: column;
+}
+
+/* each form-card occupies 50% of inner-slider (i.e. 100% of viewport height) */
+.form-card {
+  height: 50%; /* half of 200% => equals viewport height */
+  box-sizing: border-box;
+  padding: 2.2rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* content styles */
+.authh2 {
+  text-align: center;
+  margin-bottom: 1rem;
+  color: #1a8754;
+}
+.authinput {
+  width: 100%;
+  padding: 12px 14px;
+  margin-bottom: 0.9rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 0.98rem;
+}
+.button {
+  width: 100%;
+  padding: 12px;
+  background: #1a8754;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 6px;
+}
+.button:hover { background: #146943; }
+
+.toggle-link {
+  text-align: center;
+  margin-top: 1rem;
+  color: #1a8754;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+.toggle-link strong { text-decoration: underline; }
+
+/* responsive: on small screens reduce height */
+@media (max-width: 480px) {
+  .auth-slider-viewport { height: 600px; } /* allow vertical stacking comfortably */
+  .form-card { padding: 1.6rem; }
+}

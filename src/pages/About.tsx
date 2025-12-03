@@ -1,10 +1,13 @@
 import React from "react";
-import p4 from "../assets/p4.jpeg";
+import p4 from "../assets/fb.jpg";
 import "bootstrap/dist/css/bootstrap.min.css";
 
 const About: React.FC = () => {
   return (
-    <section className="py-5 d-flex justify-content-center" style={{ backgroundColor: "#f6f6e9" }}>
+    <section
+      className="py-5 d-flex justify-content-center"
+      style={{ backgroundColor: "#f6f6e9" }}
+    >
       <div
         className="row align-items-center shadow rounded-3 mx-2 w-100 position-relative"
         style={{ backgroundColor: "#2d6a4f", maxWidth: "1100px" }}
@@ -15,9 +18,9 @@ const About: React.FC = () => {
             className="shadow-lg overflow-hidden position-absolute"
             style={{
               borderRadius: "15px",
-              top: "-25px",
-              width: "200px",
-              height: "350px",
+              top: "-18px",
+              width: "250px",
+              height: "400px",
               zIndex: "2",
             }}
           >
@@ -53,17 +56,27 @@ const About: React.FC = () => {
         <div className="col-md-8 offset-md-4 text-md-start text-center p-4">
           <h2
             className="fw-bold mb-3"
-            style={{ color: "#f1faee", textTransform: "uppercase", fontSize: "25px" }}
+            style={{
+              color: "#f1faee",
+              textTransform: "uppercase",
+              fontSize: "25px",
+            }}
           >
             About Us
           </h2>
           <p className="lh-lg text-light" style={{ fontSize: "14px" }}>
-            Lorem Ipsum Dolor Sit Amet, Consectetur Adipiscing Elit, Sed Do Eiusmod Tempor
-            Incididunt Ut Labore Et Dolore Magna Aliqua. Ut Enim Ad Minim Veniam, Quis Nostrud
-            Exercitation Ullamco Laboris Nisi Ut Aliquip Ex Ea Commodo Consequat. Duis Aute Irure
-            Dolor In Reprehenderit In Voluptate Velit Esse Cillum Dolore Eu Fugiat Nulla Pariatur.
-            Excepteur Sint Occaecat Cupidatat Non Proident, Sunt In Culpa Qui Officia Deserunt
-            Mollit Anim Id Est Laborum.
+            BookYourTurf is a complete digital solution created to simplify turf
+            management and player booking. Whether it’s football, cricket,
+            badminton, or any sports arena, BookYourTurf gives users a seamless
+            experience with real-time slot availability, instant booking
+            confirmation, secure online payments, and automated notifications.
+            For turf owners, the platform eliminates manual work by automating
+            schedules, payments, daily reports, customer reminders, and revenue
+            tracking. It reduces no-shows, increases bookings, and boosts
+            profitability — all from one simple dashboard. With BookYourTurf,
+            players enjoy a smooth, one-click booking experience. Turf owners
+            enjoy stress-free management. Smart booking for smart players.
+            Simple management for smart owners.
           </p>
           <button
             className="btn fw-bold shadow-sm px-4 py-2 mt-3"
