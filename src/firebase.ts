@@ -1,13 +1,6 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, RecaptchaVerifier } from "firebase/auth";
+import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
-
-// Add this line to tell TypeScript about recaptchaVerifier
-declare global {
-  interface Window {
-    recaptchaVerifier?: RecaptchaVerifier;
-  }
-}
 
 // Firebase config from environment variables
 const firebaseConfig = {
@@ -25,6 +18,9 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 
-// Required for Phone Auth on Web
-// This invisible Recaptcha will be added automatically
-window.recaptchaVerifier = undefined;
+export const googleProvider = new GoogleAuthProvider();
+
+// Optional: force account chooser
+googleProvider.setCustomParameters({
+  prompt: "select_account"
+});

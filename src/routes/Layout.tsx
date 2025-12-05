@@ -1,29 +1,61 @@
 import React from "react";
 import { Outlet } from "react-router-dom";
+
 import Navbar from "../components/Navbar/Navbar";
 import FooterInfo from "../components/FooterInfo/FooterInfo";
 import Footer from "../components/Footer/Footer";
+import UserNavbar from "../components/Navbar/UserNavbar";
+// import AdminSidebar from "../components/Admin/AdminSidebar"; // optional
 
-const Layout: React.FC = () => {
+
+/* -----------------------------------
+   🌍 PUBLIC LAYOUT (Navbar + Footer)
+--------------------------------------*/
+export const PublicLayout: React.FC = () => {
   return (
     <div className="d-flex flex-column min-vh-100">
-      {/* Navbar fixed at top */}
       <nav className="fixed-top w-100">
         <Navbar />
       </nav>
 
-      {/* Main content (pushes footer down) */}
       <main className="flex-grow-1 mt-5 pt-2">
         <Outlet />
       </main>
 
-      {/* Footer Info + Footer */}
-      <div className="bg-dark text-white">
+      <footer className="bg-dark text-white">
         <FooterInfo />
         <Footer />
-      </div>
+      </footer>
     </div>
   );
 };
 
-export default Layout;
+
+/* -----------------------------------
+   👤 USER LAYOUT (User Navbar only)
+--------------------------------------*/
+export const UserLayout: React.FC = () => {
+  return (
+    <div>
+      <UserNavbar />
+      <main>
+        <Outlet />
+      </main>
+    </div>
+  );
+};
+
+
+/* -----------------------------------
+   🛠 ADMIN LAYOUT (Admin panel style)
+--------------------------------------*/
+export const AdminLayout: React.FC = () => {
+  return (
+    <div className="d-flex">
+      {/* <AdminSidebar /> */}
+      <main className="flex-grow-1 p-3">
+        <Outlet />
+      </main>
+    </div>
+  );
+};

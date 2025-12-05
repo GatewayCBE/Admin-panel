@@ -42,7 +42,7 @@ export const generateCustomId = (role: "user" | "owner", name: string): string =
  */
 export const saveUserProfile = async (
   role: "user" | "owner",
-  data: { name: string; email: string; mobile: string; uid: string }
+  data: { name: string; email: string; mobile: string; uid: string; password: string; }
 ) => {
   const customId = generateCustomId(role, data.name);
   const now = new Date();
@@ -53,10 +53,12 @@ export const saveUserProfile = async (
     [role === "user" ? "user_name" : "owner_name"]: data.name,
     [role === "user" ? "user_email" : "owner_email"]: data.email,
     [role === "user" ? "user_mobile_number" : "owner_mobile_number"]: data.mobile,
+    [role === "user" ? "user_password" : "owner_password"]: data.password,
     has_accepted_terms: true,
     terms_accepted_at: now.toISOString(),
     created_at: now.toISOString(),
     firebase_uid: data.uid,
+    payment_copies: [],
     ...(role === "user"
       ? { user_address: null, user_profile_image_url: null }
       : { owner_location: null, owner_profile_image: null }),
@@ -84,6 +86,41 @@ export const isMobileRegistered = async (mobile: string): Promise<boolean> => {
   return !userSnap.empty || !ownerSnap.empty;
 };
 
+// Check if this email already exists under a DIFFERENT mobile number
+export const isEmailLinkedToAnotherMobile = async (
+  email: string,
+  currentMobile: string
+) => {
+  const colRef = collection(db, "environment/testing/users");
+
+  const q = query(colRef, where("user_email", "==", email));
+  const snap = await getDocs(q);
+
+  if (snap.empty) return false; // email not found → safe
+
+  const doc = snap.docs[0].data() as any;
+
+  // If the email exists but belongs to a **different** mobile → BLOCK
+  return doc.user_mobile_number !== currentMobile;
+};
+
+// Get user by email (search all docs under users/)
+export const getUserDocByEmail = async (email: string) => {
+  const colRef = collection(db, "environment/testing/users");
+  const q = query(colRef, where("user_email", "==", email));
+  const snap = await getDocs(q);
+
+  if (snap.empty) return null;
+  return snap.docs[0].data();
+};
+
+// Get user by mobile (optional helper)
+export const getUserDocByMobile = async (mobile: string) => {
+  const docRef = doc(db, "environment/testing/users", mobile);
+  const snap = await getDoc(docRef);
+  return snap.exists() ? snap.data() : null;
+};
+
 // Get all turf details
 export const getTurfs = async () => {
   try {
@@ -97,6 +134,26 @@ export const getTurfs = async () => {
   } catch (error) {
     console.error("Error fetching turfs:", error);
     return [];
+  }
+};
+
+/**
+ * Get a single turf document by ID
+ */
+export const getTurfById = async (turfId: string) => {
+  try {
+    const docRef = doc(db, "environment", "testing", "turfs", turfId);
+    const snap = await getDoc(docRef);
+
+    if (!snap.exists()) {
+      console.warn(`Turf not found: ${turfId}`);
+      return null;
+    }
+
+    return { turf_id: snap.id, ...snap.data() };
+  } catch (err) {
+    console.error("Error fetching turf:", err);
+    return null;
   }
 };
 

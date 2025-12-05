@@ -1,206 +1,321 @@
-// src/components/AuthContainer.tsx
+// src/pages/auth/AuthContainer.tsx
 import React, { useState, useEffect } from "react";
-import { auth } from "../../firebase";
+import { auth, googleProvider } from "../../firebase";
 import {
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
-  ConfirmationResult,
+  signInWithPopup,
+  onAuthStateChanged,
+  sendEmailVerification,
+  User,
 } from "firebase/auth";
-import { saveUserProfile, isMobileRegistered } from "../../services/firestoreService";
+import {
+  saveUserProfile,
+  isMobileRegistered,
+  isEmailLinkedToAnotherMobile,
+} from "../../services/firestoreService";
+import { useNavigate } from "react-router-dom";
 
-// Fix TypeScript globals
-declare global {
-  interface Window {
-    recaptchaVerifier?: RecaptchaVerifier;
-    grecaptcha?: any;
-  }
+/* ──────────────────────────────────────────────────────────────
+   AES Encryption (same as Flutter DataEncryption.encryptData)
+────────────────────────────────────────────────────────────── */
+const AES_KEY_STRING = "DKBMTVig0646YHDBEOCshssi=73HyeMK"; // must match Flutter key
+const textEncoder = new TextEncoder();
+
+function bufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
+  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++)
+    binary += String.fromCharCode(bytes[i]);
+  return window.btoa(binary);
 }
 
+async function getAesKey(): Promise<CryptoKey> {
+  const keyBytes = textEncoder.encode(AES_KEY_STRING);
+  return crypto.subtle.importKey("raw", keyBytes, { name: "AES-CBC" }, false, [
+    "encrypt",
+    "decrypt",
+  ]);
+}
+
+async function encryptPasswordAES(plain: string): Promise<string> {
+  const key = await getAesKey();
+  const iv = crypto.getRandomValues(new Uint8Array(16));
+  const data = textEncoder.encode(plain);
+
+  const encrypted = await crypto.subtle.encrypt(
+    { name: "AES-CBC", iv },
+    key,
+    data
+  );
+
+  const ivBase64 = bufferToBase64(iv);
+  const cipherBase64 = bufferToBase64(encrypted);
+  return `${ivBase64}:${cipherBase64}`; // matches Flutter format
+}
+
+/* ────────────────────────────────────────────────────────────── */
+
 const AuthContainer: React.FC = () => {
-  const [isUser, setIsUser] = useState(true);
+  const navigate = useNavigate();
+
+  const [step, setStep] = useState<
+    "pickRole" | "googleLogin" | "profile"
+  >("pickRole");
+
+  const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
+  const [role, setRole] = useState<"user" | "owner" | null>(null);
+
+  const [name, setName] = useState("");
   const [mobile, setMobile] = useState("");
-  const [otp, setOtp] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
-  const [step, setStep] = useState<"phone" | "otp">("phone");
+  const [error, setError] = useState("");
 
-  const currentRole = isUser ? "User" : "Owner";
-
-  // Correct reCAPTCHA setup (auth first!)
+  /* ──────────────────────────────
+     Listen to Firebase auth state
+  ────────────────────────────── */
   useEffect(() => {
-    if (!window.recaptchaVerifier) {
-      window.recaptchaVerifier = new RecaptchaVerifier(
-        auth,  // ← First: auth instance
-        "recaptcha-container",  // ← Second: container ID
-        {  // ← Third: options
-          size: "invisible",
-          callback: () => console.log("reCAPTCHA solved"),
-          "expired-callback": () => console.log("reCAPTCHA expired"),
+  const unsub = onAuthStateChanged(auth, async (user) => {
+    if (step !== "googleLogin") return;  // <-- important
+
+    if (user) {
+      setFirebaseUser(user);
+      setStep("profile");
+      try {
+        if (!user.emailVerified) {
+          await sendEmailVerification(user);
         }
-      );
-
-      // Pre-render (important for reliability)
-      window.recaptchaVerifier.render().catch(err => console.error(err));
+      } catch {}
     }
+  });
 
-    return () => {
-      window.recaptchaVerifier?.clear();
-      window.recaptchaVerifier = undefined;
-    };
-  }, []);
+  return unsub;
+}, [step]);
 
-  const handleRoleChange = (user: boolean) => {
-    setIsUser(user);
-    setStep("phone");
-    setMobile("");
-    setOtp("");
-    setError(null);
-  };
+  /* ──────────────────────────────
+     Step 1 — Role Selection
+  ────────────────────────────── */
+  if (step === "pickRole") {
+    return (
+      <div className="container py-5">
+        <div className="row justify-content-center">
+          <div className="col-md-6">
+            <div className="card shadow p-5 text-center">
+              <h3>Select Account Type</h3>
+              <p className="text-muted">Continue as:</p>
 
-  const sendOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
+              <div className="d-flex gap-3 mt-4">
+                <button
+                  className={`btn btn-lg flex-fill ${
+                    role === "user"
+                      ? "btn-success"
+                      : "btn-outline-success"
+                  }`}
+                  onClick={() => {
+                    setRole("user");
+                    setStep("googleLogin");
+                  }}
+                >
+                  User
+                </button>
 
-    const phone = mobile.trim();
-    if (!/^\+91[6-9]\d{9}$/.test(phone)) {
-      setError("Invalid Indian number");
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const exists = await isMobileRegistered(phone);
-      if (exists) {
-        setError("Already registered");
-        setLoading(false);
-        return;
-      }
-
-      const result = await signInWithPhoneNumber(auth, phone, window.recaptchaVerifier!);
-      setConfirmationResult(result);
-      setStep("otp");
-      alert("OTP sent!");
-    } catch (err: any) {
-      console.error("OTP Error:", err);
-      setError(err.message || "Failed to send OTP");
-      window.recaptchaVerifier?.render().then(id => window.grecaptcha?.reset(id));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const verifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!confirmationResult || otp.length !== 6) return;
-
-    setLoading(true);
-    try {
-      const result = await confirmationResult.confirm(otp);
-      const name = prompt("Enter your name:", currentRole)?.trim() || currentRole;
-
-      if (name.length < 3) throw new Error("Name too short");
-
-      await saveUserProfile(isUser ? "user" : "owner", {
-        name,
-        email: "",
-        mobile,
-        uid: result.user.uid,
-      });
-
-      alert("Registered successfully!");
-      setStep("phone");
-      setMobile("");
-      setOtp("");
-    } catch (err: any) {
-      setError("Invalid OTP");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="container py-5">
-      <div className="row justify-content-center">
-        <div className="col-md-6">
-
-          {/* Role Toggle */}
-          <div className="d-flex mb-4 rounded overflow-hidden shadow-sm">
-            <button
-              className={`btn flex-fill py-3 ${isUser ? "btn-success text-white" : "btn-light"}`}
-              onClick={() => handleRoleChange(true)}
-              disabled={loading}
-            >
-              <strong>User</strong>
-            </button>
-            <button
-              className={`btn flex-fill py-3 ${!isUser ? "btn-success text-white" : "btn-light"}`}
-              onClick={() => handleRoleChange(false)}
-              disabled={loading}
-            >
-              <strong>Owner</strong>
-            </button>
-          </div>
-
-          {error && <div className="alert alert-danger text-center">{error}</div>}
-
-          <div className="card shadow">
-            <div className="card-body text-center p-5">
-
-              {step === "phone" && (
-                <>
-                  <h3 className="text-success mb-4">{currentRole} Registration</h3>
-                  <form onSubmit={sendOtp}>
-                    <input
-                      type="tel"
-                      value={mobile}
-                      onChange={(e) => setMobile(e.target.value)}
-                      className="form-control form-control-lg mb-3"
-                      placeholder="+919876543210"
-                      required
-                      disabled={loading}
-                    />
-                    <button type="submit" className="btn btn-success btn-lg w-100" disabled={loading}>
-                      {loading ? "Sending..." : "Send OTP"}
-                    </button>
-                  </form>
-                </>
-              )}
-
-              {step === "otp" && (
-                <>
-                  <h3 className="text-success mb-4">Enter OTP</h3>
-                  <p className="text-muted">Sent to {mobile}</p>
-                  <form onSubmit={verifyOtp}>
-                    <input
-                      type="text"
-                      value={otp}
-                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                      className="form-control form-control-lg text-center mb-3"
-                      placeholder="123456"
-                      maxLength={6}
-                      required
-                      disabled={loading}
-                    />
-                    <button type="submit" className="btn btn-success btn-lg w-100" disabled={loading}>
-                      Verify & Register
-                    </button>
-                  </form>
-                  <button className="btn btn-link" onClick={() => setStep("phone")}>
-                    Change Number
-                  </button>
-                </>
-              )}
-
-              {/* REQUIRED for reCAPTCHA */}
-              {/* <div id="recaptcha-container"></div> */}
+                <button
+                  className={`btn btn-lg flex-fill ${
+                    role === "owner"
+                      ? "btn-success"
+                      : "btn-outline-success"
+                  }`}
+                  onClick={() => {
+                    setRole("owner");
+                    setStep("googleLogin");
+                  }}
+                >
+                  Channel Partner
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  }
+
+  /* ──────────────────────────────
+     Step 2 — Google Login Screen
+  ────────────────────────────── */
+  if (step === "googleLogin" && !firebaseUser) {
+    return (
+      <div className="container py-5">
+        <div className="row justify-content-center">
+          <div className="col-md-6">
+            <div className="card shadow p-5 text-center">
+              <h2 className="text-success mb-4">Continue with Google</h2>
+
+              <button
+                className="btn btn-danger btn-lg w-100 d-flex align-items-center justify-content-center gap-3"
+                onClick={async () => {
+                  setLoading(true);
+                  try {
+                    await signInWithPopup(auth, googleProvider);
+                  } catch (err: any) {
+                    setError(err.message);
+                  }
+                  setLoading(false);
+                }}
+                disabled={loading}
+              >
+                <img src="https://www.google.com/favicon.ico" width="24" />
+                {loading ? "Signing In..." : "Sign In with Google"}
+              </button>
+
+              {error && (
+                <div className="alert alert-danger mt-3">{error}</div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ──────────────────────────────
+     Step 3 — Registration Form
+  ────────────────────────────── */
+  if (step === "profile" && firebaseUser) {
+    return (
+      <div className="container py-5">
+        <div className="row justify-content-center">
+          <div className="col-md-6">
+            <div className="card shadow p-5 position-relative">
+              <button
+                className="btn btn-outline-danger btn-sm position-absolute top-0 end-0"
+                onClick={async () => {
+                  await auth.signOut();
+                  setFirebaseUser(null);
+                  setStep("pickRole");
+                }}
+              >
+                Logout
+              </button>
+
+              <h4 className="mb-3">Complete Your Registration</h4>
+              <p className="text-muted">{firebaseUser.email}</p>
+
+              {error && (
+                <div className="alert alert-danger text-center">{error}</div>
+              )}
+
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  setError("");
+
+                  if (!name.trim()) return setError("Name is required.");
+                  if (!/^\+91[6-9]\d{9}$/.test(mobile))
+                    return setError("Enter valid Indian mobile number.");
+
+                  if (password.length < 6)
+                    return setError("Password must be at least 6 chars.");
+                  if (password !== confirmPassword)
+                    return setError("Passwords do not match.");
+
+                  const email = firebaseUser.email || "";
+
+                  // Prevent email → multiple mobiles
+                  const emailConflict =
+                    await isEmailLinkedToAnotherMobile(email, mobile);
+                  if (emailConflict) {
+                    return setError(
+                      "This email is already linked to another mobile."
+                    );
+                  }
+
+                  // Prevent mobile → multiple users
+                  const mobileExists = await isMobileRegistered(mobile);
+                  if (mobileExists) {
+                    return setError(
+                      "This mobile number is already registered!"
+                    );
+                  }
+
+                  // Encrypt password like Flutter
+                  const encryptedPassword = await encryptPasswordAES(
+                    password
+                  );
+
+                  setLoading(true);
+                  try {
+                    await saveUserProfile(role!, {
+                      name,
+                      email,
+                      mobile,
+                      uid: firebaseUser.uid,
+                      password: encryptedPassword,
+                    });
+
+                    alert("Registration Complete!");
+
+                    navigate(
+                      role === "owner"
+                        ? "/owner/dashboard"
+                        : "/login"
+                    );
+                  } catch (err: any) {
+                    setError(err.message);
+                  }
+                  setLoading(false);
+                }}
+              >
+                <input
+                  className="form-control form-control-lg mb-3"
+                  placeholder="Full Name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                />
+
+                <input
+                  className="form-control form-control-lg mb-3"
+                  placeholder="+91XXXXXXXXXX"
+                  value={mobile}
+                  onChange={(e) => setMobile(e.target.value)}
+                  required
+                />
+
+                <input
+                  type="password"
+                  className="form-control form-control-lg mb-3"
+                  placeholder="Create Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+
+                <input
+                  type="password"
+                  className="form-control form-control-lg mb-4"
+                  placeholder="Confirm Password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                />
+
+                <button
+                  className="btn btn-success btn-lg w-100"
+                  disabled={loading}
+                >
+                  {loading ? "Saving..." : "Continue"}
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
 };
 
 export default AuthContainer;
