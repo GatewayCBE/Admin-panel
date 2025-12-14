@@ -20,6 +20,7 @@ import AuthContainer from "../pages/auth/AuthContainer";
 import { PublicLayout, UserLayout, AdminLayout } from "./Layout";
 import TurfDetail from "../pages/user/TurfDetail";
 import SlotDetails from "../pages/user/SlotDetails";
+import OwnerDashboard from "../pages/owner/OwnerDashboard";
 
 const AppRoutes: React.FC = () => {
   return (
@@ -36,6 +37,11 @@ const AppRoutes: React.FC = () => {
         <Route path="/user/turfs" element={<Turf />} />
         <Route path="/user/turfs/:turfId" element={<TurfDetail />} />
         <Route path="/user/turfs/:turfId/slots" element={<SlotDetails />} />
+      </Route>
+
+      {/* 👤 Owner pages */}
+      <Route element={<UserLayout />}>
+        <Route path="/owner/dashboard" element={<OwnerDashboard />} />
       </Route>
 
       {/* 🛠 Admin pages */}

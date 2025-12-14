@@ -42,7 +42,7 @@ export const generateCustomId = (role: "user" | "owner", name: string): string =
  */
 export const saveUserProfile = async (
   role: "user" | "owner",
-  data: { name: string; email: string; mobile: string; uid: string; password: string; }
+  data: { name: string; email: string; mobile: string; uid: string; password: string; acceptedTerms: boolean;}
 ) => {
   const customId = generateCustomId(role, data.name);
   const now = new Date();
@@ -54,8 +54,8 @@ export const saveUserProfile = async (
     [role === "user" ? "user_email" : "owner_email"]: data.email,
     [role === "user" ? "user_mobile_number" : "owner_mobile_number"]: data.mobile,
     [role === "user" ? "user_password" : "owner_password"]: data.password,
-    has_accepted_terms: true,
-    terms_accepted_at: now.toISOString(),
+    has_accepted_terms: data.acceptedTerms,
+    terms_accepted_at: data.acceptedTerms ? now.toISOString() : null,
     created_at: now.toISOString(),
     firebase_uid: data.uid,
     payment_copies: [],
@@ -71,43 +71,56 @@ export const saveUserProfile = async (
 };
 
 /**
- * Check if mobile is already registered
+ * Check if mobile is already registered for a specific role
  */
-export const isMobileRegistered = async (mobile: string): Promise<boolean> => {
-  const usersRef = collection(db, "environment", "testing", "users");
-  const ownersRef = collection(db, "environment", "testing", "owners");
+export const isMobileRegisteredForRole = async (
+  role: "user" | "owner",
+  mobile: string
+): Promise<boolean> => {
+  const colRef =
+    role === "user"
+      ? collection(db, "environment", "testing", "users")
+      : collection(db, "environment", "testing", "owners");
 
-  const [userSnap, ownerSnap]: [QuerySnapshot<DocumentData>, QuerySnapshot<DocumentData>] =
-    await Promise.all([
-      getDocs(query(usersRef, where("user_mobile_number", "==", mobile))),
-      getDocs(query(ownersRef, where("owner_mobile_number", "==", mobile))),
-    ]);
+  const field =
+    role === "user" ? "user_mobile_number" : "owner_mobile_number";
 
-  return !userSnap.empty || !ownerSnap.empty;
+  const snap = await getDocs(query(colRef, where(field, "==", mobile)));
+  return !snap.empty;
 };
 
 // Check if this email already exists under a DIFFERENT mobile number
 export const isEmailLinkedToAnotherMobile = async (
+  role: "user" | "owner",
   email: string,
   currentMobile: string
-) => {
-  const colRef = collection(db, "environment/testing/users");
+): Promise<boolean> => {
+  const colRef =
+    role === "user"
+      ? collection(db, "environment/testing/users")
+      : collection(db, "environment/testing/owners");
 
-  const q = query(colRef, where("user_email", "==", email));
-  const snap = await getDocs(q);
+  const field =
+    role === "user" ? "user_email" : "owner_email";
 
-  if (snap.empty) return false; // email not found → safe
-
-  const doc = snap.docs[0].data() as any;
-
-  // If the email exists but belongs to a **different** mobile → BLOCK
-  return doc.user_mobile_number !== currentMobile;
+  const snap = await getDocs(query(colRef, where(field, "==", email)));
+  return !snap.empty;
 };
 
 // Get user by email (search all docs under users/)
 export const getUserDocByEmail = async (email: string) => {
   const colRef = collection(db, "environment/testing/users");
   const q = query(colRef, where("user_email", "==", email));
+  const snap = await getDocs(q);
+
+  if (snap.empty) return null;
+  return snap.docs[0].data();
+};
+
+// Get owner by email
+export const getOwnerDocByEmail = async (email: string) => {
+  const colRef = collection(db, "environment/testing/owners");
+  const q = query(colRef, where("owner_email", "==", email));
   const snap = await getDocs(q);
 
   if (snap.empty) return null;
@@ -172,6 +185,54 @@ export const getTurfsByOwner = async (ownerId: string) => {
     return [];
   }
 };
+
+export async function createTurfBooking({
+  turfId,
+  dateString,
+  sportName,
+  courtName,
+  slotStart,
+  bookingData,
+}: {
+  turfId: string;
+  dateString: string;   // "02-Dec-2025"
+  sportName: string;    // "boxcricket & football"
+  courtName: string;    // "court 1"
+  slotStart: string;    // "12:00"
+  bookingData: any;
+}) {
+  const ref = doc(
+    db,
+    "environment",
+    "testing",
+    "all_turfs_slot_booking",
+    turfId,
+    dateString,
+    sportName,
+    courtName,
+    slotStart
+  );
+
+  await setDoc(ref, bookingData, { merge: true });
+  return true;
+}
+
+export async function isSlotAlreadyBooked({ turfId, dateString, sportName, courtName, slotStart }: any) {
+  const ref = doc(
+    db,
+    "environment",
+    "testing",
+    "all_turfs_slot_booking",
+    turfId,
+    dateString,
+    sportName,
+    courtName,
+    slotStart
+  );
+
+  const snap = await getDoc(ref);
+  return snap.exists();
+}
 
 export const debugPath = async () => {
   try {

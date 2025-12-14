@@ -1,8 +1,11 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { signOut } from "firebase/auth";
+import { auth } from "../../firebase";
 
 const Navbar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
 
   const handleToggle = () => {
     setIsOpen(!isOpen);
@@ -10,6 +13,17 @@ const Navbar: React.FC = () => {
 
   const handleNavItemClick = () => {
     setIsOpen(false);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      localStorage.clear();
+      sessionStorage.clear();
+      navigate("/auth", { replace: true });
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
   };
 
   return (
@@ -51,14 +65,13 @@ const Navbar: React.FC = () => {
 
           {/* Sign In / Sign Up button */}
           <div className="d-flex">
-            <Link
-              to="/auth"
+            <button
               className="btn fw-bold"
               style={{ backgroundColor: "#d8f3dc", color: "#2d6a4f" }}
-              onClick={handleNavItemClick}
+              onClick={handleLogout}
             >
               Logout
-            </Link>
+            </button>
           </div>
         </div>
       </div>

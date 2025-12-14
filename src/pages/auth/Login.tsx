@@ -1,209 +1,180 @@
-// src/pages/auth/LoginPage.tsx
+// src/pages/auth/Login.tsx
 import React, { useState } from "react";
 import { auth, googleProvider } from "../../firebase";
-import { signInWithPopup, signInWithEmailAndPassword } from "firebase/auth";
-import { useNavigate } from "react-router-dom";
-import { getUserDocByEmail } from "../../services/firestoreService";
+import { signInWithPopup } from "firebase/auth";
+import { useNavigate, useLocation } from "react-router-dom";
+import {
+  getUserDocByEmail,
+  getOwnerDocByEmail,
+} from "../../services/firestoreService";
 
-/* ─────────────────────────────────────────────
-   AES Encryption / Decryption (MATCH FLUTTER)
-────────────────────────────────────────────── */
+/* AES CONFIG (MUST MATCH FLUTTER EXACTLY) */
 const AES_KEY_STRING = "DKBMTVig0646YHDBEOCshssi=73HyeMK";
-const textEncoder = new TextEncoder();
+const encoder = new TextEncoder();
 
-function base64ToBytes(base64: string) {
-  const binaryString = window.atob(base64);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return bytes;
-}
+const base64ToBytes = (b64: string) =>
+  Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
 
-function bufferToText(buffer: ArrayBuffer) {
-  const decoder = new TextDecoder();
-  return decoder.decode(buffer);
-}
-
-async function getAesKey(): Promise<CryptoKey> {
-  const keyBytes = textEncoder.encode(AES_KEY_STRING);
-  return crypto.subtle.importKey("raw", keyBytes, { name: "AES-CBC" }, false, [
-    "encrypt",
-    "decrypt",
-  ]);
-}
-
-async function decryptPasswordAES(encryptedData: string): Promise<string> {
-  const parts = encryptedData.split(":");
-  if (parts.length !== 2) throw new Error("Invalid encrypted format");
-
-  const iv = base64ToBytes(parts[0]);
-  const cipherBytes = base64ToBytes(parts[1]);
-
-  const key = await getAesKey();
-
-  const decryptedBuffer = await crypto.subtle.decrypt(
-    { name: "AES-CBC", iv },
-    key,
-    cipherBytes
+const decryptAES = async (encrypted: string) => {
+  const [ivB64, dataB64] = encrypted.split(":");
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(AES_KEY_STRING),
+    { name: "AES-CBC" },
+    false,
+    ["decrypt"]
   );
 
-  return bufferToText(decryptedBuffer);
-}
+  const decrypted = await crypto.subtle.decrypt(
+    { name: "AES-CBC", iv: base64ToBytes(ivB64) },
+    key,
+    base64ToBytes(dataB64)
+  );
 
-/* ───────────────────────────────────────────── */
+  return new TextDecoder().decode(decrypted);
+};
 
-const LoginPage: React.FC = () => {
+const Login: React.FC = () => {
   const navigate = useNavigate();
+  const { state } = useLocation();
+  const role: "user" | "owner" = state?.role || "user";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  /* ─────────────────────────────────────────────
-     EMAIL + PASSWORD LOGIN
-  ───────────────────────────────────────────── */
-  const handleEmailLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     setLoading(true);
+    setError("");
 
     try {
-      // 1️⃣ Fetch Firestore document for this email
-      const userDoc = await getUserDocByEmail(email);
-      if (!userDoc) {
-        setError("No account found with this email.");
-        setLoading(false);
+      const account =
+        role === "user"
+          ? await getUserDocByEmail(email)
+          : await getOwnerDocByEmail(email);
+
+      if (!account) {
+        setError("No account found for this role");
         return;
       }
 
-      const { user_password, user_mobile_number } = userDoc;
+      const encryptedPassword =
+        role === "user"
+          ? account.user_password
+          : account.owner_password;
 
-      if (!user_password) {
-        setError("This account has no password. Please login using Google.");
-        setLoading(false);
-        return;
-      }
+      const plain = await decryptAES(encryptedPassword);
 
-      // 2️⃣ Decrypt stored password (AES-CBC)
-      const storedPlaintext = await decryptPasswordAES(user_password);
-
-      // 3️⃣ Compare with user input
-      if (storedPlaintext !== password) {
+      if (plain !== password) {
         setError("Incorrect password");
-        setLoading(false);
         return;
       }
 
-      // 4️⃣ Firebase login (optional, to maintain Firebase auth session)
-      try {
-        await signInWithEmailAndPassword(auth, email, password);
-      } catch (firebaseErr) {
-        // ignore, because Firebase does NOT know our AES password
-        console.warn("Firebase email login skipped:", firebaseErr);
-      }
+      /* STORE SESSION */
+      localStorage.setItem(
+        "user_id",
+        role === "user" ? account.user_id : account.owner_id
+      );
+      localStorage.setItem(
+        "user_name",
+        role === "user" ? account.user_name : account.owner_name
+      );
+      localStorage.setItem(
+        "user_email",
+        role === "user" ? account.user_email : account.owner_email
+      );
+      localStorage.setItem("user_role", role);
+      localStorage.setItem("is_logged_in", "true");
 
-      // 5️⃣ Successful login → navigate to user turf page
-      navigate("/user/turfs");
-    } catch (err: any) {
-      console.error(err);
-      setError("Login failed: " + err.message);
+      navigate(role === "user" ? "/user/turfs" : "/owner/dashboard");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
-  /* ─────────────────────────────────────────────
-     GOOGLE LOGIN
-  ───────────────────────────────────────────── */
   const handleGoogleLogin = async () => {
-    setLoading(true);
-    setError("");
+    const result = await signInWithPopup(auth, googleProvider);
+    const email = result.user.email;
+    if (!email) return;
 
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const userEmail = result.user.email;
+    const account =
+      role === "user"
+        ? await getUserDocByEmail(email)
+        : await getOwnerDocByEmail(email);
 
-      if (!userEmail) {
-        setError("Google account returned no email.");
-        setLoading(false);
-        return;
-      }
+    if (!account) return navigate("/auth");
 
-      // 1️⃣ Check Firestore account exists
-      const exists = await getUserDocByEmail(userEmail);
+    localStorage.setItem(
+      "user_id",
+      role === "user" ? account.user_id : account.owner_id
+    );
+    localStorage.setItem(
+      "user_name",
+      role === "user" ? account.user_name : account.owner_name
+    );
+    localStorage.setItem(
+      "user_email",
+      role === "user" ? account.user_email : account.owner_email
+    );
+    localStorage.setItem("user_role", role);
+    localStorage.setItem("is_logged_in", "true");
 
-      if (!exists) {
-        // Not registered → go to full registration flow
-        navigate("/auth");
-      } else {
-        // Already registered → go to turf page
-        navigate("/user/turfs");
-      }
-    } catch (err: any) {
-      console.error(err);
-      setError("Google login failed: " + err.message);
-    }
-
-    setLoading(false);
+    navigate(role === "user" ? "/user/turfs" : "/owner/dashboard");
   };
 
   return (
-    <div className="container py-5">
-      <div className="row justify-content-center">
-        <div className="col-md-5">
+    <div className="min-vh-100 d-flex justify-content-center align-items-center bg-light">
+      <div className="card shadow p-5" style={{ maxWidth: 450 }}>
+        <h2 className="text-center text-success mb-4">
+          Login as {role === "user" ? "Player" : "Channel Partner"}
+        </h2>
 
-          <div className="card shadow p-4">
-            <h3 className="text-center mb-4">Login</h3>
+        {error && <div className="alert alert-danger">{error}</div>}
 
-            {error && <div className="alert alert-danger">{error}</div>}
+        <form onSubmit={handleLogin}>
+          <input
+            className="form-control mb-3"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <input
+            type="password"
+            className="form-control mb-3"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
 
-            <form onSubmit={handleEmailLogin}>
-              <input
-                type="email"
-                className="form-control form-control-lg mb-3"
-                placeholder="Email address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
+          <button className="btn btn-success w-100" disabled={loading}>
+            Login
+          </button>
+        </form>
 
-              <input
-                type="password"
-                className="form-control form-control-lg mb-4"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
+        <hr />
 
-              <button
-                type="submit"
-                className="btn btn-success btn-lg w-100"
-                disabled={loading}
-              >
-                {loading ? "Logging in..." : "Login"}
-              </button>
-            </form>
+        <button
+          className="btn btn-danger w-100"
+          onClick={handleGoogleLogin}
+        >
+          Login with Google
+        </button>
 
-            <hr className="my-4" />
-
-            <button
-              className="btn btn-danger btn-lg w-100 d-flex align-items-center justify-content-center gap-2"
-              onClick={handleGoogleLogin}
-              disabled={loading}
-            >
-              <img src="https://www.google.com/favicon.ico" width="22" alt="g" />
-              Login with Google
-            </button>
-
-          </div>
-
-        </div>
+        <div className="text-center mt-3">
+  <button
+    className="btn btn-link"
+    onClick={() => navigate("/register", { state: { role } })}
+  >
+    Don't have an account? <strong>Register</strong>
+  </button>
+</div>
       </div>
     </div>
   );
 };
 
-export default LoginPage;
+export default Login;

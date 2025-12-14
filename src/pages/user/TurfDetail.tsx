@@ -178,7 +178,7 @@ const TurfDetail: React.FC = () => {
       <div className="text-center my-5">
         <button
   className="btn btn-success btn-lg px-5"
-  onClick={() => navigate(`/user/turfs/${turfId}/slots`)}
+  onClick={() => navigate(`/user/turfs/${turf.turf_id}/slots`)}
 >
   Book Slots →
 </button>

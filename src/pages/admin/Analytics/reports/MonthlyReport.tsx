@@ -1,3 +1,5 @@
+// src/pages/admin/Analytics/reports/MonthlyReport.tsx
+
 import React, { useMemo, useState } from "react";
 import { Bar } from "react-chartjs-2";
 
@@ -5,134 +7,223 @@ interface MonthlyReportProps {
   daily: any[];
 }
 
+/* ─────────────────────────────────────────────
+   HELPERS
+────────────────────────────────────────────── */
+const chartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { position: "top" as const },
+  },
+  scales: {
+    y: { beginAtZero: true },
+  },
+};
+
 const MonthlyReport: React.FC<MonthlyReportProps> = ({ daily }) => {
-  const [selectedMonth, setSelectedMonth] = useState("");
+  const [selectedMonth, setSelectedMonth] = useState<string>("");
 
-  // 1️⃣ Group daily data by month (YYYY-MM)
+  /* ─────────────────────────────────────────────
+     GROUP DAILY → MONTHLY
+  ───────────────────────────────────────────── */
   const monthlyData = useMemo(() => {
-    const result: Record<string, { revenue: number; bookings: number; days: any[] }> = {};
+    const result: Record<
+      string,
+      { revenue: number; bookings: number; days: any[] }
+    > = {};
 
-    daily.forEach((entry) => {
-      if (!entry?.id) return;
-      const parts = entry.id.split("-");
-      if (parts.length !== 3) return;
+    daily.forEach((d) => {
+      if (!d?.id) return;
 
-      const monthKey = `${parts[1]}-${parts[2]}`; // e.g., Jan-2025
+      const [dd, mm, yyyy] = d.id.split("-");
+      if (!mm || !yyyy) return;
 
-      if (!result[monthKey]) {
-        result[monthKey] = { revenue: 0, bookings: 0, days: [] };
+      const key = `${mm}-${yyyy}`; // Dec-2025
+
+      if (!result[key]) {
+        result[key] = { revenue: 0, bookings: 0, days: [] };
       }
 
-      result[monthKey].revenue += entry.total_revenue ?? 0;
-      result[monthKey].bookings += entry.total_bookings ?? 0;
-      result[monthKey].days.push(entry);
+      result[key].revenue += d.total_revenue ?? 0;
+      result[key].bookings += d.total_bookings ?? 0;
+      result[key].days.push(d);
     });
 
     return result;
   }, [daily]);
 
-  const selectedMonthData = selectedMonth ? monthlyData[selectedMonth] : null;
+  const month = selectedMonth ? monthlyData[selectedMonth] : null;
+
+  /* ─────────────────────────────────────────────
+     DAY / NIGHT AGGREGATE
+  ───────────────────────────────────────────── */
+  const dayNight = useMemo(() => {
+    let dayB = 0,
+      nightB = 0,
+      dayR = 0,
+      nightR = 0;
+
+    month?.days.forEach((d: any) => {
+      dayB += d?.time_split?.day?.bookings ?? 0;
+      nightB += d?.time_split?.night?.bookings ?? 0;
+      dayR += d?.time_split?.day?.revenue ?? 0;
+      nightR += d?.time_split?.night?.revenue ?? 0;
+    });
+
+    return { dayB, nightB, dayR, nightR };
+  }, [month]);
+
+  /* ─────────────────────────────────────────────
+     TURF AGGREGATE
+  ───────────────────────────────────────────── */
+  const turfSummary = useMemo(() => {
+    const map: Record<string, any> = {};
+
+    month?.days.forEach((d: any) => {
+      Object.entries(d.turfs || {}).forEach(([_, t]: any) => {
+        const key = t.turf_name || "Unknown Turf";
+        if (!map[key]) {
+          map[key] = { revenue: 0, bookings: 0 };
+        }
+        map[key].revenue += t.revenue ?? 0;
+        map[key].bookings += t.bookings ?? 0;
+      });
+    });
+
+    return Object.entries(map).sort(
+      (a: any, b: any) => b[1].revenue - a[1].revenue
+    );
+  }, [month]);
 
   return (
-    <div className="container">
-      {/* 📌 Month Selector */}
-      <div className="card p-3 mb-4 shadow-sm border-0">
-        <label className="fw-semibold">Select Month</label>
+    <div className="px-2">
+      {/* HEADER */}
+      <div className="mb-3">
+        <h4 className="fw-bold mb-1">📅 Monthly Report</h4>
+        <small className="text-muted">
+          Revenue & booking performance by month
+        </small>
+      </div>
+
+      {/* MONTH SELECTOR */}
+      <div className="card shadow-sm p-3 mb-4">
+        <label className="fw-semibold mb-1">Select Month</label>
         <select
-          className="form-select mt-2"
+          className="form-select"
           value={selectedMonth}
           onChange={(e) => setSelectedMonth(e.target.value)}
         >
           <option value="">-- Choose Month --</option>
-          {Object.keys(monthlyData).map((month) => (
-            <option key={month} value={month}>
-              {month}
+          {Object.keys(monthlyData).map((m) => (
+            <option key={m} value={m}>
+              {m}
             </option>
           ))}
         </select>
       </div>
 
-      {/* ❗If no month selected */}
-      {!selectedMonthData && <p className="text-center text-muted">Please select a month.</p>}
+      {!month && (
+        <p className="text-center text-muted">
+          Please select a month to view analytics
+        </p>
+      )}
 
-      {selectedMonthData && (
+      {month && (
         <>
-          {/* 📊 Summary */}
-          <div className="card p-4 mb-4 shadow-sm border-0">
-            <h5 className="fw-semibold text-center mb-3">
-              📆 Monthly Report — {selectedMonth}
-            </h5>
-            <p><strong>Total Bookings:</strong> {selectedMonthData.bookings}</p>
-            <p><strong>Total Revenue:</strong> ₹{selectedMonthData.revenue}</p>
+          {/* KPI CARDS */}
+          <div className="row g-3 mb-4">
+            {[
+              ["Total Bookings", month.bookings],
+              [
+                "Total Revenue",
+                `₹${month.revenue.toLocaleString("en-IN")}`,
+              ],
+              ["Day Bookings", dayNight.dayB],
+              ["Night Bookings", dayNight.nightB],
+            ].map(([label, value], i) => (
+              <div key={i} className="col-lg-3 col-md-6">
+                <div className="card shadow-sm p-3 text-center h-100">
+                  <small className="text-muted">{label}</small>
+                  <h4 className="fw-bold mt-1">{value}</h4>
+                </div>
+              </div>
+            ))}
           </div>
 
-          {/* 📉 Revenue & Bookings Chart */}
-          <div className="card p-4 mb-4 shadow-sm border-0">
-            <h6 className="text-center fw-semibold">Monthly Performance</h6>
+          {/* MONTHLY COMPARISON */}
+          <div className="card shadow-sm p-3 mb-4">
+            <h6 className="fw-semibold text-center mb-2">
+              📊 Monthly Overview
+            </h6>
             <div style={{ height: 320 }}>
               <Bar
                 data={{
                   labels: ["Bookings", "Revenue"],
                   datasets: [
                     {
-                      label: "Bookings",
-                      data: [selectedMonthData.bookings],
-                      backgroundColor: "#36A2EB",
-                    },
-                    {
-                      label: "Revenue (₹)",
-                      data: [selectedMonthData.revenue],
-                      backgroundColor: "#FF9F40",
+                      label: selectedMonth,
+                      data: [month.bookings, month.revenue],
+                      backgroundColor: ["#0d6efd", "#198754"],
                     },
                   ],
                 }}
-                options={{ responsive: true }}
+                options={chartOptions}
               />
             </div>
           </div>
 
-          {/* 🔍 Top Performing Turf */}
-          <div className="card p-4 mb-4 shadow-sm border-0">
-            <h6 className="fw-semibold mb-3">🏟 Turf Performance</h6>
-            {selectedMonthData.days.length > 0 ? (
-              selectedMonthData.days.map((day, index) => (
-                day?.turfs &&
-                Object.entries(day.turfs).map(([turfId, data]: any) => (
-                  <p key={`${turfId}_${index}`}>
-                    <strong>{data.turf_name || turfId}:</strong>{" "}
-                    {data.bookings} bookings — ₹{data.revenue}
-                  </p>
-                ))
-              ))
-            ) : (
-              <p className="text-muted">No turf data available.</p>
-            )}
+          {/* DAY / NIGHT SPLIT */}
+          <div className="card shadow-sm p-3 mb-4">
+            <h6 className="fw-semibold mb-3">🌞 Day vs 🌙 Night</h6>
+            <div className="row text-center">
+              <div className="col-md-6">
+                <h5>{dayNight.dayB}</h5>
+                <small className="text-muted">
+                  Day Bookings — ₹{dayNight.dayR}
+                </small>
+              </div>
+              <div className="col-md-6">
+                <h5>{dayNight.nightB}</h5>
+                <small className="text-muted">
+                  Night Bookings — ₹{dayNight.nightR}
+                </small>
+              </div>
+            </div>
           </div>
 
-          {/* 📌 Day/Night Split (optional) */}
-          <div className="card p-4 mb-4 shadow-sm border-0">
-            <h6 className="fw-semibold">🌞 Day / 🌙 Night Analysis (Monthly Aggregate)</h6>
-
-            {(() => {
-              let dayRevenue = 0,
-                nightRevenue = 0,
-                dayBookings = 0,
-                nightBookings = 0;
-
-              selectedMonthData.days.forEach((d: any) => {
-                dayRevenue += d?.time_split?.day?.revenue ?? 0;
-                nightRevenue += d?.time_split?.night?.revenue ?? 0;
-                dayBookings += d?.time_split?.day?.bookings ?? 0;
-                nightBookings += d?.time_split?.night?.bookings ?? 0;
-              });
-
-              return (
-                <>
-                  <p><strong>Day:</strong> {dayBookings} bookings — ₹{dayRevenue}</p>
-                  <p><strong>Night:</strong> {nightBookings} bookings — ₹{nightRevenue}</p>
-                </>
-              );
-            })()}
+          {/* TURF PERFORMANCE */}
+          <div className="card shadow-sm p-3">
+            <h6 className="fw-semibold mb-3">🏟 Turf Performance</h6>
+            <div className="table-responsive">
+              <table className="table table-sm table-bordered">
+                <thead className="table-light">
+                  <tr>
+                    <th>Turf</th>
+                    <th>Bookings</th>
+                    <th>Revenue</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {turfSummary.map(([name, t]: any, i) => (
+                    <tr key={i}>
+                      <td>{name}</td>
+                      <td>{t.bookings}</td>
+                      <td>
+                        ₹{t.revenue.toLocaleString("en-IN")}
+                      </td>
+                    </tr>
+                  ))}
+                  {turfSummary.length === 0 && (
+                    <tr>
+                      <td colSpan={3} className="text-center text-muted">
+                        No turf data available
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </>
       )}

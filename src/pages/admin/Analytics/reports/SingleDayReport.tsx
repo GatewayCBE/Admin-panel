@@ -1,3 +1,5 @@
+// src/pages/admin/Analytics/reports/SingleDayReport.tsx
+
 import React, { useState } from "react";
 import { Bar } from "react-chartjs-2";
 
@@ -5,19 +7,43 @@ interface SingleDayReportProps {
   daily: any[];
 }
 
-const SingleDayReport: React.FC<SingleDayReportProps> = ({ daily }) => {
-  const [selectedDate, setSelectedDate] = useState("");
+/* ─────────────────────────────────────────────
+   SHARED CHART OPTIONS
+────────────────────────────────────────────── */
+const chartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { position: "top" as const },
+  },
+  scales: {
+    y: {
+      beginAtZero: true,
+      ticks: { stepSize: 1 },
+    },
+  },
+};
 
-  // Find the selected date's data
+const SingleDayReport: React.FC<SingleDayReportProps> = ({ daily }) => {
+  const [selectedDate, setSelectedDate] = useState<string>("");
+
   const dayData = daily.find((d) => d.id === selectedDate);
 
   return (
-    <div className="container">
-      {/* 🔍 Date Selector */}
-      <div className="card p-3 mb-4 shadow-sm border-0">
-        <label className="fw-semibold">Select Date</label>
+    <div className="px-2">
+      {/* HEADER */}
+      <div className="mb-3">
+        <h4 className="fw-bold mb-1">📅 Single Day Report</h4>
+        <small className="text-muted">
+          Detailed performance for a selected date
+        </small>
+      </div>
+
+      {/* DATE SELECTOR */}
+      <div className="card shadow-sm p-3 mb-4">
+        <label className="fw-semibold mb-2">Select Date</label>
         <select
-          className="form-select mt-2"
+          className="form-select"
           value={selectedDate}
           onChange={(e) => setSelectedDate(e.target.value)}
         >
@@ -30,24 +56,49 @@ const SingleDayReport: React.FC<SingleDayReportProps> = ({ daily }) => {
         </select>
       </div>
 
-      {/* ❗ If no date selected */}
-      {!dayData && <p className="text-center text-muted">Please select a date to view analytics.</p>}
+      {/* EMPTY STATE */}
+      {!dayData && (
+        <div className="text-center text-muted mt-5">
+          📌 Please select a date to view analytics.
+        </div>
+      )}
 
-      {/* 📊 Report Section */}
+      {/* REPORT CONTENT */}
       {dayData && (
-        <div>
-          {/* Overall Stats */}
-          <div className="card shadow-sm p-4 mb-4 border-0">
-            <h5 className="fw-semibold text-center mb-3">📆 Report for {selectedDate}</h5>
-            <p><strong>Total Bookings:</strong> {dayData.total_bookings}</p>
-            <p><strong>Total Revenue:</strong> ₹{dayData.total_revenue}</p>
+        <>
+          {/* KPI SUMMARY */}
+          <div className="row g-3 mb-4">
+            {[
+              ["Total Bookings", dayData.total_bookings ?? 0],
+              [
+                "Total Revenue",
+                `₹${(dayData.total_revenue ?? 0).toLocaleString("en-IN")}`,
+              ],
+              [
+                "Day Bookings",
+                dayData?.time_split?.day?.bookings ?? 0,
+              ],
+              [
+                "Night Bookings",
+                dayData?.time_split?.night?.bookings ?? 0,
+              ],
+            ].map(([label, value], i) => (
+              <div key={i} className="col-lg-3 col-md-6">
+                <div className="card shadow-sm p-3 text-center h-100">
+                  <small className="text-muted">{label}</small>
+                  <h4 className="fw-bold mt-1">{value}</h4>
+                </div>
+              </div>
+            ))}
           </div>
 
-          {/* Day vs Night Chart */}
-          <div className="card shadow-sm p-4 mb-4 border-0">
-            <h6 className="fw-semibold text-center">Day vs Night Performance</h6>
+          {/* DAY vs NIGHT CHART */}
+          <div className="card shadow-sm p-3 mb-4">
+            <h6 className="fw-semibold text-center mb-2">
+              🌞🌙 Day vs Night Performance — {selectedDate}
+            </h6>
 
-            <div style={{ height: 300 }}>
+            <div style={{ height: 320 }}>
               <Bar
                 data={{
                   labels: ["Day", "Night"],
@@ -58,7 +109,7 @@ const SingleDayReport: React.FC<SingleDayReportProps> = ({ daily }) => {
                         dayData?.time_split?.day?.bookings ?? 0,
                         dayData?.time_split?.night?.bookings ?? 0,
                       ],
-                      backgroundColor: ["#4CAF50", "#FF7043"],
+                      backgroundColor: "#0d6efd",
                     },
                     {
                       label: "Revenue (₹)",
@@ -66,15 +117,15 @@ const SingleDayReport: React.FC<SingleDayReportProps> = ({ daily }) => {
                         dayData?.time_split?.day?.revenue ?? 0,
                         dayData?.time_split?.night?.revenue ?? 0,
                       ],
-                      backgroundColor: ["#81C784", "#FF8A65"],
+                      backgroundColor: "#198754",
                     },
                   ],
                 }}
-                options={{ responsive: true, plugins: { legend: { position: "top" } } }}
+                options={chartOptions}
               />
             </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );
