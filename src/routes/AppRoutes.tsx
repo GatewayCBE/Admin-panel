@@ -21,6 +21,7 @@ import { PublicLayout, UserLayout, AdminLayout } from "./Layout";
 import TurfDetail from "../pages/user/TurfDetail";
 import SlotDetails from "../pages/user/SlotDetails";
 import OwnerDashboard from "../pages/owner/OwnerDashboard";
+import AddTurfForm from "../pages/admin/Owner/AddTurf";
 
 const AppRoutes: React.FC = () => {
   return (
@@ -41,7 +42,7 @@ const AppRoutes: React.FC = () => {
 
       {/* 👤 Owner pages */}
       <Route element={<UserLayout />}>
-        <Route path="/owner/dashboard" element={<OwnerDashboard />} />
+        <Route path="/owner/dashboard" element={<AddTurfForm />} />
       </Route>
 
       {/* 🛠 Admin pages */}

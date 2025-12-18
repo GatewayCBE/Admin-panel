@@ -16,6 +16,7 @@ import {
   connectFunctionsEmulator,
 } from "firebase/functions";
 import { getApp } from "firebase/app";
+import { Owner } from "../types/types";
 
 /**
  * Generate Custom ID exactly like Flutter app
@@ -35,6 +36,21 @@ export const generateCustomId = (role: "user" | "owner", name: string): string =
 
   const timestamp = `${dd}${mm}${yyyy}${hh}${mins}${ss}`;
   return `${prefix}${namePart}_${timestamp}`;
+};
+
+export const generateTurfId = (ownerName: string): string => {
+  const prefix = "TID_";
+  const namePart = ownerName.trim().slice(0, 3);
+
+  const now = new Date();
+  const dd = String(now.getDate()).padStart(2, "0");
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const yyyy = now.getFullYear();
+  const hh = String(now.getHours()).padStart(2, "0");
+  const min = String(now.getMinutes()).padStart(2, "0");
+  const ss = String(now.getSeconds()).padStart(2, "0");
+
+  return `${prefix}${namePart}_${dd}${mm}${yyyy}${hh}${min}${ss}`;
 };
 
 /**
@@ -233,6 +249,121 @@ export async function isSlotAlreadyBooked({ turfId, dateString, sportName, court
   const snap = await getDoc(ref);
   return snap.exists();
 }
+
+/**
+ * Get owner details using owner_id field
+ */
+export const getOwnerByOwnerId = async (
+  ownerId: string
+): Promise<Owner | null> => {
+  try {
+    const ownerRef = collection(db, "environment", "testing", "owners");
+    const q = query(ownerRef, where("owner_id", "==", ownerId));
+    const snap = await getDocs(q);
+
+    if (snap.empty) return null;
+
+    const docSnap = snap.docs[0];
+
+    return {
+      doc_id: docSnap.id,
+      ...(docSnap.data() as Omit<Owner, "doc_id">),
+    };
+  } catch (error) {
+    console.error("Error fetching owner:", error);
+    return null;
+  }
+};
+
+const mapPrices = (sports: any[]) => {
+  const result: any = {};
+
+  sports.forEach((s) => {
+    const key = s.name.toLowerCase();
+    result[key] = {};
+
+    Object.keys(s.dayPrices).forEach((day) => {
+      result[key][day] = {
+        day: Number(s.dayPrices[day] || 0),
+        night: Number(s.nightPrices[day] || 0),
+      };
+    });
+  });
+
+  return result;
+};
+
+const mapTimings = (sports: any[]) => {
+  const result: any = {};
+
+  sports.forEach((s) => {
+    const key = s.name.toLowerCase();
+    result[key] = {
+      opening_time: s.openingTime,
+      closing_time: s.closingTime,
+      day_start_time: s.daySlotStart,
+      day_end_time: s.daySlotEnd,
+      night_start_time: s.nightSlotStart,
+      night_end_time: s.nightSlotEnd,
+    };
+  });
+
+  return result;
+};
+
+const mapPersons = (sports: any[]) => {
+  const result: any = {};
+
+  sports.forEach((s) => {
+    const key = s.name.toLowerCase();
+    result[key] = Number(s.maxPersons || 0);
+  });
+
+  return result;
+};
+
+export const createTurf = async ({
+  formData,
+  sports,
+  ownerId,
+  ownerName,
+  imageUrls,
+  addedSource,
+}: any) => {
+  const turfId = generateTurfId(ownerName);
+
+  const turfDoc = {
+    turf_id: turfId,
+    turf_name: formData.turfName,
+    turf_location: formData.turfAddress,
+    turf_description: formData.turfDescription,
+    turf_length: `${formData.turfLength} ${formData.dimensionUnit}`,
+    turf_breadth: `${formData.turfBreadth} ${formData.dimensionUnit}`,
+    turf_height: `${formData.turfHeight} ${formData.dimensionUnit}`,
+    amenities: formData.facilities,
+    badminton_court_type: formData.badmintonCourtType || null,
+    owner_id: ownerId,
+    turf_images: imageUrls,
+    available_sports_list: sports.map((s: any) => s.name),
+    sport_specific_price: mapPrices(sports),
+    sport_specific_timing: mapTimings(sports),
+    sports_specific_person_count: mapPersons(sports),
+    turf_active_status: true,
+    added_source: {
+      platform: addedSource.platform,
+      checked_by: ownerId,
+      checked_at: new Date(),
+    },
+    created_at: new Date(),
+  };
+
+  await setDoc(
+    doc(db, "environment", "testing", "turfs", turfId),
+    turfDoc
+  );
+
+  return turfId;
+};
 
 export const debugPath = async () => {
   try {

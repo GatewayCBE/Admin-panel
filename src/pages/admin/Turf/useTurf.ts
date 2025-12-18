@@ -14,6 +14,9 @@ export const useTurf = () => {
           turf_name: turf.turf_name ?? "",
           turf_location: turf.turf_location ?? "",
           owner_id: turf.owner_id ?? "",
+          owner_name: turf.owner_name ?? "",
+          owner_mobile_number: turf.owner_mobile_number ?? "",
+          owner_email: turf.owner_email ?? "",
           turf_closing_hour: turf.turf_closing_hour ?? "",
           turf_opening_hour: turf.turf_opening_hour ?? "",
 

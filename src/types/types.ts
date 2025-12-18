@@ -1,8 +1,11 @@
- interface Turf {
+export interface Turf {
   turf_id: string;
   turf_name: string;
   turf_location: string;
   owner_id: string;
+  owner_name: string;
+  owner_mobile_number: string;
+  owner_email: string;
 
   turf_closing_hour: string;
   turf_opening_hour: string;
@@ -47,4 +50,12 @@
   turf_height?: string;
 
   turf_active_status?: boolean;
+}
+
+export interface Owner {
+  doc_id: string;
+  owner_id: string;
+  owner_name: string;
+  owner_mobile_number: string;
+  owner_email?: string;
 }

@@ -10,7 +10,7 @@ interface WeekSplitReportProps {
 }
 
 /* ─────────────────────────────────────────────
-   SHARED HELPERS
+   HELPERS
 ────────────────────────────────────────────── */
 const parseDate = (dateStr: string) => {
   const [day, month, year] = dateStr.split("-");
@@ -25,12 +25,11 @@ const isWeekend = (dateStr: string) => {
 const chartOptions = {
   responsive: true,
   maintainAspectRatio: false,
-  plugins: {
-    legend: { position: "top" as const },
-  },
+  plugins: { legend: { display: false } },
   scales: {
     y: {
       beginAtZero: true,
+      ticks: { precision: 0 },
     },
   },
 };
@@ -52,38 +51,28 @@ const WeekSplitReport: React.FC<WeekSplitReportProps> = ({ daily }) => {
   }, [daily, startDate, endDate]);
 
   /* ─────────────────────────────────────────────
-     AGGREGATIONS
+     AGGREGATION
   ───────────────────────────────────────────── */
-  let weekdayBookings = 0;
-  let weekdayRevenue = 0;
-  let weekendBookings = 0;
-  let weekendRevenue = 0;
-
-  filteredData.forEach((d) => {
-    if (isWeekend(d.id)) {
-      weekendBookings += d.total_bookings ?? 0;
-      weekendRevenue += d.total_revenue ?? 0;
-    } else {
-      weekdayBookings += d.total_bookings ?? 0;
-      weekdayRevenue += d.total_revenue ?? 0;
-    }
-  });
-
-  const weekData = {
-    labels: ["Weekday", "Weekend"],
-    datasets: [
-      {
-        label: "Bookings",
-        data: [weekdayBookings, weekendBookings],
-        backgroundColor: "#0d6efd",
+  const totals = useMemo(() => {
+    return filteredData.reduce(
+      (acc, d) => {
+        if (isWeekend(d.id)) {
+          acc.weekendBookings += d.total_bookings ?? 0;
+          acc.weekendRevenue += d.total_revenue ?? 0;
+        } else {
+          acc.weekdayBookings += d.total_bookings ?? 0;
+          acc.weekdayRevenue += d.total_revenue ?? 0;
+        }
+        return acc;
       },
       {
-        label: "Revenue (₹)",
-        data: [weekdayRevenue, weekendRevenue],
-        backgroundColor: "#198754",
-      },
-    ],
-  };
+        weekdayBookings: 0,
+        weekdayRevenue: 0,
+        weekendBookings: 0,
+        weekendRevenue: 0,
+      }
+    );
+  }, [filteredData]);
 
   return (
     <div className="px-2">
@@ -118,15 +107,15 @@ const WeekSplitReport: React.FC<WeekSplitReportProps> = ({ daily }) => {
       {/* KPI CARDS */}
       <div className="row g-3 mb-4">
         {[
-          ["Weekday Bookings", weekdayBookings],
+          ["Weekday Bookings", totals.weekdayBookings],
           [
             "Weekday Revenue",
-            `₹${weekdayRevenue.toLocaleString("en-IN")}`,
+            `₹${totals.weekdayRevenue.toLocaleString("en-IN")}`,
           ],
-          ["Weekend Bookings", weekendBookings],
+          ["Weekend Bookings", totals.weekendBookings],
           [
             "Weekend Revenue",
-            `₹${weekendRevenue.toLocaleString("en-IN")}`,
+            `₹${totals.weekendRevenue.toLocaleString("en-IN")}`,
           ],
         ].map(([label, value], i) => (
           <div key={i} className="col-lg-3 col-md-6">
@@ -138,13 +127,60 @@ const WeekSplitReport: React.FC<WeekSplitReportProps> = ({ daily }) => {
         ))}
       </div>
 
-      {/* CHART */}
-      <div className="card shadow-sm p-3 mb-4">
-        <h6 className="fw-semibold text-center mb-2">
-          📊 Weekday vs Weekend Comparison
-        </h6>
-        <div style={{ height: 320 }}>
-          <Bar data={weekData} options={chartOptions} />
+      {/* CHARTS */}
+      <div className="row g-4 mb-4">
+        {/* BOOKINGS */}
+        <div className="col-lg-6">
+          <div className="card shadow-sm p-3 h-100">
+            <h6 className="fw-semibold text-center mb-2">
+              📦 Bookings — Weekday vs Weekend
+            </h6>
+            <div style={{ height: 280 }}>
+              <Bar
+                key={`bookings-${startDate}-${endDate}`}
+                data={{
+                  labels: ["Weekday", "Weekend"],
+                  datasets: [
+                    {
+                      data: [
+                        totals.weekdayBookings,
+                        totals.weekendBookings,
+                      ],
+                      backgroundColor: "#0d6efd",
+                    },
+                  ],
+                }}
+                options={chartOptions}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* REVENUE */}
+        <div className="col-lg-6">
+          <div className="card shadow-sm p-3 h-100">
+            <h6 className="fw-semibold text-center mb-2">
+              💰 Revenue — Weekday vs Weekend
+            </h6>
+            <div style={{ height: 280 }}>
+              <Bar
+                key={`revenue-${startDate}-${endDate}`}
+                data={{
+                  labels: ["Weekday", "Weekend"],
+                  datasets: [
+                    {
+                      data: [
+                        totals.weekdayRevenue,
+                        totals.weekendRevenue,
+                      ],
+                      backgroundColor: "#198754",
+                    },
+                  ],
+                }}
+                options={chartOptions}
+              />
+            </div>
+          </div>
         </div>
       </div>
 

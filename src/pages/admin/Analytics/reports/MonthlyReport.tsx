@@ -152,26 +152,61 @@ const MonthlyReport: React.FC<MonthlyReportProps> = ({ daily }) => {
           </div>
 
           {/* MONTHLY COMPARISON */}
-          <div className="card shadow-sm p-3 mb-4">
-            <h6 className="fw-semibold text-center mb-2">
-              📊 Monthly Overview
-            </h6>
-            <div style={{ height: 320 }}>
-              <Bar
-                data={{
-                  labels: ["Bookings", "Revenue"],
-                  datasets: [
-                    {
-                      label: selectedMonth,
-                      data: [month.bookings, month.revenue],
-                      backgroundColor: ["#0d6efd", "#198754"],
-                    },
-                  ],
-                }}
-                options={chartOptions}
-              />
-            </div>
-          </div>
+          <div className="row g-4 mb-4">
+  {/* BOOKINGS */}
+  <div className="col-lg-6">
+    <div className="card shadow-sm p-3 h-100">
+      <h6 className="fw-semibold text-center mb-2">
+        📦 Monthly Bookings — {selectedMonth}
+      </h6>
+      <div style={{ height: 280 }}>
+        <Bar
+          key={`monthly-bookings-${selectedMonth}`}
+          data={{
+            labels: ["Bookings"],
+            datasets: [
+              {
+                data: [month.bookings],
+                backgroundColor: "#0d6efd",
+              },
+            ],
+          }}
+          options={{
+            ...chartOptions,
+            plugins: { legend: { display: false } },
+          }}
+        />
+      </div>
+    </div>
+  </div>
+
+  {/* REVENUE */}
+  <div className="col-lg-6">
+    <div className="card shadow-sm p-3 h-100">
+      <h6 className="fw-semibold text-center mb-2">
+        💰 Monthly Revenue — {selectedMonth}
+      </h6>
+      <div style={{ height: 280 }}>
+        <Bar
+          key={`monthly-revenue-${selectedMonth}`}
+          data={{
+            labels: ["Revenue"],
+            datasets: [
+              {
+                data: [month.revenue],
+                backgroundColor: "#198754",
+              },
+            ],
+          }}
+          options={{
+            ...chartOptions,
+            plugins: { legend: { display: false } },
+          }}
+        />
+      </div>
+    </div>
+  </div>
+</div>
 
           {/* DAY / NIGHT SPLIT */}
           <div className="card shadow-sm p-3 mb-4">

@@ -7,19 +7,16 @@ interface TimeSplitReportProps {
   daily: any[];
 }
 
-/* ─────────────────────────────────────────────
-   SHARED CHART OPTIONS
-────────────────────────────────────────────── */
-const baseChartOptions = {
+const chartOptions = {
   responsive: true,
   maintainAspectRatio: false,
   plugins: {
-    legend: { position: "top" as const },
+    legend: { display: false },
   },
   scales: {
     y: {
       beginAtZero: true,
-      ticks: { stepSize: 1 },
+      ticks: { precision: 0 },
     },
   },
 };
@@ -37,14 +34,14 @@ const TimeSplitReport: React.FC<TimeSplitReportProps> = ({ daily }) => {
   }, [daily, selectedDate]);
 
   /* ─────────────────────────────────────────────
-     AGGREGATIONS
+     AGGREGATION
   ────────────────────────────────────────────── */
   const totals = useMemo(() => {
     return filteredData.reduce(
       (acc, d) => {
         acc.dayBookings += d?.time_split?.day?.bookings ?? 0;
-        acc.dayRevenue += d?.time_split?.day?.revenue ?? 0;
         acc.nightBookings += d?.time_split?.night?.bookings ?? 0;
+        acc.dayRevenue += d?.time_split?.day?.revenue ?? 0;
         acc.nightRevenue += d?.time_split?.night?.revenue ?? 0;
         acc.totalBookings += d?.total_bookings ?? 0;
         acc.totalRevenue += d?.total_revenue ?? 0;
@@ -52,8 +49,8 @@ const TimeSplitReport: React.FC<TimeSplitReportProps> = ({ daily }) => {
       },
       {
         dayBookings: 0,
-        dayRevenue: 0,
         nightBookings: 0,
+        dayRevenue: 0,
         nightRevenue: 0,
         totalBookings: 0,
         totalRevenue: 0,
@@ -61,28 +58,13 @@ const TimeSplitReport: React.FC<TimeSplitReportProps> = ({ daily }) => {
     );
   }, [filteredData]);
 
-    if (!daily || daily.length === 0) {
-    return <p className="text-muted text-center">No time-split data available.</p>;
+  if (!daily || daily.length === 0) {
+    return (
+      <p className="text-muted text-center">
+        No time-split data available.
+      </p>
+    );
   }
-
-  /* ─────────────────────────────────────────────
-     CHART DATA
-  ────────────────────────────────────────────── */
-  const dayNightChartData = {
-    labels: ["Day", "Night"],
-    datasets: [
-      {
-        label: "Bookings",
-        data: [totals.dayBookings, totals.nightBookings],
-        backgroundColor: "#0d6efd",
-      },
-      {
-        label: "Revenue (₹)",
-        data: [totals.dayRevenue, totals.nightRevenue],
-        backgroundColor: "#198754",
-      },
-    ],
-  };
 
   return (
     <div className="px-2">
@@ -95,7 +77,6 @@ const TimeSplitReport: React.FC<TimeSplitReportProps> = ({ daily }) => {
           </small>
         </div>
 
-        {/* DATE FILTER */}
         <select
           className="form-select w-auto"
           value={selectedDate}
@@ -127,13 +108,54 @@ const TimeSplitReport: React.FC<TimeSplitReportProps> = ({ daily }) => {
         ))}
       </div>
 
-      {/* DAY vs NIGHT CHART */}
-      <div className="card shadow-sm p-3 mb-4">
-        <h6 className="fw-semibold mb-2 text-center">
-          📊 Day vs Night Comparison
-        </h6>
-        <div style={{ height: 320 }}>
-          <Bar data={dayNightChartData} options={baseChartOptions} />
+      {/* CHARTS */}
+      <div className="row g-4 mb-4">
+        {/* BOOKINGS */}
+        <div className="col-lg-6">
+          <div className="card shadow-sm p-3 h-100">
+            <h6 className="fw-semibold text-center mb-2">
+              📦 Bookings — Day vs Night
+            </h6>
+            <div style={{ height: 280 }}>
+              <Bar
+                key={`bookings-${selectedDate}`}
+                data={{
+                  labels: ["Day", "Night"],
+                  datasets: [
+                    {
+                      data: [totals.dayBookings, totals.nightBookings],
+                      backgroundColor: "#0d6efd",
+                    },
+                  ],
+                }}
+                options={chartOptions}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* REVENUE */}
+        <div className="col-lg-6">
+          <div className="card shadow-sm p-3 h-100">
+            <h6 className="fw-semibold text-center mb-2">
+              💰 Revenue — Day vs Night
+            </h6>
+            <div style={{ height: 280 }}>
+              <Bar
+                key={`revenue-${selectedDate}`}
+                data={{
+                  labels: ["Day", "Night"],
+                  datasets: [
+                    {
+                      data: [totals.dayRevenue, totals.nightRevenue],
+                      backgroundColor: "#198754",
+                    },
+                  ],
+                }}
+                options={chartOptions}
+              />
+            </div>
+          </div>
         </div>
       </div>
 

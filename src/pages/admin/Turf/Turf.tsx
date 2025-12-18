@@ -1,12 +1,16 @@
 // src/pages/admin/Turf/Turf.tsx
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { useTurf } from "./useTurf";
+import { getOwnerByOwnerId } from "../../../services/firestoreService";
 
 const Turf: React.FC = () => {
   const { turfs } = useTurf();
   const [search, setSearch] = useState("");
-  const navigate = useNavigate();
+  const [ownerInfo, setOwnerInfo] = useState<{
+    name: string;
+    phone: string;
+    email?: string;
+  } | null>(null);
 
   // Filter logic
   const filteredTurfs = turfs.filter((turf) =>
@@ -49,6 +53,19 @@ const Turf: React.FC = () => {
     if (sport.includes("badminton")) return "🏸";
     return "🎯";
   };
+
+  const handleCallOwner = async (ownerId: string) => {
+    const owner = await getOwnerByOwnerId(ownerId);
+    if(!owner) {
+      alert("Owner details not found");
+      return;
+    }
+    setOwnerInfo({
+      name: owner.owner_name,
+      phone: owner.owner_mobile_number,
+      email: owner.owner_email,
+    });
+  }
 
   return (
     <div className="container py-1">
@@ -209,19 +226,51 @@ const Turf: React.FC = () => {
 
                     {/* CTA */}
                     <button
-                      className="btn btn-success w-100 rounded-pill fw-semibold"
-                      onClick={() => navigate(`/user/turfs/${turf.turf_id}`)}
+                      className="btn btn-outline-success w-100 rounded-pill fw-semibold"
+                      data-bs-toggle="modal"
+                      data-bs-target="#callOwnerModal"
+                      onClick={() => handleCallOwner(turf.owner_id)}
                     >
-                      View Details →
+                      📞 Call Owner
                     </button>
                   </div>
                 </div>
               </div>
             );
           })}
+          <div className="modal fade" id="callOwnerModal" tabIndex={-1}>
+  <div className="modal-dialog modal-dialog-centered">
+    <div className="modal-content rounded-4 shadow">
+
+      <div className="modal-header">
+        <h5 className="modal-title">📞 Owner Details</h5>
+        <button className="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div className="modal-body text-center">
+        <div className="fs-1 mb-2">👤</div>
+
+        <h5 className="fw-bold">{ownerInfo?.name}</h5>
+        <p className="text-muted">{ownerInfo?.phone}</p>
+
+        <div className="d-flex justify-content-center gap-2 mt-3">
+          <a
+            href={`tel:${ownerInfo?.phone}`}
+            className="btn btn-success rounded-pill px-4"
+          >
+            📲 Call Now
+          </a>
         </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+        </div>
+        
       )}
     </div>
+    
   );
 };
 
