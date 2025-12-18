@@ -1,159 +1,204 @@
-// src/pages/admin/Analytics/UserReport.tsx
+// src/pages/admin/Analytics/reports/UserReport.tsx
 
-import React, { useEffect, useState, useMemo } from "react";
-import { getDailyAnalytics, getUserAnalytics } from "../../../../services/firestoreService";
-
-import {
-  Chart as ChartJS,
-  ArcElement,
-  BarElement,
-  CategoryScale,
-  LinearScale,
-  Tooltip,
-  Legend,
-  Title,
-} from "chart.js";
+import React, { useMemo } from "react";
 import { Bar } from "react-chartjs-2";
 
-ChartJS.register(CategoryScale, ArcElement, LinearScale, BarElement, Tooltip, Legend, Title);
-
+/* ─────────────────────────────────────────────
+   TYPES
+────────────────────────────────────────────── */
 interface UserReportProps {
-  users: any[]; // receives from parent
+  users: any[];
 }
 
-const UserReport: React.FC<UserReportProps> = ({users}) => {
-  const [activeTab, setActiveTab] = useState("monthly");
-  const [dailyData, setDailyData] = useState<any[]>([]);
-  const [userData, setUserData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+/* ─────────────────────────────────────────────
+   CHART OPTIONS (HORIZONTAL BAR)
+────────────────────────────────────────────── */
+const chartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  indexAxis: "y" as const,
+  plugins: {
+    legend: { display: false },
+  },
+  scales: {
+    x: { beginAtZero: true },
+  },
+};
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const [daily, users] = await Promise.all([
-          getDailyAnalytics(),
-          getUserAnalytics(),
-        ]);
-        setDailyData(daily);
-        setUserData(users);
-      } catch (error) {
-        console.error("Error fetching analytics:", error);
-      } finally {
-        setLoading(false);
+/* ─────────────────────────────────────────────
+   COMPONENT
+────────────────────────────────────────────── */
+const UserReport: React.FC<UserReportProps> = ({ users }) => {
+  /* ─────────────────────────────────────────────
+     NORMALIZE USERS (REMOVE DUPLICATES)
+  ───────────────────────────────────────────── */
+  const normalizedUsers = useMemo(() => {
+    const map: Record<string, any> = {};
+
+    users.forEach((u) => {
+      const key = u.user_id || u.user_name || "unknown";
+
+      if (!map[key]) {
+        map[key] = {
+          user_id: key,
+          user_name: u.user_name || "Unknown User",
+          total_spent: 0,
+          total_bookings: 0,
+        };
       }
-    })();
-  }, []);
 
-  // Get monthly aggregated data
-  const monthlyData = useMemo(() => {
-    const monthlyMap: Record<string, { revenue: number; bookings: number }> = {};
-
-    dailyData.forEach((day: any) => {
-      const date = new Date(day.date);
-      if (isNaN(date.getTime())) return;
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-
-      if (!monthlyMap[monthKey]) {
-        monthlyMap[monthKey] = { revenue: 0, bookings: 0 };
-      }
-
-      monthlyMap[monthKey].revenue += day.total_revenue ?? 0;
-      monthlyMap[monthKey].bookings += day.total_bookings ?? 0;
+      map[key].total_spent += u.total_spent ?? 0;
+      map[key].total_bookings += u.total_bookings ?? 0;
     });
 
-    return Object.entries(monthlyMap).map(([month, stats]) => ({
-      month,
-      ...stats,
-    }));
-  }, [dailyData]);
+    return Object.values(map);
+  }, [users]);
 
-  // Chart data for monthly analytics
+  /* ─────────────────────────────────────────────
+     SORT USERS BY SPENDING
+  ───────────────────────────────────────────── */
+  const sortedUsers = useMemo(() => {
+    return [...normalizedUsers].sort(
+      (a, b) => b.total_spent - a.total_spent
+    );
+  }, [normalizedUsers]);
+
+  /* ─────────────────────────────────────────────
+     KPIs
+  ───────────────────────────────────────────── */
+  const totalUsers = normalizedUsers.length;
+
+  const totalRevenue = normalizedUsers.reduce(
+    (sum, u) => sum + u.total_spent,
+    0
+  );
+
+  const totalBookings = normalizedUsers.reduce(
+    (sum, u) => sum + u.total_bookings,
+    0
+  );
+
+  const avgSpendPerUser =
+    totalUsers > 0 ? Math.round(totalRevenue / totalUsers) : 0;
+
+  const repeatUsers = normalizedUsers.filter(
+    (u) => u.total_bookings > 1
+  ).length;
+
+  const repeatRate =
+    totalUsers > 0 ? Math.round((repeatUsers / totalUsers) * 100) : 0;
+
+  /* ─────────────────────────────────────────────
+     TOP USERS CHART
+  ───────────────────────────────────────────── */
+  const topUsers = sortedUsers.slice(0, 10);
+
   const chartData = {
-    labels: monthlyData.map((item) => item.month),
+    labels: topUsers.map((u) =>
+      u.user_name.length > 12 ? u.user_name.slice(0, 12) + "…" : u.user_name
+    ),
     datasets: [
       {
-        label: "Revenue (₹)",
-        data: monthlyData.map((item) => item.revenue),
-        backgroundColor: "#36A2EB",
-      },
-      {
-        label: "Bookings",
-        data: monthlyData.map((item) => item.bookings),
-        backgroundColor: "#FFCE56",
+        label: "Total Spent (₹)",
+        data: topUsers.map((u) => u.total_spent),
+        backgroundColor: "#198754",
       },
     ],
   };
 
-  const chartOptions = {
-    responsive: true,
-    plugins: { legend: { position: "bottom" } },
-    scales: { y: { beginAtZero: true } },
-  };
-
-  if (loading) {
-    return (
-      <div className="text-center mt-5">
-        <div className="spinner-border"></div>
-        <p>Loading user analytics...</p>
-      </div>
-    );
-  }
-
   return (
-    <div>
+    <div className="px-2">
+      {/* HEADER */}
+      <div className="mb-3">
+        <h4 className="fw-bold mb-1">👤 User Analytics Report</h4>
+        <small className="text-muted">
+          User spending & booking behavior insights
+        </small>
+      </div>
 
-      <div className="container mt-4">
-        <h2 className="fw-bold mb-3">User Report Analytics</h2>
-
-        {/* Tabs */}
-        <ul className="nav nav-tabs mb-4">
-          <li className="nav-item">
-            <button
-              className={`nav-link ${activeTab === "monthly" ? "active" : ""}`}
-              onClick={() => setActiveTab("monthly")}
-            >
-              Monthly
-            </button>
-          </li>
-          <li className="nav-item">
-            <button className="nav-link disabled">Weekly (coming)</button>
-          </li>
-          <li className="nav-item">
-            <button className="nav-link disabled">Weekday / Weekend</button>
-          </li>
-          <li className="nav-item">
-            <button className="nav-link disabled">Day vs Night</button>
-          </li>
-        </ul>
-
-        {activeTab === "monthly" && (
-          <div className="card shadow-sm p-4">
-            <h5 className="fw-semibold mb-3">Monthly User Analytics</h5>
-
-            <div style={{ height: 350 }}>
-              <Bar data={chartData} options={chartOptions as any} />
+      {/* KPI CARDS */}
+      <div className="row g-3 mb-4">
+        {[
+          ["Total Users", totalUsers],
+          ["Total Bookings", totalBookings],
+          ["Total Revenue", `₹${totalRevenue.toLocaleString("en-IN")}`],
+          ["Avg Spend / User", `₹${avgSpendPerUser}`],
+          ["Repeat Users", `${repeatRate}%`],
+        ].map(([label, value], i) => (
+          <div key={i} className="col-lg-3 col-md-6">
+            <div className="card shadow-sm p-3 text-center h-100">
+              <small className="text-muted">{label}</small>
+              <h4 className="fw-bold mt-1">{value}</h4>
             </div>
-
-            <table className="table table-striped table-bordered mt-4">
-              <thead>
-                <tr>
-                  <th>Month</th>
-                  <th>Total Bookings</th>
-                  <th>Total Revenue (₹)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {monthlyData.map((item, i) => (
-                  <tr key={i}>
-                    <td>{item.month}</td>
-                    <td>{item.bookings}</td>
-                    <td>₹{item.revenue.toLocaleString("en-IN")}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
-        )}
+        ))}
+      </div>
+
+      {/* TOP USERS CHART */}
+      <div className="card shadow-sm p-3 mb-4">
+        <h6 className="fw-semibold mb-2 text-center">
+          🏆 Top 10 Users by Spending
+        </h6>
+        <div style={{ height: 360 }}>
+          <Bar data={chartData} options={chartOptions} />
+        </div>
+      </div>
+
+      {/* USER TABLE */}
+      <div className="card shadow-sm p-3">
+        <h6 className="fw-semibold mb-3">
+          📋 Complete User Performance
+        </h6>
+
+        <div className="table-responsive">
+          <table className="table table-sm table-bordered table-hover align-middle">
+            <thead className="table-light">
+              <tr>
+                <th>#</th>
+                <th>User</th>
+                <th>Bookings</th>
+                <th>Total Spent</th>
+                <th>Avg / Booking</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedUsers.map((u, idx) => (
+                <tr
+                  key={u.user_id}
+                  className={u.total_spent > 5000 ? "table-success" : ""}
+                >
+                  <td>{idx + 1}</td>
+                  <td>
+                    {u.total_bookings > 5 && (
+                      <span className="badge bg-success me-1">
+                        Frequent
+                      </span>
+                    )}
+                    {u.user_name}
+                  </td>
+                  <td>{u.total_bookings}</td>
+                  <td>
+                    ₹{u.total_spent.toLocaleString("en-IN")}
+                  </td>
+                  <td>
+                    ₹
+                    {u.total_bookings
+                      ? Math.round(u.total_spent / u.total_bookings)
+                      : 0}
+                  </td>
+                </tr>
+              ))}
+
+              {sortedUsers.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="text-center text-muted">
+                    No user analytics available
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

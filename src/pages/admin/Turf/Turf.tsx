@@ -1,97 +1,276 @@
+// src/pages/admin/Turf/Turf.tsx
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { useTurf } from "./useTurf";
+import { getOwnerByOwnerId } from "../../../services/firestoreService";
 
 const Turf: React.FC = () => {
   const { turfs } = useTurf();
   const [search, setSearch] = useState("");
-  const navigate = useNavigate();
+  const [ownerInfo, setOwnerInfo] = useState<{
+    name: string;
+    phone: string;
+    email?: string;
+  } | null>(null);
 
-  const filteredTurfs = turfs.filter(
-    (turf) =>
-      turf.turf_name.toLowerCase().includes(search.toLowerCase()) ||
-      turf.turf_location.toLowerCase().includes(search.toLowerCase()) ||
-      turf.owner_id.toLowerCase().includes(search.toLowerCase())
+  // Filter logic
+  const filteredTurfs = turfs.filter((turf) =>
+    turf.turf_name.toLowerCase().includes(search.toLowerCase()) ||
+    turf.turf_location.toLowerCase().includes(search.toLowerCase()) ||
+    turf.owner_id.toLowerCase().includes(search.toLowerCase())
   );
 
-  return (
-    <div className="container py-4">
-      <h2 className="text-center text-success mb-4 fw-bold">Turf Details</h2>
+  // Helper: Get minimum price from sport_specific_price
+  const getStartingPrice = (priceObj: any): number | null => {
+    if (!priceObj || typeof priceObj !== "object") return null;
 
-      <div
-        className="mb-4"
-        style={{
-          position: "relative",
-          width: "100%",
-          maxWidth: "400px",
-          margin: "0 auto",
-        }}
-      >
-        <input
-          type="text"
-          name="search"
-          className="form-control shadow-sm"
-          placeholder="Search by Turf..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{ width: "100%", paddingRight: "40px" }}
-        />
-        <span
-          style={{
-            position: "absolute",
-            right: "10px",
-            top: "50%",
-            transform: "translateY(-50%)",
-            cursor: "pointer",
-            color: "#888",
-          }}
-        >
-          🔍
-        </span>
+    const allPrices: number[] = [];
+
+    Object.values(priceObj).forEach((sport: any) => {
+      Object.values(sport).forEach((daySlot: any) => {
+        if (daySlot.day) allPrices.push(daySlot.day);
+        if (daySlot.night) allPrices.push(daySlot.night);
+      });
+    });
+
+    return allPrices.length ? Math.min(...allPrices) : null;
+  };
+
+  // Helper: Convert amenity text to emoji
+  const amenityEmoji = (a: string) => {
+    if (a.toLowerCase().includes("parking")) return "🚗";
+    if (a.toLowerCase().includes("drinking")) return "💧";
+    if (a.toLowerCase().includes("rest")) return "🚻";
+    if (a.toLowerCase().includes("cctv")) return "📹";
+    if (a.toLowerCase().includes("music")) return "🎵";
+    return "✔️";
+  };
+
+  // Helper: Convert sports to icons
+  const sportIcon = (sport: string) => {
+    sport = sport.toLowerCase();
+    if (sport.includes("football")) return "⚽";
+    if (sport.includes("cricket")) return "🏏";
+    if (sport.includes("badminton")) return "🏸";
+    return "🎯";
+  };
+
+  const handleCallOwner = async (ownerId: string) => {
+    const owner = await getOwnerByOwnerId(ownerId);
+    if(!owner) {
+      alert("Owner details not found");
+      return;
+    }
+    setOwnerInfo({
+      name: owner.owner_name,
+      phone: owner.owner_mobile_number,
+      email: owner.owner_email,
+    });
+  }
+
+  return (
+    <div className="container py-1">
+      {/* Page Title */}
+      <h2 className="text-center text-success fw-bold mb-4 display-5">
+        Turf Details
+      </h2>
+
+      {/* Search Bar */}
+      <div className="row justify-content-center mb-4">
+        <div className="col-md-8 col-lg-6">
+          <div className="input-group input-group-lg shadow-sm rounded-pill">
+            <span className="input-group-text bg-white border-end-0 rounded-start-pill">🔍</span>
+            <input
+              type="text"
+              className="form-control border-start-0 rounded-end-pill"
+              placeholder="Search by turf name, location or owner ID..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+        </div>
       </div>
 
+      {/* No results */}
       {filteredTurfs.length === 0 ? (
-        <p className="text-center text-muted">
-          No matching turf details found.
-        </p>
+        <div className="text-center py-5">
+          <div className="display-1 text-muted mb-3">😔</div>
+          <p className="fs-4 text-muted">No turf found matching your search</p>
+        </div>
       ) : (
-        <ul className="list-group">
-          {filteredTurfs.map((turf) => (
-            <li
-              key={turf.turf_id}
-              className="list-group-item d-flex justify-content-between align-items-center rounded-3 mb-3 border-0 shadow-sm"
-              style={{
-                backgroundColor: "#2d6a4f",
-                color: "#d8f3dc",
-                cursor: "pointer",
-                transition: "transform 0.2s ease, background 0.2s ease",
-              }}
-              onClick={() => navigate(`/slotdetails/${turf.turf_id}`)}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "#40916c";
-                e.currentTarget.style.transform = "scale(1.02)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "#2d6a4f";
-                e.currentTarget.style.transform = "scale(1)";
-              }}
-            >
-              <div>
-                <h5 className="fw-bold mb-1">{turf.turf_name}</h5>
-                <p className="mb-1">📍 {turf.turf_location}</p>
-                <p className="mb-1">
-                  🕒 {turf.turf_opening_hour} - {turf.turf_closing_hour}
-                </p>
-                <small>👤 Owner ID: {turf.owner_id}</small>
+        <div className="row g-4">
+          {filteredTurfs.map((turf) => {
+            const startingPrice = getStartingPrice(turf.sport_specific_price);
+            const maxCapacity = turf.sports_specific_person_count
+              ? Math.max(...Object.values(turf.sports_specific_person_count))
+              : null;
+
+            return (
+              <div className="col-12 col-md-6 col-lg-4" key={turf.turf_id}>
+                <div className="card h-100 border-0 shadow-sm rounded-4 overflow-hidden position-relative">
+
+                  {/* ───────────── Image Section with Carousel ───────────── */}
+                  {Array.isArray(turf.turf_images) && turf.turf_images.length > 1 ? (
+                    <div
+                      id={`carousel-${turf.turf_id}`}
+                      className="carousel slide"
+                      data-bs-ride="carousel"
+                    >
+                      <div className="carousel-inner">
+                        {turf.turf_images.map((img: string, idx: number) => (
+                          <div
+                            className={`carousel-item ${idx === 0 ? "active" : ""}`}
+                            key={idx}
+                          >
+                            <img
+                              src={img}
+                              className="d-block w-100"
+                              alt={turf.turf_name}
+                              style={{ height: "200px", objectFit: "cover" }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+
+                      <button
+                        className="carousel-control-prev"
+                        type="button"
+                        data-bs-target={`#carousel-${turf.turf_id}`}
+                        data-bs-slide="prev"
+                      >
+                        <span className="carousel-control-prev-icon"></span>
+                      </button>
+
+                      <button
+                        className="carousel-control-next"
+                        type="button"
+                        data-bs-target={`#carousel-${turf.turf_id}`}
+                        data-bs-slide="next"
+                      >
+                        <span className="carousel-control-next-icon"></span>
+                      </button>
+                    </div>
+                  ) : turf.turf_image_url ? (
+                    <img
+                      src={turf.turf_image_url}
+                      className="w-100"
+                      alt={turf.turf_name}
+                      style={{ height: "200px", objectFit: "cover" }}
+                    />
+                  ) : (
+                    <div
+                      className="d-flex justify-content-center align-items-center bg-light"
+                      style={{ height: "200px" }}
+                    >
+                      <span className="fs-1">⚽</span>
+                    </div>
+                  )}
+
+                  {/* Badge */}
+                  <span className="badge bg-primary position-absolute top-0 start-0 m-2 rounded-pill">
+                    New Turf
+                  </span>
+
+                  {/* ───────────── Card Body ───────────── */}
+                  <div className="card-body bg-white">
+
+                    {/* Turf Name */}
+                    <h5 className="fw-bold text-success">{turf.turf_name}</h5>
+
+                    {/* Description (shortened) */}
+                    {turf.turf_description && (
+                      <p className="small text-muted mb-2">
+                        {turf.turf_description.slice(0, 80)}...
+                      </p>
+                    )}
+
+                    {/* Starting Price */}
+                    {startingPrice && (
+                      <p className="text-dark mb-2">
+                        💰 Starting from <strong>₹{startingPrice}</strong> / hour
+                      </p>
+                    )}
+
+                    {/* Sports Icons */}
+                    {turf.available_sports_list && (
+                      <p className="text-muted small mb-2">
+                        {turf.available_sports_list.map((sport: string, i: number) => (
+                          <span key={i} className="me-2">
+                            {sportIcon(sport)} {sport}
+                          </span>
+                        ))}
+                      </p>
+                    )}
+
+                    {/* Amenities (max 3) */}
+                    {turf.amenities && (
+                      <p className="text-muted small mb-2">
+                        {turf.amenities.slice(0, 3).map((a: string, i: number) => (
+                          <span key={i} className="badge bg-light text-dark border me-2">
+                            {amenityEmoji(a)} {a}
+                          </span>
+                        ))}
+                      </p>
+                    )}
+
+                    {/* Player Capacity */}
+                    {maxCapacity && (
+                      <p className="text-muted small mb-2">
+                        👥 Up to {maxCapacity} players
+                      </p>
+                    )}
+
+                    {/* Location (short) */}
+                    <p className="text-muted small mb-3">
+                      📍 {turf.turf_location.split(",")[0]}
+                    </p>
+
+                    {/* CTA */}
+                    <button
+                      className="btn btn-outline-success w-100 rounded-pill fw-semibold"
+                      data-bs-toggle="modal"
+                      data-bs-target="#callOwnerModal"
+                      onClick={() => handleCallOwner(turf.owner_id)}
+                    >
+                      📞 Call Owner
+                    </button>
+                  </div>
+                </div>
               </div>
-              <span className="badge bg-light text-success rounded-pill px-3 py-2">
-                View Slots →
-              </span>
-            </li>
-          ))}
-        </ul>
+            );
+          })}
+          <div className="modal fade" id="callOwnerModal" tabIndex={-1}>
+  <div className="modal-dialog modal-dialog-centered">
+    <div className="modal-content rounded-4 shadow">
+
+      <div className="modal-header">
+        <h5 className="modal-title">📞 Owner Details</h5>
+        <button className="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div className="modal-body text-center">
+        <div className="fs-1 mb-2">👤</div>
+
+        <h5 className="fw-bold">{ownerInfo?.name}</h5>
+        <p className="text-muted">{ownerInfo?.phone}</p>
+
+        <div className="d-flex justify-content-center gap-2 mt-3">
+          <a
+            href={`tel:${ownerInfo?.phone}`}
+            className="btn btn-success rounded-pill px-4"
+          >
+            📲 Call Now
+          </a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+        </div>
+        
       )}
     </div>
+    
   );
 };
 

@@ -24,7 +24,7 @@ const FooterInfo: React.FC = () => {
             <li><a href="/" className="text-white">Home</a></li>
             <li><a href="/about" className="text-white">About Us</a></li>
             <li><a href="/dashboard" className="text-white">Admin Panel</a></li>
-            <li><a href="/login" className="text-white">Sign In | Sign Up</a></li>
+            <li><a href="/auth" className="text-white">Sign In | Sign Up</a></li>
           </ul>
         </div>
 

@@ -1,104 +1,155 @@
+// src/pages/admin/Analytics/reports/TurfReport.tsx
+
 import React, { useMemo, useState } from "react";
-import { Bar, Pie } from "react-chartjs-2";
-import type { ChartOptions } from "chart.js";
+import { Bar } from "react-chartjs-2";
 
 interface TurfReportProps {
-  turfs: any[]; // receives from parent
+  turfs: any[];
 }
 
+const chartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { position: "top" as const },
+  },
+  scales: {
+    y: { beginAtZero: true },
+  },
+};
+
 const TurfReport: React.FC<TurfReportProps> = ({ turfs }) => {
-  const [selectedTurf, setSelectedTurf] = useState<string>("");
+  const [selectedTurfId, setSelectedTurfId] = useState<string>("");
 
-  // Chart options
-  const options: ChartOptions = {
-    responsive: true,
-    plugins: {
-      legend: { position: "right" },
-    },
-  };
+  const selectedTurf = turfs.find((t) => t.turf_id === selectedTurfId);
 
-  // Data for pie chart (all turfs)
-  const turfChartData = useMemo(() => ({
-    labels: turfs.map((t) => t.turf_name || `Turf ID: ${t.id}`),
+  /* ─────────────────────────────────────────────
+     SORT TURFS BY REVENUE
+  ───────────────────────────────────────────── */
+  const sortedTurfs = useMemo(() => {
+    return [...turfs].sort(
+      (a, b) => (b.total_revenue ?? 0) - (a.total_revenue ?? 0)
+    );
+  }, [turfs]);
+
+  /* ─────────────────────────────────────────────
+     BAR CHART DATA (ALL TURFS)
+  ───────────────────────────────────────────── */
+  const turfComparisonData = {
+    labels: sortedTurfs.map((t) => t.turf_name || t.turf_id),
     datasets: [
       {
-        label: "Revenue",
-        data: turfs.map((t) => t.total_revenue ?? 0),
-        backgroundColor: ["#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0"],
+        label: "Revenue (₹)",
+        data: sortedTurfs.map((t) => t.total_revenue ?? 0),
+        backgroundColor: "#0d6efd",
       },
     ],
-  }), [turfs]);
-
-  const selectedData = turfs.find((t) => t.turf_id === selectedTurf);
+  };
 
   return (
-    <div className="container">
-      <h4 className="fw-bold mb-4">🏟 Turf Performance Report</h4>
+    <div className="px-2">
+      {/* HEADER */}
+      <div className="mb-3">
+        <h4 className="fw-bold mb-1">🏟 Turf Performance Report</h4>
+        <small className="text-muted">
+          Revenue & booking performance across all turfs
+        </small>
+      </div>
 
-      {/* Turf Selector */}
-      <div className="card p-3 mb-4 shadow-sm border-0">
-        <label className="fw-semibold">Select Turf</label>
+      {/* TURF SELECTOR */}
+      <div className="card shadow-sm p-3 mb-4">
+        <label className="fw-semibold mb-1">Select Turf</label>
         <select
           className="form-select"
-          value={selectedTurf}
-          onChange={(e) => setSelectedTurf(e.target.value)}
+          value={selectedTurfId}
+          onChange={(e) => setSelectedTurfId(e.target.value)}
         >
-          <option value="">-- All Turfs --</option>
+          <option value="">All Turfs (Overview)</option>
           {turfs.map((t) => (
             <option key={t.turf_id} value={t.turf_id}>
-              {t.turf_name || `Turf ${t.turf_id}`}
+              {t.turf_name}
             </option>
           ))}
         </select>
       </div>
 
-      {/* Summary for selected turf */}
-      {selectedData ? (
-        <div className="card p-4 mb-4 shadow-sm border-0">
-          <h5 className="fw-semibold text-primary mb-2">
-            {selectedData.turf_name}
-          </h5>
-          <p><strong>Total Bookings:</strong> {selectedData.total_bookings}</p>
-          <p><strong>Total Revenue:</strong> ₹{selectedData.total_revenue}</p>
+      {/* SELECTED TURF KPIs */}
+      {selectedTurf && (
+        <div className="row g-3 mb-4">
+          {[
+            ["Total Bookings", selectedTurf.total_bookings ?? 0],
+            [
+              "Total Revenue",
+              `₹${(selectedTurf.total_revenue ?? 0).toLocaleString("en-IN")}`,
+            ],
+            ["Avg Revenue / Booking",
+              selectedTurf.total_bookings
+                ? `₹${Math.round(
+                    selectedTurf.total_revenue / selectedTurf.total_bookings
+                  )}`
+                : "₹0"],
+          ].map(([label, value], i) => (
+            <div key={i} className="col-md-4">
+              <div className="card shadow-sm p-3 text-center h-100">
+                <small className="text-muted">{label}</small>
+                <h4 className="fw-bold mt-1">{value}</h4>
+              </div>
+            </div>
+          ))}
         </div>
-      ) : (
-        <p className="text-muted">No turf selected. Showing overall data.</p>
       )}
 
-      {/* All Turf Revenue Chart */}
-      <div className="card p-4 mb-4 shadow-sm border-0">
-        <h5 className="fw-semibold text-center mb-3">Revenue Per Turf</h5>
-        <div style={{ height: 350 }}>
-          <Pie data={turfChartData as any} options={options as any} />
+      {/* ALL TURFS COMPARISON */}
+      <div className="card shadow-sm p-3 mb-4">
+        <h6 className="fw-semibold mb-2 text-center">
+          📊 Revenue Comparison (All Turfs)
+        </h6>
+        <div style={{ height: 360 }}>
+          <Bar data={turfComparisonData} options={chartOptions} />
         </div>
       </div>
 
-      {/* If a turf is selected, show detailed chart */}
-      {selectedData && (
-        <div className="card p-4 shadow-sm border-0 mb-4">
-          <h6 className="fw-semibold text-center">Bookings vs Revenue</h6>
-          <div style={{ height: 300 }}>
-            <Bar
-              data={{
-                labels: ["Bookings", "Revenue (₹)"],
-                datasets: [
-                  {
-                    label: "Bookings",
-                    data: [selectedData.total_bookings],
-                    backgroundColor: "#36A2EB",
-                  },
-                  {
-                    label: "Revenue",
-                    data: [selectedData.total_revenue],
-                    backgroundColor: "#FF9F40",
-                  },
-                ],
-              }}
-              options={{ responsive: true }}
-            />
-          </div>
+      {/* TURF RANKING TABLE */}
+      <div className="card shadow-sm p-3">
+        <h6 className="fw-semibold mb-3">🏆 Turf Rankings</h6>
+
+        <div className="table-responsive">
+          <table className="table table-sm table-bordered table-hover">
+            <thead className="table-light">
+              <tr>
+                <th>#</th>
+                <th>Turf Name</th>
+                <th>Bookings</th>
+                <th>Revenue</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedTurfs.map((t, idx) => (
+                <tr
+                  key={t.turf_id}
+                  className={
+                    t.turf_id === selectedTurfId ? "table-primary" : ""
+                  }
+                >
+                  <td>{idx + 1}</td>
+                  <td>{t.turf_name}</td>
+                  <td>{t.total_bookings ?? 0}</td>
+                  <td>
+                    ₹{(t.total_revenue ?? 0).toLocaleString("en-IN")}
+                  </td>
+                </tr>
+              ))}
+              {sortedTurfs.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="text-center text-muted">
+                    No turf data available
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
-      )}
+      </div>
     </div>
   );
 };

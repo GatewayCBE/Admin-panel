@@ -1,3 +1,5 @@
+// src/pages/admin/Analytics/reports/SingleDayReport.tsx
+
 import React, { useState } from "react";
 import { Bar } from "react-chartjs-2";
 
@@ -5,19 +7,40 @@ interface SingleDayReportProps {
   daily: any[];
 }
 
-const SingleDayReport: React.FC<SingleDayReportProps> = ({ daily }) => {
-  const [selectedDate, setSelectedDate] = useState("");
+const baseOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { display: false },
+  },
+  scales: {
+    y: {
+      beginAtZero: true,
+      ticks: { precision: 0 },
+    },
+  },
+};
 
-  // Find the selected date's data
+const SingleDayReport: React.FC<SingleDayReportProps> = ({ daily }) => {
+  const [selectedDate, setSelectedDate] = useState<string>("");
+
   const dayData = daily.find((d) => d.id === selectedDate);
 
   return (
-    <div className="container">
-      {/* 🔍 Date Selector */}
-      <div className="card p-3 mb-4 shadow-sm border-0">
-        <label className="fw-semibold">Select Date</label>
+    <div className="px-2">
+      {/* HEADER */}
+      <div className="mb-3">
+        <h4 className="fw-bold mb-1">📅 Single Day Report</h4>
+        <small className="text-muted">
+          Detailed performance for a selected date
+        </small>
+      </div>
+
+      {/* DATE SELECTOR */}
+      <div className="card shadow-sm p-3 mb-4">
+        <label className="fw-semibold mb-2">Select Date</label>
         <select
-          className="form-select mt-2"
+          className="form-select"
           value={selectedDate}
           onChange={(e) => setSelectedDate(e.target.value)}
         >
@@ -30,51 +53,91 @@ const SingleDayReport: React.FC<SingleDayReportProps> = ({ daily }) => {
         </select>
       </div>
 
-      {/* ❗ If no date selected */}
-      {!dayData && <p className="text-center text-muted">Please select a date to view analytics.</p>}
+      {!dayData && (
+        <div className="text-center text-muted mt-5">
+          📌 Please select a date to view analytics.
+        </div>
+      )}
 
-      {/* 📊 Report Section */}
       {dayData && (
-        <div>
-          {/* Overall Stats */}
-          <div className="card shadow-sm p-4 mb-4 border-0">
-            <h5 className="fw-semibold text-center mb-3">📆 Report for {selectedDate}</h5>
-            <p><strong>Total Bookings:</strong> {dayData.total_bookings}</p>
-            <p><strong>Total Revenue:</strong> ₹{dayData.total_revenue}</p>
+        <>
+          {/* KPI CARDS */}
+          <div className="row g-3 mb-4">
+            {[
+              ["Total Bookings", dayData.total_bookings ?? 0],
+              [
+                "Total Revenue",
+                `₹${(dayData.total_revenue ?? 0).toLocaleString("en-IN")}`,
+              ],
+              ["Day Bookings", dayData?.time_split?.day?.bookings ?? 0],
+              ["Night Bookings", dayData?.time_split?.night?.bookings ?? 0],
+            ].map(([label, value], i) => (
+              <div key={i} className="col-lg-3 col-md-6">
+                <div className="card shadow-sm p-3 text-center h-100">
+                  <small className="text-muted">{label}</small>
+                  <h4 className="fw-bold mt-1">{value}</h4>
+                </div>
+              </div>
+            ))}
           </div>
 
-          {/* Day vs Night Chart */}
-          <div className="card shadow-sm p-4 mb-4 border-0">
-            <h6 className="fw-semibold text-center">Day vs Night Performance</h6>
+          {/* CHARTS */}
+          <div className="row g-4">
+            {/* BOOKINGS */}
+            <div className="col-lg-6">
+              <div className="card shadow-sm p-3 h-100">
+                <h6 className="fw-semibold text-center mb-2">
+                  📦 Bookings — {selectedDate}
+                </h6>
+                <div style={{ height: 260 }}>
+                  <Bar
+                    key={`bookings-${selectedDate}`}
+                    data={{
+                      labels: ["Day", "Night"],
+                      datasets: [
+                        {
+                          data: [
+                            dayData?.time_split?.day?.bookings ?? 0,
+                            dayData?.time_split?.night?.bookings ?? 0,
+                          ],
+                          backgroundColor: "#0d6efd",
+                        },
+                      ],
+                    }}
+                    options={baseOptions}
+                  />
+                </div>
+              </div>
+            </div>
 
-            <div style={{ height: 300 }}>
-              <Bar
-                data={{
-                  labels: ["Day", "Night"],
-                  datasets: [
-                    {
-                      label: "Bookings",
-                      data: [
-                        dayData?.time_split?.day?.bookings ?? 0,
-                        dayData?.time_split?.night?.bookings ?? 0,
+            {/* REVENUE */}
+            <div className="col-lg-6">
+              <div className="card shadow-sm p-3 h-100">
+                <h6 className="fw-semibold text-center mb-2">
+                  💰 Revenue — {selectedDate}
+                </h6>
+                <div style={{ height: 260 }}>
+                  <Bar
+                    key={`revenue-${selectedDate}`}
+                    data={{
+                      labels: ["Day", "Night"],
+                      datasets: [
+                        {
+                          data: [
+                            dayData?.time_split?.day?.revenue ?? 0,
+                            dayData?.time_split?.night?.revenue ?? 0,
+                          ],
+                          backgroundColor: "#198754",
+                        },
                       ],
-                      backgroundColor: ["#4CAF50", "#FF7043"],
-                    },
-                    {
-                      label: "Revenue (₹)",
-                      data: [
-                        dayData?.time_split?.day?.revenue ?? 0,
-                        dayData?.time_split?.night?.revenue ?? 0,
-                      ],
-                      backgroundColor: ["#81C784", "#FF8A65"],
-                    },
-                  ],
-                }}
-                options={{ responsive: true, plugins: { legend: { position: "top" } } }}
-              />
+                    }}
+                    options={baseOptions}
+                  />
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

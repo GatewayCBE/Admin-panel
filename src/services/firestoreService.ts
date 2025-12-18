@@ -16,6 +16,7 @@ import {
   connectFunctionsEmulator,
 } from "firebase/functions";
 import { getApp } from "firebase/app";
+import { Owner } from "../types/types";
 
 /**
  * Generate Custom ID exactly like Flutter app
@@ -37,12 +38,27 @@ export const generateCustomId = (role: "user" | "owner", name: string): string =
   return `${prefix}${namePart}_${timestamp}`;
 };
 
+export const generateTurfId = (ownerName: string): string => {
+  const prefix = "TID_";
+  const namePart = ownerName.trim().slice(0, 3);
+
+  const now = new Date();
+  const dd = String(now.getDate()).padStart(2, "0");
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const yyyy = now.getFullYear();
+  const hh = String(now.getHours()).padStart(2, "0");
+  const min = String(now.getMinutes()).padStart(2, "0");
+  const ss = String(now.getSeconds()).padStart(2, "0");
+
+  return `${prefix}${namePart}_${dd}${mm}${yyyy}${hh}${min}${ss}`;
+};
+
 /**
  * Save User/Owner to Firestore
  */
 export const saveUserProfile = async (
   role: "user" | "owner",
-  data: { name: string; email: string; mobile: string; uid: string }
+  data: { name: string; email: string; mobile: string; uid: string; password: string; acceptedTerms: boolean;}
 ) => {
   const customId = generateCustomId(role, data.name);
   const now = new Date();
@@ -53,10 +69,12 @@ export const saveUserProfile = async (
     [role === "user" ? "user_name" : "owner_name"]: data.name,
     [role === "user" ? "user_email" : "owner_email"]: data.email,
     [role === "user" ? "user_mobile_number" : "owner_mobile_number"]: data.mobile,
-    has_accepted_terms: true,
-    terms_accepted_at: now.toISOString(),
+    [role === "user" ? "user_password" : "owner_password"]: data.password,
+    has_accepted_terms: data.acceptedTerms,
+    terms_accepted_at: data.acceptedTerms ? now.toISOString() : null,
     created_at: now.toISOString(),
     firebase_uid: data.uid,
+    payment_copies: [],
     ...(role === "user"
       ? { user_address: null, user_profile_image_url: null }
       : { owner_location: null, owner_profile_image: null }),
@@ -69,19 +87,67 @@ export const saveUserProfile = async (
 };
 
 /**
- * Check if mobile is already registered
+ * Check if mobile is already registered for a specific role
  */
-export const isMobileRegistered = async (mobile: string): Promise<boolean> => {
-  const usersRef = collection(db, "environment", "testing", "users");
-  const ownersRef = collection(db, "environment", "testing", "owners");
+export const isMobileRegisteredForRole = async (
+  role: "user" | "owner",
+  mobile: string
+): Promise<boolean> => {
+  const colRef =
+    role === "user"
+      ? collection(db, "environment", "testing", "users")
+      : collection(db, "environment", "testing", "owners");
 
-  const [userSnap, ownerSnap]: [QuerySnapshot<DocumentData>, QuerySnapshot<DocumentData>] =
-    await Promise.all([
-      getDocs(query(usersRef, where("user_mobile_number", "==", mobile))),
-      getDocs(query(ownersRef, where("owner_mobile_number", "==", mobile))),
-    ]);
+  const field =
+    role === "user" ? "user_mobile_number" : "owner_mobile_number";
 
-  return !userSnap.empty || !ownerSnap.empty;
+  const snap = await getDocs(query(colRef, where(field, "==", mobile)));
+  return !snap.empty;
+};
+
+// Check if this email already exists under a DIFFERENT mobile number
+export const isEmailLinkedToAnotherMobile = async (
+  role: "user" | "owner",
+  email: string,
+  currentMobile: string
+): Promise<boolean> => {
+  const colRef =
+    role === "user"
+      ? collection(db, "environment/testing/users")
+      : collection(db, "environment/testing/owners");
+
+  const field =
+    role === "user" ? "user_email" : "owner_email";
+
+  const snap = await getDocs(query(colRef, where(field, "==", email)));
+  return !snap.empty;
+};
+
+// Get user by email (search all docs under users/)
+export const getUserDocByEmail = async (email: string) => {
+  const colRef = collection(db, "environment/testing/users");
+  const q = query(colRef, where("user_email", "==", email));
+  const snap = await getDocs(q);
+
+  if (snap.empty) return null;
+  return snap.docs[0].data();
+};
+
+// Get owner by email
+export const getOwnerDocByEmail = async (email: string) => {
+  const colRef = collection(db, "environment/testing/owners");
+  const q = query(colRef, where("owner_email", "==", email));
+  const snap = await getDocs(q);
+
+  if (snap.empty) return null;
+  return snap.docs[0].data();
+};
+
+// Get user by mobile (optional helper)
+export const getUserDocByMobile = async (mobile: string) => {
+  const docRef = doc(db, "environment/testing/users", mobile);
+  const snap = await getDoc(docRef);
+  return snap.exists() ? snap.data() : null;
 };
 
 // Get all turf details
@@ -100,6 +166,26 @@ export const getTurfs = async () => {
   }
 };
 
+/**
+ * Get a single turf document by ID
+ */
+export const getTurfById = async (turfId: string) => {
+  try {
+    const docRef = doc(db, "environment", "testing", "turfs", turfId);
+    const snap = await getDoc(docRef);
+
+    if (!snap.exists()) {
+      console.warn(`Turf not found: ${turfId}`);
+      return null;
+    }
+
+    return { turf_id: snap.id, ...snap.data() };
+  } catch (err) {
+    console.error("Error fetching turf:", err);
+    return null;
+  }
+};
+
 export const getTurfsByOwner = async (ownerId: string) => {
   try {
     const turfRef = collection(db, "environment", "testing", "turfs");
@@ -114,6 +200,169 @@ export const getTurfsByOwner = async (ownerId: string) => {
     console.error("Error fetching turfs by owner:", error);
     return [];
   }
+};
+
+export async function createTurfBooking({
+  turfId,
+  dateString,
+  sportName,
+  courtName,
+  slotStart,
+  bookingData,
+}: {
+  turfId: string;
+  dateString: string;   // "02-Dec-2025"
+  sportName: string;    // "boxcricket & football"
+  courtName: string;    // "court 1"
+  slotStart: string;    // "12:00"
+  bookingData: any;
+}) {
+  const ref = doc(
+    db,
+    "environment",
+    "testing",
+    "all_turfs_slot_booking",
+    turfId,
+    dateString,
+    sportName,
+    courtName,
+    slotStart
+  );
+
+  await setDoc(ref, bookingData, { merge: true });
+  return true;
+}
+
+export async function isSlotAlreadyBooked({ turfId, dateString, sportName, courtName, slotStart }: any) {
+  const ref = doc(
+    db,
+    "environment",
+    "testing",
+    "all_turfs_slot_booking",
+    turfId,
+    dateString,
+    sportName,
+    courtName,
+    slotStart
+  );
+
+  const snap = await getDoc(ref);
+  return snap.exists();
+}
+
+/**
+ * Get owner details using owner_id field
+ */
+export const getOwnerByOwnerId = async (
+  ownerId: string
+): Promise<Owner | null> => {
+  try {
+    const ownerRef = collection(db, "environment", "testing", "owners");
+    const q = query(ownerRef, where("owner_id", "==", ownerId));
+    const snap = await getDocs(q);
+
+    if (snap.empty) return null;
+
+    const docSnap = snap.docs[0];
+
+    return {
+      doc_id: docSnap.id,
+      ...(docSnap.data() as Omit<Owner, "doc_id">),
+    };
+  } catch (error) {
+    console.error("Error fetching owner:", error);
+    return null;
+  }
+};
+
+const mapPrices = (sports: any[]) => {
+  const result: any = {};
+
+  sports.forEach((s) => {
+    const key = s.name.toLowerCase();
+    result[key] = {};
+
+    Object.keys(s.dayPrices).forEach((day) => {
+      result[key][day] = {
+        day: Number(s.dayPrices[day] || 0),
+        night: Number(s.nightPrices[day] || 0),
+      };
+    });
+  });
+
+  return result;
+};
+
+const mapTimings = (sports: any[]) => {
+  const result: any = {};
+
+  sports.forEach((s) => {
+    const key = s.name.toLowerCase();
+    result[key] = {
+      opening_time: s.openingTime,
+      closing_time: s.closingTime,
+      day_start_time: s.daySlotStart,
+      day_end_time: s.daySlotEnd,
+      night_start_time: s.nightSlotStart,
+      night_end_time: s.nightSlotEnd,
+    };
+  });
+
+  return result;
+};
+
+const mapPersons = (sports: any[]) => {
+  const result: any = {};
+
+  sports.forEach((s) => {
+    const key = s.name.toLowerCase();
+    result[key] = Number(s.maxPersons || 0);
+  });
+
+  return result;
+};
+
+export const createTurf = async ({
+  formData,
+  sports,
+  ownerId,
+  ownerName,
+  imageUrls,
+  addedSource,
+}: any) => {
+  const turfId = generateTurfId(ownerName);
+
+  const turfDoc = {
+    turf_id: turfId,
+    turf_name: formData.turfName,
+    turf_location: formData.turfAddress,
+    turf_description: formData.turfDescription,
+    turf_length: `${formData.turfLength} ${formData.dimensionUnit}`,
+    turf_breadth: `${formData.turfBreadth} ${formData.dimensionUnit}`,
+    turf_height: `${formData.turfHeight} ${formData.dimensionUnit}`,
+    amenities: formData.facilities,
+    badminton_court_type: formData.badmintonCourtType || null,
+    owner_id: ownerId,
+    turf_images: imageUrls,
+    available_sports_list: sports.map((s: any) => s.name),
+    sport_specific_price: mapPrices(sports),
+    sport_specific_timing: mapTimings(sports),
+    sports_specific_person_count: mapPersons(sports),
+    turf_active_status: true,
+    added_source: {
+      platform: addedSource.platform,
+      checked_by: ownerId,
+      checked_at: new Date(),
+    },
+    created_at: new Date(),
+  };
+
+  await setDoc(
+    doc(db, "environment", "testing", "turfs", turfId),
+    turfDoc
+  );
+
+  return turfId;
 };
 
 export const debugPath = async () => {

@@ -1,8 +1,11 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { signOut } from "firebase/auth";
+import { auth } from "../../firebase";
 
-const AdminNavbar: React.FC = () => {
+const Navbar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
 
   const handleToggle = () => {
     setIsOpen(!isOpen);
@@ -10,6 +13,17 @@ const AdminNavbar: React.FC = () => {
 
   const handleNavItemClick = () => {
     setIsOpen(false);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      localStorage.clear();
+      sessionStorage.clear();
+      navigate("/auth", { replace: true });
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
   };
 
   return (
@@ -38,30 +52,31 @@ const AdminNavbar: React.FC = () => {
               </Link>
             </li>
             <li className="nav-item">
-              <Link className="nav-link text-white fs-5" to="/dashboard" onClick={handleNavItemClick}>
-                Dashboard
+              <Link className="nav-link text-white fs-5" to="/games" onClick={handleNavItemClick}>
+                Games
               </Link>
             </li>
             <li className="nav-item">
-              <Link className="nav-link text-white fs-5" to="/admin/recentbookings" onClick={handleNavItemClick}>
-                Bookings
+              <Link className="nav-link text-white fs-5" to="/user/turfs" onClick={handleNavItemClick}>
+                Venues
               </Link>
             </li>
-            {/* <li className="nav-item">
-              <Link className="nav-link text-white fs-5" to="/admin/turfs" onClick={handleNavItemClick}>
-                Turfs
-              </Link>
-            </li>
-            <li className="nav-item">
-              <Link className="nav-link text-white fs-5" to="/admin/users" onClick={handleNavItemClick}>
-                Users
-              </Link>
-            </li> */}
           </ul>
+
+          {/* Sign In / Sign Up button */}
+          <div className="d-flex">
+            <button
+              className="btn fw-bold"
+              style={{ backgroundColor: "#d8f3dc", color: "#2d6a4f" }}
+              onClick={handleLogout}
+            >
+              Logout
+            </button>
+          </div>
         </div>
       </div>
     </nav>
   );
 };
 
-export default AdminNavbar;
+export default Navbar;
