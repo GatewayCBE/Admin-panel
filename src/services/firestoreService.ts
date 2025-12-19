@@ -22,7 +22,10 @@ import { Owner } from "../types/types";
  * Generate Custom ID exactly like Flutter app
  * e.g., USID_rah_02122025163011 or OID_Rak_02122025163222
  */
-export const generateCustomId = (role: "user" | "owner", name: string): string => {
+export const generateCustomId = (
+  role: "user" | "owner",
+  name: string
+): string => {
   const prefix = role === "user" ? "USID_" : "OID_";
   const namePart = name.trim().slice(0, 3);
   const now = new Date();
@@ -58,7 +61,14 @@ export const generateTurfId = (ownerName: string): string => {
  */
 export const saveUserProfile = async (
   role: "user" | "owner",
-  data: { name: string; email: string; mobile: string; uid: string; password: string; acceptedTerms: boolean;}
+  data: {
+    name: string;
+    email: string;
+    mobile: string;
+    uid: string;
+    password: string;
+    acceptedTerms: boolean;
+  }
 ) => {
   const customId = generateCustomId(role, data.name);
   const now = new Date();
@@ -68,7 +78,8 @@ export const saveUserProfile = async (
     [role === "user" ? "user_id" : "owner_id"]: customId,
     [role === "user" ? "user_name" : "owner_name"]: data.name,
     [role === "user" ? "user_email" : "owner_email"]: data.email,
-    [role === "user" ? "user_mobile_number" : "owner_mobile_number"]: data.mobile,
+    [role === "user" ? "user_mobile_number" : "owner_mobile_number"]:
+      data.mobile,
     [role === "user" ? "user_password" : "owner_password"]: data.password,
     has_accepted_terms: data.acceptedTerms,
     terms_accepted_at: data.acceptedTerms ? now.toISOString() : null,
@@ -98,8 +109,7 @@ export const isMobileRegisteredForRole = async (
       ? collection(db, "environment", "testing", "users")
       : collection(db, "environment", "testing", "owners");
 
-  const field =
-    role === "user" ? "user_mobile_number" : "owner_mobile_number";
+  const field = role === "user" ? "user_mobile_number" : "owner_mobile_number";
 
   const snap = await getDocs(query(colRef, where(field, "==", mobile)));
   return !snap.empty;
@@ -116,8 +126,7 @@ export const isEmailLinkedToAnotherMobile = async (
       ? collection(db, "environment/testing/users")
       : collection(db, "environment/testing/owners");
 
-  const field =
-    role === "user" ? "user_email" : "owner_email";
+  const field = role === "user" ? "user_email" : "owner_email";
 
   const snap = await getDocs(query(colRef, where(field, "==", email)));
   return !snap.empty;
@@ -211,10 +220,10 @@ export async function createTurfBooking({
   bookingData,
 }: {
   turfId: string;
-  dateString: string;   // "02-Dec-2025"
-  sportName: string;    // "boxcricket & football"
-  courtName: string;    // "court 1"
-  slotStart: string;    // "12:00"
+  dateString: string; // "02-Dec-2025"
+  sportName: string; // "boxcricket & football"
+  courtName: string; // "court 1"
+  slotStart: string; // "12:00"
   bookingData: any;
 }) {
   const ref = doc(
@@ -233,7 +242,13 @@ export async function createTurfBooking({
   return true;
 }
 
-export async function isSlotAlreadyBooked({ turfId, dateString, sportName, courtName, slotStart }: any) {
+export async function isSlotAlreadyBooked({
+  turfId,
+  dateString,
+  sportName,
+  courtName,
+  slotStart,
+}: any) {
   const ref = doc(
     db,
     "environment",
@@ -349,6 +364,7 @@ export const createTurf = async ({
     sport_specific_timing: mapTimings(sports),
     sports_specific_person_count: mapPersons(sports),
     turf_active_status: true,
+    booking_type: "call_now",
     added_source: {
       platform: addedSource.platform,
       checked_by: ownerId,
@@ -357,10 +373,7 @@ export const createTurf = async ({
     created_at: new Date(),
   };
 
-  await setDoc(
-    doc(db, "environment", "testing", "turfs", turfId),
-    turfDoc
-  );
+  await setDoc(doc(db, "environment", "testing", "turfs", turfId), turfDoc);
 
   return turfId;
 };
