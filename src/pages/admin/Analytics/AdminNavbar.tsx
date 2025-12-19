@@ -1,8 +1,9 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 const AdminNavbar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
 
   const handleToggle = () => {
     setIsOpen(!isOpen);
@@ -10,6 +11,21 @@ const AdminNavbar: React.FC = () => {
 
   const handleNavItemClick = () => {
     setIsOpen(false);
+  };
+
+  const handleLogout = () => {
+    // 1. Clear all session data
+    localStorage.removeItem("user_id");
+    localStorage.removeItem("user_name");
+    localStorage.removeItem("user_email");
+    localStorage.removeItem("user_role");
+    localStorage.removeItem("is_logged_in");
+    
+    // 2. Close the mobile menu if open
+    setIsOpen(false);
+
+    // 3. Navigate back to the landing page
+    navigate("/");
   };
 
   return (
@@ -58,6 +74,16 @@ const AdminNavbar: React.FC = () => {
               </Link>
             </li> */}
           </ul>
+          {/* Logout Button */}
+          <div className="d-flex">
+            <button 
+              className="btn btn-outline-light fw-bold" 
+              onClick={handleLogout}
+              style={{ borderRadius: "20px", padding: "5px 20px" }}
+            >
+              Logout
+            </button>
+          </div>
         </div>
       </div>
     </nav>

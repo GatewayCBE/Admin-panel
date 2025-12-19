@@ -6,6 +6,7 @@ import { createTurf, generateTurfId } from '../../../services/firestoreService';
 interface TurfData {
   turfImages: File[];
   turfName: string;
+  turfMobileNumber: string;
   turfAddress: string;
   turfDescription: string;
   dimensionUnit: 'feet' | 'meter';
@@ -61,6 +62,7 @@ const AddTurfForm: React.FC = () => {
   const [formData, setFormData] = useState<TurfData>({
     turfImages: [],
     turfName: '',
+    turfMobileNumber: '',
     turfAddress: '',
     turfDescription: '',
     dimensionUnit: 'feet',
@@ -185,6 +187,11 @@ const AddTurfForm: React.FC = () => {
     const ownerId = localStorage.getItem("user_id");
     const ownerName = localStorage.getItem("user_name");
 
+    if (!addedViaWeb) {
+  alert("Please confirm turf is added via Website");
+  return;
+}
+
     if (!ownerId || !ownerName) {
       alert("Owner not logged in");
       return;
@@ -218,10 +225,6 @@ const AddTurfForm: React.FC = () => {
     console.error(err);
     alert("❌ Failed to add turf");
   }
-  if (!addedViaWeb) {
-  alert("Please confirm turf is added via Website");
-  return;
-}
 };
 
   const buildSportMaps = (sports: Sport[]) => {
@@ -299,17 +302,49 @@ const AddTurfForm: React.FC = () => {
         />
       </div>
 
-      <div className="mb-3 position-relative">
+      <div className="mb-3">
         <input
           type="text"
           className="form-control custom-input"
-          placeholder="Turf Address"
-          name="turfAddress"
-          value={formData.turfAddress}
+          placeholder="Turf MobileNumber *"
+          name="turfMobileNumber"
+          value={formData.turfMobileNumber}
           onChange={handleInputChange}
         />
-        <span className="location-icon">📍</span>
       </div>
+
+      {/* Turf Address with Google Maps Preview */}
+<div className="mb-3">
+  <div className="position-relative">
+    <input
+      type="text"
+      className="form-control custom-input"
+      placeholder="Turf Address"
+      name="turfAddress"
+      value={formData.turfAddress}
+      onChange={handleInputChange}
+    />
+  </div>
+
+  {/* Conditional "View on Maps" Button */}
+  {formData.turfAddress.trim().length > 5 && (
+    <div className="mt-2 text-end">
+      <button
+        type="button"
+        className="btn btn-sm btn-outline-primary"
+        onClick={() => {
+          const encodedAddress = encodeURIComponent(formData.turfAddress);
+          // Standard Google Maps search URL
+          const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
+          window.open(mapUrl, "_blank");
+        }}
+        style={{ fontSize: '12px', borderRadius: '20px' }}
+      >
+        🔍 Verify Location on Google Maps
+      </button>
+    </div>
+  )}
+</div>
 
       <div className="mb-4">
         <textarea

@@ -9,7 +9,7 @@ const Dashboard: React.FC = () => {
   return (
     <div className="admin-page-container">
       <AdminNavbar />
-      <div className="row g-4 justify-content-center text-center">
+      <div className="row g-4 justify-content-center text-center mt-2">
         {/* Owner Details */}
         <div className="col-12 col-sm-6 col-md-4">
           <Link
