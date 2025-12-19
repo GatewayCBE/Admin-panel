@@ -22,6 +22,7 @@ import TurfDetail from "../pages/user/TurfDetail";
 import SlotDetails from "../pages/user/SlotDetails";
 import OwnerDashboard from "../pages/owner/OwnerDashboard";
 import AddTurfForm from "../pages/admin/Owner/AddTurf";
+import AdminLogin from "../pages/auth/AdminLogin";
 
 const AppRoutes: React.FC = () => {
   return (
@@ -47,6 +48,7 @@ const AppRoutes: React.FC = () => {
 
       {/* 🛠 Admin pages */}
       <Route element={<AdminLayout />}>
+      <Route path="/admin" element={ <AdminLogin />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/dashboard/owners" element={<Owner />} />
         <Route path="/dashboard/owners/:ownerId" element={<Turfowner />} />

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { getTurfs } from "../../../services/firestoreService";
+import { Turf } from "../../../types/Turf";
 
 export const useTurf = () => {
   const [turfs, setTurfs] = useState<Turf[]>([]);
@@ -12,6 +13,7 @@ export const useTurf = () => {
         turfData.map((turf: any) => ({
           turf_id: turf.turf_id ?? turf.id ?? "",
           turf_name: turf.turf_name ?? "",
+          turf_mobile_number: turf.turf_mobile_number ?? "",
           turf_location: turf.turf_location ?? "",
           owner_id: turf.owner_id ?? "",
           owner_name: turf.owner_name ?? "",

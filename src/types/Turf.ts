@@ -1,6 +1,7 @@
 export interface Turf {
   turf_id: string;
   turf_name: string;
+  turf_mobile_number: string;
   turf_location: string;
   owner_id: string;
   owner_name: string;
@@ -52,10 +53,3 @@ export interface Turf {
   turf_active_status?: boolean;
 }
 
-export interface Owner {
-  doc_id: string;
-  owner_id: string;
-  owner_name: string;
-  owner_mobile_number: string;
-  owner_email?: string;
-}

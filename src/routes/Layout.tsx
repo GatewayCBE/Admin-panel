@@ -53,7 +53,7 @@ export const AdminLayout: React.FC = () => {
   return (
     <div className="d-flex">
       {/* <AdminSidebar /> */}
-      <main className="flex-grow-1 p-3">
+      <main className="flex-grow-1">
         <Outlet />
       </main>
     </div>
