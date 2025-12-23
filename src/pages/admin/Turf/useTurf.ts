@@ -11,17 +11,18 @@ export const useTurf = () => {
 
       setTurfs(
         turfData.map((turf: any) => ({
+          id: turf.id ?? "",
           turf_id: turf.turf_id ?? turf.id ?? "",
           turf_name: turf.turf_name ?? "",
           turf_mobile_number: turf.turf_mobile_number ?? "",
           turf_location: turf.turf_location ?? "",
+          booking_type: turf.booking_type ?? "call_now",
           owner_id: turf.owner_id ?? "",
           owner_name: turf.owner_name ?? "",
           owner_mobile_number: turf.owner_mobile_number ?? "",
           owner_email: turf.owner_email ?? "",
           turf_closing_hour: turf.turf_closing_hour ?? "",
           turf_opening_hour: turf.turf_opening_hour ?? "",
-
           turf_image_url: turf.turf_image_url ?? null,
           turf_images: turf.turf_images ?? [],
 

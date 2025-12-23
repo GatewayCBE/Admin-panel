@@ -20,7 +20,7 @@ const Navbar: React.FC = () => {
       await signOut(auth);
       localStorage.clear();
       sessionStorage.clear();
-      navigate("/auth", { replace: true });
+      navigate("/", { replace: true });
     } catch (error) {
       console.error("Logout error:", error);
     }
@@ -52,7 +52,7 @@ const Navbar: React.FC = () => {
               </Link>
             </li>
             <li className="nav-item">
-              <Link className="nav-link text-white fs-5" to="/games" onClick={handleNavItemClick}>
+              <Link className="nav-link text-white fs-5" to="/ugames" onClick={handleNavItemClick}>
                 Games
               </Link>
             </li>

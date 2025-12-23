@@ -23,6 +23,8 @@ import SlotDetails from "../pages/user/SlotDetails";
 import OwnerDashboard from "../pages/owner/OwnerDashboard";
 import AddTurfForm from "../pages/admin/Owner/AddTurf";
 import AdminLogin from "../pages/auth/AdminLogin";
+import UGames from "../pages/user/UGames";
+import ManageTurf from "../pages/admin/Turf/ManageTurf";
 
 const AppRoutes: React.FC = () => {
   return (
@@ -37,6 +39,7 @@ const AppRoutes: React.FC = () => {
       {/* 👤 User pages */}
       <Route element={<UserLayout />}>
         <Route path="/user/turfs" element={<Turf />} />
+        <Route path="/ugames" element={<UGames />} />
         <Route path="/user/turfs/:turfId" element={<TurfDetail />} />
         <Route path="/user/turfs/:turfId/slots" element={<SlotDetails />} />
       </Route>
@@ -50,6 +53,7 @@ const AppRoutes: React.FC = () => {
       <Route element={<AdminLayout />}>
       <Route path="/admin" element={ <AdminLogin />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/dashboard/turfs" element={<ManageTurf />} />
         <Route path="/dashboard/owners" element={<Owner />} />
         <Route path="/dashboard/owners/:ownerId" element={<Turfowner />} />
         <Route path="/dashboard/owners/:ownerId/:turfId" element={<TurfDetails />} />

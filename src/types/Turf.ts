@@ -1,13 +1,14 @@
 export interface Turf {
+  id: string;
   turf_id: string;
   turf_name: string;
   turf_mobile_number: string;
   turf_location: string;
+  booking_type?: "call_now" | "book_now";
   owner_id: string;
   owner_name: string;
   owner_mobile_number: string;
   owner_email: string;
-
   turf_closing_hour: string;
   turf_opening_hour: string;
 

@@ -8,6 +8,8 @@ interface TurfData {
   turfName: string;
   turfMobileNumber: string;
   turfAddress: string;
+  latitude: number;
+  longitude: number;
   turfDescription: string;
   dimensionUnit: 'feet' | 'meter';
   turfLength: string;
@@ -65,6 +67,8 @@ const AddTurfForm: React.FC = () => {
     turfMobileNumber: '',
     turfAddress: '',
     turfDescription: '',
+    latitude: 0,
+    longitude: 0,
     dimensionUnit: 'feet',
     turfLength: '',
     turfBreadth: '',
@@ -215,6 +219,8 @@ const AddTurfForm: React.FC = () => {
       ownerId,
       ownerName,
       imageUrls,
+      turf_opened: true, 
+      turf_active_status: true,
       addedSource: {
         platform: "web"
       }

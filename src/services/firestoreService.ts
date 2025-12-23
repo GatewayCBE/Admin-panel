@@ -9,6 +9,8 @@ import {
   setDoc,
   QuerySnapshot,
   DocumentData,
+  updateDoc,
+  deleteDoc,
 } from "firebase/firestore";
 import {
   getFunctions,
@@ -211,6 +213,37 @@ export const getTurfsByOwner = async (ownerId: string) => {
   }
 };
 
+/**
+ * Update an existing turf document
+ */
+export const updateTurf = async (turfId: string, updatedData: any) => {
+  try {
+    const docRef = doc(db, "environment", "testing", "turfs", turfId);
+    await updateDoc(docRef, {
+      ...updatedData,
+      updated_at: new Date(), // Tracking when it was modified
+    });
+    return true;
+  } catch (error) {
+    console.error("Error updating turf:", error);
+    throw error;
+  }
+};
+
+/**
+ * Delete a turf document
+ */
+export const deleteTurf = async (turfId: string) => {
+  try {
+    const docRef = doc(db, "environment", "testing", "turfs", turfId);
+    await deleteDoc(docRef);
+    return true;
+  } catch (error) {
+    console.error("Error deleting turf:", error);
+    throw error;
+  }
+};
+
 export async function createTurfBooking({
   turfId,
   dateString,
@@ -365,11 +398,12 @@ export const createTurf = async ({
     sport_specific_timing: mapTimings(sports),
     sports_specific_person_count: mapPersons(sports),
     turf_active_status: true,
+    turf_opened: true,
     booking_type: "call_now",
     added_source: {
       platform: addedSource.platform,
       checked_by: ownerId,
-      checked_at: new Date(),
+      checked_at: new Date().toISOString(),
     },
     created_at: new Date(),
   };
