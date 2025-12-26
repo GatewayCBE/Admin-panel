@@ -11,6 +11,8 @@ import {
   DocumentData,
   updateDoc,
   deleteDoc,
+  runTransaction,
+  serverTimestamp,
 } from "firebase/firestore";
 import {
   getFunctions,
@@ -244,7 +246,7 @@ export const deleteTurf = async (turfId: string) => {
   }
 };
 
-export async function createTurfBooking({
+export async function createTurfBookingSafe({
   turfId,
   dateString,
   sportName,
@@ -253,13 +255,13 @@ export async function createTurfBooking({
   bookingData,
 }: {
   turfId: string;
-  dateString: string; // "02-Dec-2025"
-  sportName: string; // "boxcricket & football"
-  courtName: string; // "court 1"
-  slotStart: string; // "12:00"
+  dateString: string;   // "02-Dec-2025"
+  sportName: string;    // "boxcricket & football"
+  courtName: string;    // "court 1"
+  slotStart: string;    // "7:00PM"
   bookingData: any;
 }) {
-  const ref = doc(
+  const slotRef = doc(
     db,
     "environment",
     "testing",
@@ -271,31 +273,37 @@ export async function createTurfBooking({
     slotStart
   );
 
-  await setDoc(ref, bookingData, { merge: true });
-  return true;
-}
+  try {
+    await runTransaction(db, async (transaction) => {
+      const snap = await transaction.get(slotRef);
 
-export async function isSlotAlreadyBooked({
-  turfId,
-  dateString,
-  sportName,
-  courtName,
-  slotStart,
-}: any) {
-  const ref = doc(
-    db,
-    "environment",
-    "testing",
-    "all_turfs_slot_booking",
-    turfId,
-    dateString,
-    sportName,
-    courtName,
-    slotStart
-  );
+      // 🔒 HARD LOCK — slot already exists
+      if (snap.exists()) {
+        throw new Error("SLOT_ALREADY_BOOKED");
+      }
 
-  const snap = await getDoc(ref);
-  return snap.exists();
+      // ✅ Create booking (NO merge)
+      transaction.set(slotRef, {
+        ...bookingData,
+        created_at: serverTimestamp(),
+      });
+    });
+
+    return { success: true };
+  } catch (err: any) {
+    if (err.message === "SLOT_ALREADY_BOOKED") {
+      return {
+        success: false,
+        reason: "SLOT_ALREADY_BOOKED",
+      };
+    }
+
+    console.error("Transaction failed:", err);
+    return {
+      success: false,
+      reason: "UNKNOWN_ERROR",
+    };
+  }
 }
 
 /**
