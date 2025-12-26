@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useTurf } from "./useTurf";
 import { deleteTurf, updateTurf } from "../../../services/firestoreService";
 import AdminNavbar from "../Analytics/AdminNavbar";
+import { uploadTurfImages } from "../../../services/storageService";
 
 const ManageTurf: React.FC = () => {
   const { turfs } = useTurf();
@@ -10,6 +11,14 @@ const ManageTurf: React.FC = () => {
   // State for Modal and Editing
   const [selectedTurf, setSelectedTurf] = useState<any>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+const [previews, setPreviews] = useState<string[]>([]);
+
+// Helper to clear images when closing modal
+const clearImageStates = () => {
+  setSelectedFiles([]);
+  setPreviews([]);
+};
 
   const filteredTurfs = turfs.filter((turf) =>
     turf.turf_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -53,25 +62,45 @@ const ManageTurf: React.FC = () => {
   };
 
   const handleUpdateSubmit = async () => {
-    if (!selectedTurf?.id){
-        alert("Missing Turf ID for update");
-        return;
-    } 
-    try {
-      const updatedData = {
-        turf_name: selectedTurf.turf_name,
-        turf_location: selectedTurf.turf_location,
-        turf_mobile_number: selectedTurf.turf_mobile_number,
-        turf_available_sports_list: selectedTurf.available_sports_list,
-      };
-      await updateTurf(selectedTurf.id, updatedData);
-      alert("Updated successfully!");
-      setSelectedTurf(null); // Close modal
-      window.location.reload();
-    } catch (error) {
-      alert("Update failed.");
+  if (!selectedTurf?.id) return;
+  setIsUpdating(true);
+
+  try {
+    let finalImageUrls = selectedTurf.turf_images || [];
+
+    // 1. If new files are selected, upload them to Storage
+    if (selectedFiles.length > 0) {
+      // Pass turfId, ownerId (from selectedTurf), and the files array
+      const uploadedUrls = await uploadTurfImages(
+        selectedTurf.id, 
+        selectedTurf.owner_id, 
+        selectedFiles
+      );
+      // Replace or append? Usually, for a single primary image, we replace:
+      finalImageUrls = uploadedUrls; 
     }
-  };
+
+    const updatedData = {
+      turf_name: selectedTurf.turf_name,
+      turf_location: selectedTurf.turf_location,
+      turf_mobile_number: selectedTurf.turf_mobile_number,
+      turf_available_sports_list: selectedTurf.available_sports_list,
+      turf_images: finalImageUrls, // Save the URLs to Firestore
+    };
+
+    await updateTurf(selectedTurf.id, updatedData);
+    alert("Updated successfully!");
+    
+    setSelectedTurf(null);
+    clearImageStates();
+    window.location.reload();
+  } catch (error) {
+    console.error("Update failed:", error);
+    alert("Update failed. Please check permissions.");
+  } finally {
+    setIsUpdating(false);
+  }
+};
 
   const sportIcon = (sport: string) => {
     sport = sport.toLowerCase();
@@ -90,7 +119,23 @@ const ManageTurf: React.FC = () => {
     <div className="admin-page-container">
         <AdminNavbar />
     <div className="container py-1">
-      <h3 className="text-center text-success fw-bold mb-4 display-5">Manage Your Turfs</h3>
+      {/* UPDATED HEADER WITH COUNT */}
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          <div>
+            <h3 className="text-success fw-bold mb-0 display-6">Manage Your Turfs</h3>
+            <p className="text-muted small mb-0">View, edit, or remove turfs from the main database</p>
+          </div>
+          
+          {/* Total Count Badge */}
+          <div className="text-end">
+            <div className="card shadow-sm border-0 px-4 py-2 bg-success text-white rounded-pill">
+              <span className="small fw-semibold text-uppercase opacity-75 d-block" style={{ fontSize: '0.7rem' }}>
+                Total Turfs
+              </span>
+              <h4 className="fw-bold mb-0">{turfs.length}</h4>
+            </div>
+          </div>
+        </div>
 
       {/* Search Bar Code remains same... */}
       <div className="row justify-content-center mb-4">
@@ -166,6 +211,39 @@ const ManageTurf: React.FC = () => {
                 <button type="button" className="btn-close" onClick={() => setSelectedTurf(null)}></button>
               </div>
               <div className="modal-body">
+                <div className="mb-3">
+  <label className="form-label small fw-bold">Update Turf Image</label>
+  <div className="d-flex align-items-center gap-3 p-2 border rounded-3 bg-light">
+    {/* Show Preview if selected, else show existing image */}
+    <img 
+      src={previews.length > 0 ? previews[0] : (selectedTurf.turf_images?.[0] || "https://via.placeholder.com/100")} 
+      alt="Turf" 
+      className="rounded-3 shadow-sm"
+      style={{ width: "70px", height: "70px", objectFit: "cover" }}
+    />
+    
+    <div className="flex-grow-1">
+      <input
+        type="file"
+        className="form-control form-control-sm"
+        accept="image/*"
+        multiple // Remove this if you only want 1 image
+        onChange={(e) => {
+          const files = Array.from(e.target.files || []);
+          if (files.length > 0) {
+            setSelectedFiles(files);
+            // Create temporary browser URLs for preview
+            const newPreviews = files.map(file => URL.createObjectURL(file));
+            setPreviews(newPreviews);
+          }
+        }}
+      />
+      <small className="text-muted mt-1 d-block" style={{ fontSize: '0.75rem' }}>
+        Select a new file to change the current image.
+      </small>
+    </div>
+  </div>
+</div>
                 <div className="mb-3">
                   <label className="form-label small fw-bold">Turf Name</label>
                   <input

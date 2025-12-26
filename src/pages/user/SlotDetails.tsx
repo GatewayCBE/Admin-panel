@@ -1,7 +1,7 @@
 // src/pages/user/SlotDetails.tsx
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { createTurfBooking, getTurfById, isSlotAlreadyBooked } from "../../services/firestoreService";
+import { createTurfBookingSafe, getAllBookedSlots, getTurfById } from "../../services/firestoreService";
 
 // ---------- Types ----------
 type TurfDoc = {
@@ -122,6 +122,10 @@ const SlotDetails: React.FC = () => {
 
   const [selectedSlots, setSelectedSlots] = useState<Slot[]>([]);
 
+  const [bookedSlotSet, setBookedSlotSet] = useState<Set<string>>(new Set());
+
+  
+
   // -------- Fetch turf --------
   useEffect(() => {
     const run = async () => {
@@ -164,6 +168,38 @@ const SlotDetails: React.FC = () => {
     () => dayKeyFromDate(selectedDate),
     [selectedDate]
   );
+
+  useEffect(() => {
+  async function loadBookedSlots() {
+    if (!turf || !selectedSport || !selectedDate) return;
+
+    const dateString = selectedDate
+      .toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
+      .replace(/ /g, "-");
+
+    const bookedSlots = await getAllBookedSlots(
+      turf.turf_id,
+      dateString,
+      selectedSport,
+      `court ${selectedCourt}`
+    );
+
+    const set = new Set(
+      bookedSlots.map((s) =>
+        (s.slot_start_time || "").replace(/\s/g, "")
+      )
+    );
+
+    setBookedSlotSet(set);
+  }
+
+  loadBookedSlots();
+}, [turf, selectedSport, selectedCourt, selectedDate]);
+
 
   // -------- Timing info for chosen sport --------
   const timing = useMemo(() => {
@@ -401,7 +437,7 @@ function getSegmentHours(segment: Segment) {
 }
 
 async function handleBooking() {
-  if (!turf || !selectedSport) return;
+  if (!turf || !selectedSport || selectedSlots.length === 0) return;
 
   const userId = localStorage.getItem("user_id") ?? "";
   const userName = localStorage.getItem("user_name") ?? "";
@@ -412,26 +448,11 @@ async function handleBooking() {
       month: "short",
       year: "numeric",
     })
-    .replace(/ /g, "-"); // "02-Dec-2025"
+    .replace(/ /g, "-");
 
   for (const slot of selectedSlots) {
-    const slotStart = slot.startLabel.replace(" ", "");
-
-    // Check if already booked
-    const isBooked = await isSlotAlreadyBooked({
-      turfId: turf.turf_id,
-      dateString,
-      sportName: selectedSport,
-      courtName: `court ${selectedCourt}`,
-      slotStart,
-    });
-
-    if (isBooked) {
-      alert(`Slot ${slot.startLabel} is already booked!`);
-      continue;
-    }
-
     const price = calculatePriceForSlot(slot);
+    if (price === null) continue;
 
     const bookingData = {
       booked_sports_name: selectedSport,
@@ -441,7 +462,7 @@ async function handleBooking() {
       date: dateString,
       day_price: priceTable?.[selectedDayKey]?.day ?? null,
       night_price: priceTable?.[selectedDayKey]?.night ?? null,
-      owner_id: turf.owner_id ?? "",       // FIX HERE
+      owner_id: turf.owner_id ?? "",
       paid_amount: price,
       paid_by: `${userId} ${userName}`,
       payment_initiated_time: new Date().toISOString(),
@@ -457,20 +478,32 @@ async function handleBooking() {
       user_id: userId,
     };
 
-    await createTurfBooking({
+    const result = await createTurfBookingSafe({
       turfId: turf.turf_id,
       dateString,
       sportName: selectedSport,
       courtName: `court ${selectedCourt}`,
-      slotStart,
+      slotStart: slot.startLabel.replace(" ", ""),
       bookingData,
     });
+
+    // 🔒 HARD STOP if slot already booked
+    if (!result.success) {
+      alert(`❌ Slot ${slot.startLabel} is already booked. Please select another slot.`);
+      return;
+    }
   }
 
-  alert("Booking created successfully!");
+  alert("✅ Booking created successfully!");
 }
 
 
+
+const now = new Date();
+const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+const isToday =
+  selectedDate.toDateString() === new Date().toDateString();
 
 function renderTimelineRow(hours: number[]) {
   return (
@@ -498,8 +531,18 @@ function renderTimelineRow(hours: number[]) {
           const slot = allSlots.find((s) => s.startMin === startMin);
           const price = slot ? calculatePriceForSlot(slot) : null;
 
-          const disabled = price === null;
-          const selected = selectedSlots.some((s) => s.startMin === startMin);
+          const slotKey =
+  slot?.startLabel?.replace(/\s/g, "") ?? "";
+
+// ✅ FINAL DISABLE RULE
+const disabled =
+  price === null ||                         // no price
+  (isToday && startMin <= nowMinutes) ||    // past time today
+  bookedSlotSet.has(slotKey);               // 🔒 already booked
+
+          const selected = selectedSlots.some(
+            (s) => s.startMin === startMin
+          );
 
           return (
             <div
@@ -512,7 +555,8 @@ function renderTimelineRow(hours: number[]) {
                   : "bg-white"
               }`}
               style={{
-                borderRight: idx !== hours.length - 1 ? "1px solid #ccc" : "none",
+                borderRight:
+                  idx !== hours.length - 1 ? "1px solid #ccc" : "none",
                 cursor: disabled ? "not-allowed" : "pointer",
                 backgroundImage: disabled
                   ? "repeating-linear-gradient(45deg,#ddd,#ddd 4px,#eee 4px,#eee 8px)"
@@ -520,7 +564,9 @@ function renderTimelineRow(hours: number[]) {
               }}
               onClick={() => !disabled && toggleSlot(slot!)}
             >
-              {formatToAmPm(`${realHour.toString().padStart(2, "0")}:00`)}
+              {formatToAmPm(
+                `${realHour.toString().padStart(2, "0")}:00`
+              )}
             </div>
           );
         })}
@@ -528,6 +574,7 @@ function renderTimelineRow(hours: number[]) {
     </>
   );
 }
+
 
 
   // -------- Render --------
