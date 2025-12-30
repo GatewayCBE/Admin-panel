@@ -25,6 +25,8 @@ import AddTurfForm from "../pages/admin/Owner/AddTurf";
 import AdminLogin from "../pages/auth/AdminLogin";
 import UGames from "../pages/user/UGames";
 import ManageTurf from "../pages/admin/Turf/ManageTurf";
+import AdvancePayment from "../pages/user/AdvancePayment";
+import RazorpayPage from "../pages/user/Razorpay";
 
 const AppRoutes: React.FC = () => {
   return (
@@ -42,6 +44,8 @@ const AppRoutes: React.FC = () => {
         <Route path="/ugames" element={<UGames />} />
         <Route path="/user/turfs/:turfId" element={<TurfDetail />} />
         <Route path="/user/turfs/:turfId/slots" element={<SlotDetails />} />
+        <Route path="/user/advancepayment" element={<AdvancePayment />} />
+        <Route path="/user/razorpay" element={<RazorpayPage />} />
       </Route>
 
       {/* 👤 Owner pages */}
