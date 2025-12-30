@@ -3,6 +3,7 @@ import { useTurf } from "./useTurf";
 import { deleteTurf, updateTurf } from "../../../services/firestoreService";
 import AdminNavbar from "../Analytics/AdminNavbar";
 import { uploadTurfImages } from "../../../services/storageService";
+import { getAuth } from "firebase/auth"; 
 
 const ManageTurf: React.FC = () => {
   const { turfs } = useTurf();
@@ -26,33 +27,52 @@ const clearImageStates = () => {
   );
 
   // --- DELETE LOGIC ---
-  const handleDelete = async (id: string, name: string) => {
-    // Debugging: This will show you exactly what ID is being passed in the console
-  console.log("Received ID for deletion:", id);
-  // 1. Check if ID exists (common issue: id vs turf_id)
-  if (!id) {
-    alert("Error: Could not find the ID for this turf.");
+  const handleDelete = async (turfId: string, name: string) => {
+  if (!window.confirm(`Delete "${name}"?`)) return;
+
+  const auth = getAuth();
+  const user = auth.currentUser;
+
+  if (!user) {
+    alert("Not logged in");
     return;
   }
 
-  const confirmDelete = window.confirm(`Are you sure you want to delete "${name}"?`);
-  
-  if (confirmDelete) {
-    try {
-      console.log("Attempting to delete turf with ID:", id);
-      await deleteTurf(id);
-      
-      alert("✅ Turf deleted successfully");
-      
-      // 2. Refresh the window to sync with Firestore
-      window.location.reload(); 
-      
-    } catch (error: any) {
-      console.error("Firestore Delete Error:", error);
-      alert(`❌ Failed to delete: ${error.message}`);
-    }
+  // 🔍 ADD THIS BLOCK (TEMPORARY DEBUG)
+  const tokenResult = await user.getIdTokenResult(true);
+  console.log("Admin claim:", tokenResult.claims.admin);
+
+  if (!tokenResult.claims.admin) {
+    alert("❌ You are not an admin");
+    return;
   }
+  // 🔍 END DEBUG BLOCK
+
+  const token = await user.getIdToken(true);
+
+  const res = await fetch(
+    "https://asia-south1-play-arena-e83d8.cloudfunctions.net/deleteTurfByAdmin",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ turfId }),
+    }
+  );
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    alert(data.error || "Delete failed");
+    return;
+  }
+
+  alert("✅ Turf deleted successfully");
+  window.location.reload();
 };
+
 
   // --- MODIFY LOGIC ---
   const handleModify = (turf: any) => {
