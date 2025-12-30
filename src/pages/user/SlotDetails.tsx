@@ -437,10 +437,21 @@ function getSegmentHours(segment: Segment) {
 }
 
 async function handleBooking() {
-  if (!turf || !selectedSport || selectedSlots.length === 0) return;
+  if (!turf || !selectedSport || !totalPrice || selectedSlots.length === 0) return;
 
   const userId = localStorage.getItem("user_id") ?? "";
   const userName = localStorage.getItem("user_name") ?? "";
+
+  navigate("/user/advancepayment", {
+    state: {
+      turf,
+      selectedSport,
+      selectedCourt,
+      selectedSlots,
+      selectedDate,
+      totalPrice,
+    },
+  });
 
   const dateString = selectedDate
     .toLocaleDateString("en-GB", {
@@ -493,8 +504,6 @@ async function handleBooking() {
       return;
     }
   }
-
-  alert("✅ Booking created successfully!");
 }
 
 
