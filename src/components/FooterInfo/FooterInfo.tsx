@@ -7,7 +7,7 @@ const FooterInfo: React.FC = () => {
     <div className="container-fluid bg-success text-white py-5">
       <div className="row">
         
-        {/* About Us */}
+      
         <div className="col-md-3 mb-4">
           <h5 className="fw-bold">About Us</h5>
           <hr className="border-light w-50" />
@@ -16,7 +16,6 @@ const FooterInfo: React.FC = () => {
           </p>
         </div>
 
-        {/* Quick Links */}
         <div className="col-md-3 mb-4">
           <h5 className="fw-bold">Quick Links</h5>
           <hr className="border-light w-50" />
@@ -28,7 +27,6 @@ const FooterInfo: React.FC = () => {
           </ul>
         </div>
 
-        {/* Contact */}
         <div className="col-md-3 mb-4">
           <h5 className="fw-bold">Contact Us</h5>
           <hr className="border-light w-50" />
@@ -37,7 +35,6 @@ const FooterInfo: React.FC = () => {
           <p>Location: Tamil Nadu</p>
         </div>
 
-        {/* Newsletter */}
         <div className="col-md-3 mb-4">
           <h5 className="fw-bold">Newsletter</h5>
           <hr className="border-light w-50" />

@@ -7,72 +7,64 @@ const Navbar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
 
-  const handleToggle = () => {
-    setIsOpen(!isOpen);
-  };
-
-  const handleNavItemClick = () => {
-    setIsOpen(false);
-  };
-
   const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      localStorage.clear();
-      sessionStorage.clear();
-      navigate("/", { replace: true });
-    } catch (error) {
-      console.error("Logout error:", error);
-    }
+    await signOut(auth);
+    navigate("/");
   };
 
   return (
-    <nav className="navbar navbar-expand-lg navbar-dark" style={{ backgroundColor: "#2d6a4f" }}>
-      <div className="container-fluid">
-        <Link className="navbar-brand fw-bold" to="/" onClick={handleNavItemClick}>
-          BookYourTurf
-        </Link>
+    <nav
+      className="navbar navbar-expand-lg navbar-dark sticky-top shadow"
+     style={{
+        background: "linear-gradient(90deg, #016b5f, #48a365ff)",
+  }}
+    >
+      <div className="container">
+           <Link
+                 className="navbar-brand fw-bold"
+                 to="/"
+                 style={{
+                   fontSize: "1.8rem",
+                   letterSpacing: "1px",
+                   textShadow: "2px 2px 4px rgba(0,0,0,0.5)",
+                 }}
+               >
+                 <span style={{ color: "#14012bff" }}>Book </span>
+                 <span style={{ color: "#27ac3dff" }}>Your Turf</span>
+               </Link>
 
         <button
           className="navbar-toggler"
-          type="button"
-          aria-controls="navbarNav"
-          aria-expanded={isOpen ? "true" : "false"}
-          aria-label="Toggle navigation"
-          onClick={handleToggle}
+          onClick={() => setIsOpen(!isOpen)}
         >
           <span className="navbar-toggler-icon"></span>
         </button>
 
-        <div className={`collapse navbar-collapse ${isOpen ? "show" : ""}`} id="navbarNav">
-          <ul className="navbar-nav mx-auto">
-            <li className="nav-item">
-              <Link className="nav-link text-white fs-5" to="/" onClick={handleNavItemClick}>
-                Home
-              </Link>
-            </li>
-            <li className="nav-item">
-              <Link className="nav-link text-white fs-5" to="/ugames" onClick={handleNavItemClick}>
-                Games
-              </Link>
-            </li>
-            <li className="nav-item">
-              <Link className="nav-link text-white fs-5" to="/user/turfs" onClick={handleNavItemClick}>
-                Venues
-              </Link>
-            </li>
+        <div className={`collapse navbar-collapse ${isOpen ? "show" : ""}`}>
+          <ul className="navbar-nav mx-auto gap-4">
+            <Link className="nav-link fs-5" to="/">Home</Link>
+            <Link className="nav-link fs-5" to="/ugames">Games</Link>
+            <Link className="nav-link fs-5" to="/user/turfs">Venues</Link>
           </ul>
 
-          {/* Sign In / Sign Up button */}
-          <div className="d-flex">
-            <button
-              className="btn fw-bold"
-              style={{ backgroundColor: "#d8f3dc", color: "#2d6a4f" }}
-              onClick={handleLogout}
-            >
-              Logout
-            </button>
-          </div>
+          <button
+            className="btn fw-bold px-4"
+            style={{
+              backgroundColor: "#e63946",
+              color: "#fff",
+              borderRadius: "20px",
+              transition: "0.3s",
+            }}
+            onMouseEnter={(e) =>
+              (e.currentTarget.style.transform = "scale(1.05)")
+            }
+            onMouseLeave={(e) =>
+              (e.currentTarget.style.transform = "scale(1)")
+            }
+            onClick={handleLogout}
+          >
+            Logout
+          </button>
         </div>
       </div>
     </nav>
