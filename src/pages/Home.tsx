@@ -127,7 +127,6 @@ const Home = () => {
         </div>
       </div>
 
-      {/* Animations and Styles */}
       <style>
         {`
           .nav-link-custom::after {
