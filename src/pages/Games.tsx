@@ -4,13 +4,13 @@ import tennis from "../assets/tennis.png";
 import volleyball from "../assets/volleyball.png";
 import badminton from "../assets/badminton.png";
 import football from "../assets/football.png";
+import pickleball from "../assets/PickleImg.jpg";
 
-// Sample sports data
 const sports = [
   { name: "Football", image: football },
   { name: "Cricket", image: cricket },
-  { name: "Volleyball", image: volleyball },
-  { name: "Tennis", image: tennis },
+  { name: "Pickleball", image: pickleball },
+  // { name: "Tennis", image: tennis },
   { name: "Badminton", image: badminton },
 ];
 

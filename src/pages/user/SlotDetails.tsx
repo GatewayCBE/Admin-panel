@@ -1,7 +1,7 @@
 // src/pages/user/SlotDetails.tsx
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { createTurfBookingSafe, getAllBookedSlots, getTurfById } from "../../services/firestoreService";
+import { getAllBookedSlots, getTurfById } from "../../services/firestoreService";
 
 // ---------- Types ----------
 type TurfDoc = {
@@ -439,9 +439,6 @@ function getSegmentHours(segment: Segment) {
 async function handleBooking() {
   if (!turf || !selectedSport || !totalPrice || selectedSlots.length === 0) return;
 
-  const userId = localStorage.getItem("user_id") ?? "";
-  const userName = localStorage.getItem("user_name") ?? "";
-
   navigate("/user/advancepayment", {
     state: {
       turf,
@@ -452,58 +449,6 @@ async function handleBooking() {
       totalPrice,
     },
   });
-
-  const dateString = selectedDate
-    .toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    })
-    .replace(/ /g, "-");
-
-  for (const slot of selectedSlots) {
-    const price = calculatePriceForSlot(slot);
-    if (price === null) continue;
-
-    const bookingData = {
-      booked_sports_name: selectedSport,
-      booking_id: `BS_${turf.turf_id}_${Date.now()}`,
-      booking_username: userName,
-      court: `court ${selectedCourt}`,
-      date: dateString,
-      day_price: priceTable?.[selectedDayKey]?.day ?? null,
-      night_price: priceTable?.[selectedDayKey]?.night ?? null,
-      owner_id: turf.owner_id ?? "",
-      paid_amount: price,
-      paid_by: `${userId} ${userName}`,
-      payment_initiated_time: new Date().toISOString(),
-      payment_status: "paymentSuccess",
-      payment_transaction_id: "",
-      slot_start_time: slot.startLabel,
-      slot_end_time: slot.endLabel,
-      total_amount: price,
-      turf_closed: false,
-      turf_id: turf.turf_id,
-      turf_name: turf.turf_name,
-      unpaid_amount: 0,
-      user_id: userId,
-    };
-
-    const result = await createTurfBookingSafe({
-      turfId: turf.turf_id,
-      dateString,
-      sportName: selectedSport,
-      courtName: `court ${selectedCourt}`,
-      slotStart: slot.startLabel.replace(" ", ""),
-      bookingData,
-    });
-
-    // 🔒 HARD STOP if slot already booked
-    if (!result.success) {
-      alert(`❌ Slot ${slot.startLabel} is already booked. Please select another slot.`);
-      return;
-    }
-  }
 }
 
 

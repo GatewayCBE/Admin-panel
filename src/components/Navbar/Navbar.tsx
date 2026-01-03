@@ -1,70 +1,68 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
+import LogoImg from "../../assets/LogoImg.png";
 
 const Navbar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
 
-  const handleToggle = () => {
-    setIsOpen(!isOpen);
-  };
-
-  const handleNavItemClick = () => {
-    setIsOpen(false);
-  };
-
   return (
-    <nav className="navbar navbar-expand-lg navbar-dark" style={{ backgroundColor: "#2d6a4f" }}>
-      <div className="container-fluid">
-        <Link className="navbar-brand fw-bold" to="/" onClick={handleNavItemClick}>
-          BookYourTurf
+    <nav
+      className="navbar navbar-expand-lg navbar-dark fixed-top"
+      style={{
+        background: "linear-gradient(90deg, #67a521ff, #67a521ff)",
+        height: "70px",
+        padding: "0",
+      }}
+    >
+      <div className="container h-100">
+        <Link to="/" className="navbar-brand d-flex align-items-center" style={{ position: "relative", zIndex: 10 }}>
+          <img 
+            src={LogoImg} 
+            alt="BookYourTurf Logo" 
+            style={{
+              height: "100px",
+              width: "auto",
+              objectFit: "contain",
+              marginTop: "-20px",
+              marginBottom: "-20px",
+            }}
+          />
         </Link>
 
         <button
           className="navbar-toggler"
-          type="button"
-          aria-controls="navbarNav"
-          aria-expanded={isOpen ? "true" : "false"}
-          aria-label="Toggle navigation"
-          onClick={handleToggle}
+          onClick={() => setIsOpen(!isOpen)}
+          style={{ zIndex: 10 }}
         >
           <span className="navbar-toggler-icon"></span>
         </button>
 
-        <div className={`collapse navbar-collapse ${isOpen ? "show" : ""}`} id="navbarNav">
-          <ul className="navbar-nav mx-auto">
-            <li className="nav-item">
-              <Link className="nav-link text-white fs-5" to="/" onClick={handleNavItemClick}>
-                Home
-              </Link>
-            </li>
-            <li className="nav-item">
-              <Link className="nav-link text-white fs-5" to="/about" onClick={handleNavItemClick}>
-                About
-              </Link>
-            </li>
-            <li className="nav-item">
-              <Link className="nav-link text-white fs-5" to="/games" onClick={handleNavItemClick}>
-                Games
-              </Link>
-            </li>
-            <li className="nav-item">
-              <Link className="nav-link text-white fs-5" to="/admin" onClick={handleNavItemClick}>
-                Admin
-              </Link>
-            </li>
+        <div className={`collapse navbar-collapse ${isOpen ? "show" : ""}`} style={{ height: "100%" }}>
+          <ul className="navbar-nav mx-auto gap-4 align-items-center h-100">
+            {["HOME", "ABOUT", "GAMES", "ADMIN"].map((item) => (
+              <li key={item} className="nav-item fw-bold text-white d-flex align-items-center">
+                <Link
+                  to={item === "HOME" ? "/" : `/${item.toLowerCase()}`}
+                  className="nav-link fs-6 position-relative"
+                  style={{ transition: "0.3s" }}
+                >
+                  {item}
+                </Link>
+              </li>
+            ))}
           </ul>
 
-          {/* Sign In / Sign Up button */}
-          <div className="d-flex">
-            <Link
-              to="/auth"
-              className="btn fw-bold"
-              style={{ backgroundColor: "#d8f3dc", color: "#2d6a4f" }}
-              onClick={handleNavItemClick}
-            >
-              Sign In | Sign Up
-            </Link>
-          </div>
+          <Link
+            to="/auth"
+            className="btn fw-bold px-4"
+            style={{
+              backgroundColor: "#64b617ff",
+              color: "white",
+              borderRadius: "20px",
+            }}
+          >
+            SIGN IN | SIGN UP
+          </Link>
         </div>
       </div>
     </nav>
