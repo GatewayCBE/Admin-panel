@@ -58,6 +58,65 @@ const Home = () => {
             SMART
           </span>
         </p>
+
+        {/* <button
+          className="btn btn-lg fw-bold explore-btn"
+          style={{
+            background: "linear-gradient(135deg, #52b788, #2d6a4f)",
+            color: "#fff",
+            padding: "15px 40px",
+            borderRadius: "50px",
+            border: "3px solid rgba(255,255,255,0.3)",
+            fontSize: "1.2rem",
+            boxShadow: "0 8px 25px rgba(82, 183, 136, 0.4)",
+            transition: "all 0.4s ease",
+            textTransform: "uppercase",
+            letterSpacing: "1px",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "scale(1.08) translateY(-5px)";
+            e.currentTarget.style.boxShadow = "0 12px 35px rgba(82, 183, 136, 0.6)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "scale(1) translateY(0)";
+            e.currentTarget.style.boxShadow = "0 8px 25px rgba(82, 183, 136, 0.4)";
+          }}
+        >
+          Explore Turfs →
+        </button> */}
+      </div>
+
+      <div
+        style={{
+          position: "absolute",
+          bottom: "50px",
+          left: "50%",
+          transform: "translateX(-50%)",
+          zIndex: 2,
+          animation: "bounce 2s infinite",
+        }}
+      >
+        <div
+          style={{
+            width: "30px",
+            height: "50px",
+            border: "2px solid rgba(255,255,255,0.5)",
+            borderRadius: "20px",
+            display: "flex",
+            justifyContent: "center",
+            paddingTop: "8px",
+          }}
+        >
+          <div
+            style={{
+              width: "6px",
+              height: "10px",
+              background: "#52b788",
+              borderRadius: "3px",
+              animation: "scroll 1.5s infinite",
+            }}
+          ></div>
+        </div>
       </div>
 
       {/* SCROLL INDICATOR */}
