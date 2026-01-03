@@ -45,8 +45,9 @@ const AppRoutes: React.FC = () => {
         <Route path="/user/turfs/:turfId" element={<TurfDetail />} />
         <Route path="/user/turfs/:turfId/slots" element={<SlotDetails />} />
         <Route path="/user/advancepayment" element={<AdvancePayment />} />
-        <Route path="/user/razorpay" element={<RazorpayPage />} />
+        
       </Route>
+      <Route path="/user/razorpay" element={<RazorpayPage />} />
 
       {/* 👤 Owner pages */}
       <Route element={<UserLayout />}>

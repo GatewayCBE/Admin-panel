@@ -16,7 +16,8 @@ const Navbar: React.FC = () => {
     <nav
       className="navbar navbar-expand-lg navbar-dark sticky-top shadow"
      style={{
-        background: "linear-gradient(90deg, #016b5f, #48a365ff)",
+                background: "linear-gradient(90deg, #2d6a4f, #2d6a4f)",
+
   }}
     >
       <div className="container">

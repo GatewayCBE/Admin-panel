@@ -13,9 +13,20 @@ const Footer: React.FC = () => {
       >
         <div className="container d-flex justify-content-between align-items-center">
           {/* Left: Copyright */}
-          <p className="mb-0">
-            © {new Date().getFullYear()} Nottam Infotech Private Limited, All rights reserved.
-          </p>
+         <p className="mb-0">
+  © {new Date().getFullYear()}{" "}
+  <span
+    style={{
+      fontFamily: "BalloonFont",
+      fontSize: "19px",
+      letterSpacing: "1px",
+    }}
+  >
+    Nottam Infotech Private Limited 
+  </span>
+    <span>  All rights reserved.</span> 
+</p>
+
 
           {/* Right: Social Icons */}
           <div className="d-flex gap-3">

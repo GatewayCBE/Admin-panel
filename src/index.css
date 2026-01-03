@@ -9,3 +9,10 @@ body {
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
 }
+
+@font-face {
+  font-family: "BalloonFont";
+  src: url("./assets//BALLOON1.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}

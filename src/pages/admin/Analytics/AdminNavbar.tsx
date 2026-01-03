@@ -29,7 +29,8 @@ const AdminNavbar: React.FC = () => {
   };
 
   return (
-    <nav className="navbar navbar-expand-lg navbar-dark" style={{ backgroundColor: "#2d6a4f" }}>
+    <nav className="navbar navbar-expand-lg navbar-dark" style={{ background: "linear-gradient(90deg, #67a521ff, #67a521ff)",
+ }}>
       <div className="container-fluid">
         <Link className="navbar-brand fw-bold" to="/" onClick={handleNavItemClick}>
           BookYourTurf

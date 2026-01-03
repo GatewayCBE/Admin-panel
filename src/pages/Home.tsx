@@ -1,30 +1,34 @@
 import React, { useState, useEffect } from "react";
-import HomeImg from "../assets/p1.jpg";
+import BgImg1 from "../assets/BgImg3.jpg";
+import BgImg2 from "../assets/BgImg1.jpg";
+import BgImg3 from "../assets/BgImg4.jpg";
+import BgImg4 from "../assets/BgImg2.jpg";
+
 
 const Home = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
+  const images = [BgImg1, BgImg2, BgImg3, BgImg4];
+  const [currentIndex, setCurrentIndex] = useState(0);
 
+  // Auto background slider
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 50);
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % images.length);
+    }, 3000); // change image every 5 sec
+
+    return () => clearInterval(interval);
   }, []);
 
   return (
     <div
       className="vh-100 position-relative d-flex align-items-center"
       style={{
-        backgroundImage: `url(${HomeImg})`,
+        backgroundImage: `url(${images[currentIndex]})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
-        backgroundAttachment: "fixed",
+        transition: "background-image 1.5s ease-in-out",
       }}
     >
-   
-
+      {/* Dark overlay */}
       <div
         style={{
           position: "absolute",
@@ -34,37 +38,25 @@ const Home = () => {
         }}
       />
 
+      {/* CONTENT */}
       <div
         className="container text-center text-white"
         style={{
           zIndex: 2,
           animation: "fadeUp 1.2s ease",
-          marginTop: "80px",
+          marginTop: "30px",
         }}
       >
-        <h1
-          className="display-3 fw-bold mb-4"
-          style={{
-            textShadow: "3px 3px 6px rgba(0,0,0,0.7)",
-            letterSpacing: "2px",
-          }}
-        >
-          Book Your Slot
+        <h1 className="display-3 fw-bold mb-4">
+          Book Your Turf
         </h1>
 
-        <p
-          className="fs-4 mb-5"
-          style={{
-            textShadow: "2px 2px 4px rgba(0,0,0,0.7)",
-            maxWidth: "800px",
-            margin: "0 auto 2rem",
-            lineHeight: "1.6",
-          }}
-        >
-          <span style={{ color: "#52b788", fontWeight: "600" }}>Your Field</span> •{" "}
-          <span style={{ color: "#74c69d", fontWeight: "600" }}>Your Time</span> •{" "}
-          <span style={{ color: "#95d5b2", fontWeight: "600" }}>Your Game</span> •{" "}
-          <span style={{ color: "#b7e4c7", fontWeight: "600" }}>Your Turf Tracker</span>
+        <p className="fs-5 mb-5" style={{ maxWidth: "800px", margin: "0 auto" }}>
+          <span style={{ color: "#1812b8ff", fontWeight: "600" }}>SPORTS </span>
+          <span style={{ color: "#70cf9bff", fontWeight: "600" }}>MADE </span>
+          <span style={{ color: "#70cf9bff", fontWeight: "600" }}>
+            SMART
+          </span>
         </p>
 
         {/* <button
@@ -127,38 +119,43 @@ const Home = () => {
         </div>
       </div>
 
+      {/* SCROLL INDICATOR */}
+      <div
+        style={{
+          position: "absolute",
+          bottom: "100px",
+          left: "50%",
+          transform: "translateX(-50%)",
+          zIndex: 2,
+          animation: "bounce 2s infinite",
+        }}
+      >
+        <div
+          style={{
+            width: "30px",
+            height: "50px",
+            border: "2px solid rgba(255,255,255,0.5)",
+            borderRadius: "20px",
+            display: "flex",
+            justifyContent: "center",
+            paddingTop: "8px",
+          }}
+        >
+          <div
+            style={{
+              width: "6px",
+              height: "10px",
+              background: "#52b788",
+              borderRadius: "3px",
+              animation: "scroll 1.5s infinite",
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Animations */}
       <style>
         {`
-          .nav-link-custom::after {
-            content: '';
-            position: absolute;
-            bottom: -5px;
-            left: 50%;
-            width: 0;
-            height: 2px;
-            background: linear-gradient(90deg, #52b788, #d8f3dc);
-            transition: all 0.3s ease;
-            transform: translateX(-50%);
-          }
-          
-          .nav-link-custom:hover::after {
-            width: 100%;
-          }
-          
-          .nav-link-custom:hover {
-            color: #52b788 !important;
-            transform: translateY(-2px);
-          }
-          
-          @media (max-width: 991px) {
-            .navbar-collapse {
-              background: rgba(0, 0, 0, 0.95);
-              padding: 1rem;
-              border-radius: 10px;
-              margin-top: 1rem;
-            }
-          }
-          
           @keyframes fadeUp {
             from {
               opacity: 0;
@@ -169,7 +166,7 @@ const Home = () => {
               transform: translateY(0);
             }
           }
-          
+
           @keyframes bounce {
             0%, 100% {
               transform: translateX(-50%) translateY(0);
@@ -178,7 +175,7 @@ const Home = () => {
               transform: translateX(-50%) translateY(10px);
             }
           }
-          
+
           @keyframes scroll {
             0% {
               opacity: 0;

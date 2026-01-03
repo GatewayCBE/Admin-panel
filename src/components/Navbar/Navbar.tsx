@@ -1,46 +1,49 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import HomeImg from "../../assets/p1.jpg";
+import LogoImg from "../../assets/LogoImg.png";
 
 const Navbar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-<nav
-  className="navbar navbar-expand-lg navbar-dark fixed-top"
-  style={{
-        background: "linear-gradient(90deg, #016b5f, #48a365ff)",
-  }}
-> 
-
-      <div className="container">
-         <Link
-          className="navbar-brand fw-bold"
-          to="/"
-          style={{
-            fontSize: "1.8rem",
-            letterSpacing: "1px",
-            textShadow: "2px 2px 4px rgba(0,0,0,0.5)",
-          }}
-        >
-          <span style={{ color: "#14012bff" }}>Book </span>
-          <span style={{ color: "#27ac3dff" }}>Your Turf</span>
+    <nav
+      className="navbar navbar-expand-lg navbar-dark fixed-top"
+      style={{
+        background: "linear-gradient(90deg, #67a521ff, #67a521ff)",
+        height: "70px",
+        padding: "0",
+      }}
+    >
+      <div className="container h-100">
+        <Link to="/" className="navbar-brand d-flex align-items-center" style={{ position: "relative", zIndex: 10 }}>
+          <img 
+            src={LogoImg} 
+            alt="BookYourTurf Logo" 
+            style={{
+              height: "100px",
+              width: "auto",
+              objectFit: "contain",
+              marginTop: "-20px",
+              marginBottom: "-20px",
+            }}
+          />
         </Link>
 
         <button
           className="navbar-toggler"
           onClick={() => setIsOpen(!isOpen)}
+          style={{ zIndex: 10 }}
         >
           <span className="navbar-toggler-icon"></span>
         </button>
 
-        <div className={`collapse navbar-collapse ${isOpen ? "show" : ""}`}>
-          <ul className="navbar-nav mx-auto gap-4">
-            {["Home", "About", "Games", "Admin"].map((item) => (
-              <li key={item} className="nav-item">
+        <div className={`collapse navbar-collapse ${isOpen ? "show" : ""}`} style={{ height: "100%" }}>
+          <ul className="navbar-nav mx-auto gap-4 align-items-center h-100">
+            {["HOME", "ABOUT", "GAMES", "ADMIN"].map((item) => (
+              <li key={item} className="nav-item fw-bold text-white d-flex align-items-center">
                 <Link
-                  to={item === "Home" ? "/" : `/${item.toLowerCase()}`}
-                  className="nav-link fs-5 position-relative"
+                  to={item === "HOME" ? "/" : `/${item.toLowerCase()}`}
+                  className="nav-link fs-6 position-relative"
                   style={{ transition: "0.3s" }}
                 >
                   {item}
@@ -53,12 +56,12 @@ const Navbar: React.FC = () => {
             to="/auth"
             className="btn fw-bold px-4"
             style={{
-              backgroundColor: "#d8f3dc",
-              color: "#1b4332",
+              backgroundColor: "#64b617ff",
+              color: "white",
               borderRadius: "20px",
             }}
           >
-            Sign In | Sign Up
+            SIGN IN | SIGN UP
           </Link>
         </div>
       </div>
