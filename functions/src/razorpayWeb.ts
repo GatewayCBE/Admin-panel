@@ -1,7 +1,7 @@
 import { onRequest } from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 import Razorpay from "razorpay";
-// import * as crypto from "crypto";
+import * as crypto from "crypto";
 import cors from "cors";
 
 const corsHandler = cors({ origin: true });
@@ -12,49 +12,59 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
-/* =========================================================
-   🔐 Load Razorpay keys (SAFE at top-level)
-   ========================================================= */
 const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID;
 const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
 
 /* =========================================================
+   🔧 HELPERS
+========================================================= */
+const formatDate = (dateInput: string) => {
+  const d = new Date(dateInput);
+
+  if (isNaN(d.getTime())) {
+    throw new Error("INVALID_DATE");
+  }
+
+  const day = d.getDate().toString().padStart(2, "0");
+  const month = d.toLocaleString("en-US", { month: "short" });
+  const year = d.getFullYear();
+
+  return `${day}-${month}-${year}`;
+};
+
+const getWeekday = (dateStr: string) => {
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) throw new Error("INVALID_DATE");
+  return d.toLocaleDateString("en-US", {
+    weekday: "long",
+    timeZone: "Asia/Kolkata",
+  }).toLowerCase();
+};
+
+const isNightSlot = (slot: string) => {
+  if (/pm$/i.test(slot)) return true;
+  const hour = parseInt(slot.split(":")[0], 10);
+  return hour >= 18 || hour < 6;
+};
+
+/* =========================================================
    1️⃣ CREATE RAZORPAY ORDER (WEB)
-   ========================================================= */
+========================================================= */
 export const createWebRazorpayOrder = onRequest(
   { region: "asia-south1" },
   async (req, res) => {
-    res.set("Access-Control-Allow-Origin", "*");
-    res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
-    res.set("Access-Control-Allow-Headers", "Content-Type");
-
     corsHandler(req, res, async () => {
       try {
         if (req.method !== "POST") {
           return res.status(405).json({ error: "Method not allowed" });
         }
 
-        if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
-          return res.status(500).json({
-            error: "Server configuration error (Razorpay keys missing)",
-          });
+        const { turf_id, sport, date, slots, payment_type } = req.body;
+
+        if (!turf_id || !sport || !date || !Array.isArray(slots) || !slots.length) {
+          return res.status(400).json({ error: "INVALID_REQUEST" });
         }
 
-        const { turf_id, slots, payment_type } = req.body;
-
-        console.log("🔥 createWebRazorpayOrder CALLED");
-        console.log("🔥 turf_id:", turf_id);
-
-        if (!turf_id || !Array.isArray(slots) || slots.length === 0) {
-          return res.status(400).json({ error: "Invalid request payload" });
-        }
-
-        console.log(
-          "🔥 Reading Firestore path: environment/testing/turfs/",
-          turf_id
-        );
-
-        /* 🔒 Server-side pricing */
         const turfSnap = await db
           .collection("environment")
           .doc("testing")
@@ -62,27 +72,37 @@ export const createWebRazorpayOrder = onRequest(
           .doc(turf_id)
           .get();
 
-        console.log("🔥 turfSnap.exists =", turfSnap.exists);
-
         if (!turfSnap.exists) {
-          return res.status(404).json({ error: "Turf not found" });
+          return res.status(404).json({ error: "TURF_NOT_FOUND" });
         }
 
-        const pricePerSlot = turfSnap.data()!.slot_price;
-        const totalAmount = pricePerSlot * slots.length;
-        const advanceAmount = slots.length * 1;
+        const weekday = getWeekday(date);
+        const pricing =
+          turfSnap.data()?.sport_specific_price?.[sport]?.[weekday];
 
-        const payableAmount =
-          payment_type === "advance" ? advanceAmount : totalAmount;
+        if (!pricing) {
+          return res.status(400).json({ error: "PRICING_NOT_CONFIGURED" });
+        }
 
-        /* ✅ Razorpay instance (LAZY INIT — THIS IS CRITICAL) */
+        let slotTotal = 0;
+        for (const slot of slots) {
+          slotTotal += isNightSlot(slot)
+            ? Number(pricing.night)
+            : Number(pricing.day);
+        }
+
+        const serviceFee = 10 * slots.length;
+        const totalAmount = slotTotal + serviceFee;
+        const paidAmount =
+          payment_type === "advance" ? slots.length : totalAmount;
+
         const razorpay = new Razorpay({
-          key_id: RAZORPAY_KEY_ID,
-          key_secret: RAZORPAY_KEY_SECRET,
+          key_id: RAZORPAY_KEY_ID!,
+          key_secret: RAZORPAY_KEY_SECRET!,
         });
 
         const order = await razorpay.orders.create({
-          amount: payableAmount * 100, // paise
+          amount: paidAmount * 100,
           currency: "INR",
           receipt: `WEB_${turf_id}_${Date.now()}`,
           payment_capture: true,
@@ -92,97 +112,67 @@ export const createWebRazorpayOrder = onRequest(
           order_id: order.id,
           amount: order.amount,
           currency: order.currency,
-          key_id: RAZORPAY_KEY_ID, // safe to expose
+          key_id: RAZORPAY_KEY_ID,
+          pricing: {
+    slot_total: slotTotal,
+    service_fee: serviceFee,
+    total_amount: totalAmount,
+    paid_amount: paidAmount,
+    unpaid_amount: totalAmount - paidAmount,
+          },
         });
-      } catch (error) {
-        console.error("❌ createWebRazorpayOrder:", error);
-        return res.status(500).json({ error: "Failed to create order" });
+      } catch (err) {
+        console.error("❌ createWebRazorpayOrder:", err);
+        return res.status(500).json({ error: "CREATE_ORDER_FAILED" });
       }
     });
   }
 );
 
 /* =========================================================
-   2️⃣ VERIFY PAYMENT & FINALIZE BOOKING (WEB)
-   ========================================================= */
+   2️⃣ VERIFY PAYMENT & FINALIZE BOOKING
+========================================================= */
 export const verifyWebRazorpayPayment = onRequest(
   { region: "asia-south1" },
   async (req, res) => {
     corsHandler(req, res, async () => {
       try {
-        if (req.method !== "POST") {
-          return res.status(405).json({ error: "Method not allowed" });
-        }
-
-        if (!RAZORPAY_KEY_SECRET) {
-          return res.status(500).json({
-            error: "Server configuration error (Razorpay key missing)",
-          });
-        }
-
         const {
-          // razorpay_order_id,
+          razorpay_order_id,
           razorpay_payment_id,
-          // razorpay_signature,
-
+          razorpay_signature,
           turf_id,
           turf_name,
           owner_id,
           user_id,
           user_name,
           user_mobile_number,
-
-          slots,
-          court,
           sport,
+          court,
+          slots,
           date,
           payment_type,
         } = req.body;
 
-        // ---- Normalize date (CRITICAL FIX)
-const normalizedDate =
-  typeof date === "string"
-    ? date
-    : date instanceof Date
-    ? date.toISOString().split("T")[0]
-    : "";
+        const formattedDate = formatDate(date);
 
-// ---- Normalize court
-const courtLabel =
-  typeof court === "number" ? `court ${court}` : court;
+        const normalizedCourt =
+          typeof court === "string" && court.trim()
+            ? court
+            : "court 1";
 
-// ---- Validate ALL path segments
-assertPath("USER_MOBILE", user_mobile_number);
-assertPath("TURF_ID", turf_id);
-assertPath("DATE", normalizedDate);
-assertPath("SPORT", sport);
-assertPath("COURT", courtLabel);
-
-        /* ===============================
-           1️⃣ Verify Razorpay signature
-           =============================== */
-        // const generatedSignature = crypto
-        //   .createHmac("sha256", RAZORPAY_KEY_SECRET)
-        //   .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-        //   .digest("hex");
-
-        // if (generatedSignature !== razorpay_signature) {
-        //   return res.status(401).json({ error: "Invalid payment signature" });
-        // }
-
-        /* ===============================
-           2️⃣ Normalize values
-           =============================== */
-
-        if (!turf_id || !sport || !date || !slots?.length || !courtLabel) {
-          return res.status(400).json({ error: "Invalid booking data" });
+        if (!user_mobile_number || !turf_id || !slots?.length) {
+          return res.status(400).json({ error: "INVALID_REQUEST" });
         }
 
-        function assertPath(label: string, value: any) {
-  if (typeof value !== "string" || value.trim() === "") {
-    throw new Error(`INVALID_PATH_${label}`);
-  }
-}
+        const generatedSignature = crypto
+          .createHmac("sha256", RAZORPAY_KEY_SECRET!)
+          .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+          .digest("hex");
+
+        if (generatedSignature !== razorpay_signature) {
+          return res.status(401).json({ error: "INVALID_SIGNATURE" });
+        }
 
         const userRef = db
           .collection("environment")
@@ -190,116 +180,88 @@ assertPath("COURT", courtLabel);
           .collection("users")
           .doc(user_mobile_number);
 
-        /* ===============================
-           3️⃣ Firestore Transaction
-           =============================== */
+        const turfRef = db
+          .collection("environment")
+          .doc("testing")
+          .collection("turfs")
+          .doc(turf_id);
+
         const result = await db.runTransaction(async (tx) => {
-          // ---- User existence
           const userSnap = await tx.get(userRef);
-          if (!userSnap.exists) {
-            throw new Error("USER_NOT_FOUND");
+          if (!userSnap.exists) throw new Error("USER_NOT_FOUND");
+
+          const turfSnap = await tx.get(turfRef);
+          if (!turfSnap.exists) throw new Error("TURF_NOT_FOUND");
+
+          const weekday = getWeekday(date);
+          const pricing =
+            turfSnap.data()?.sport_specific_price?.[sport]?.[weekday];
+
+          if (!pricing) throw new Error("PRICING_NOT_CONFIGURED");
+
+          let slotTotal = 0;
+          for (const slot of slots) {
+            slotTotal += isNightSlot(slot)
+              ? Number(pricing.night)
+              : Number(pricing.day);
           }
 
-          // ---- Idempotency check
-          const paymentCopies = userSnap.data()?.payment_copies || [];
-          const alreadyExists = paymentCopies.some(
-            (p: any) =>
-              p.payment_transaction_id === razorpay_payment_id
-          );
-
-          if (alreadyExists) {
-            return { success: true, duplicate: true };
-          }
-
-          // ---- Turf pricing
-          const turfSnap = await db
-            .collection("environment")
-            .doc("testing")
-            .collection("turfs")
-            .doc(turf_id)
-            .get();
-
-          if (!turfSnap.exists) {
-            throw new Error("TURF_NOT_FOUND");
-          }
-
-          const pricePerSlot = turfSnap.data()!.slot_price;
-          const totalAmount = pricePerSlot * slots.length;
-          const advanceAmount = slots.length * 1;
-
+          const serviceFee = 10 * slots.length;
+          const totalAmount = slotTotal + serviceFee;
           const paidAmount =
-            payment_type === "advance" ? advanceAmount : totalAmount;
-
-          const unpaidAmount =
-            payment_type === "advance"
-              ? totalAmount - advanceAmount
-              : 0;
+            payment_type === "advance" ? slots.length : totalAmount;
+          const unpaidAmount = totalAmount - paidAmount;
 
           const bookingId = `WEB_${turf_id}_${Date.now()}`;
 
-          /* ===============================
-             4️⃣ SLOT LOCK (MOBILE STRUCTURE)
-             =============================== */
-          for (const slotStart of slots) {
-  if (typeof slotStart !== "string") {
-    throw new Error("INVALID_SLOT_VALUE");
-  }
-
-  const slotKey = slotStart.replace(/\s/g, "");
-  assertPath("SLOT_KEY", slotKey);
-
+          for (const slot of slots) {
             const slotRef = db
               .collection("environment")
               .doc("testing")
               .collection("all_turfs_slot_booking")
               .doc(turf_id)
-              .collection(normalizedDate)
+              .collection(formattedDate)
               .doc(sport)
-              .collection("courts")
-              .doc(courtLabel)
-              .collection("slots")
-              .doc(slotKey);
+              .collection(normalizedCourt)
+              .doc(slot);
 
-            const slotSnap = await tx.get(slotRef);
-            if (slotSnap.exists) {
+            if ((await tx.get(slotRef)).exists) {
               throw new Error("SLOT_ALREADY_BOOKED");
             }
 
             tx.set(slotRef, {
               booking_id: bookingId,
+              booking_username: user_name,
+              user_id,
+              booked_sports_name: sport,
+              court,
+              formattedDate,
+              slot_start_time: slot,
+              day_price: pricing.day,
+              night_price: pricing.night,
+              total_amount: totalAmount,
+              paid_amount: paidAmount,
+              unpaid_amount: unpaidAmount,
+              paid_by: `${user_id} ${user_name}`,
+              payment_status: "paymentSuccess",
+              payment_transaction_id: razorpay_payment_id,
+              payment_completed_time: new Date().toISOString(),
+              payment_initiated_time: new Date().toISOString(),
               turf_id,
               turf_name,
               owner_id,
-              user_id,
-              booking_username: user_name,
-              booked_sports_name: sport,
-              court: courtLabel,
-              date,
-              slot_start_time: slotStart,
-              paid_amount: paidAmount,
-              unpaid_amount: unpaidAmount,
-              total_amount: totalAmount,
-              payment_status: "paymentSuccess",
-              payment_transaction_id: razorpay_payment_id,
-              payment_initiated_time: new Date().toISOString(),
+              turf_closed: false,
               platform: "web",
-              created_at: admin.firestore.FieldValue.serverTimestamp(),
             });
           }
 
-          /* ===============================
-             5️⃣ USER PAYMENT COPY
-             =============================== */
           tx.update(userRef, {
             payment_copies: admin.firestore.FieldValue.arrayUnion({
               booking_id: bookingId,
               turf_id,
               turf_name,
-              owner_id,
-              user_id,
-              booking_username: user_name,
-              booked_sports_name: sport,
-              court: courtLabel,
+              court,
+              sport,
               date,
               slots,
               total_amount: totalAmount,
@@ -307,7 +269,6 @@ assertPath("COURT", courtLabel);
               unpaid_amount: unpaidAmount,
               payment_status: "paymentSuccess",
               payment_transaction_id: razorpay_payment_id,
-              payment_initiated_time: new Date().toISOString(),
               platform: "web",
             }),
           });
@@ -316,24 +277,13 @@ assertPath("COURT", courtLabel);
         });
 
         return res.status(200).json(result);
-      } catch (error: any) {
-        console.error("verifyWebRazorpayPayment FAILED:", error);
-
-        if (error.message === "SLOT_ALREADY_BOOKED") {
-          return res
-            .status(409)
-            .json({ error: "One or more slots already booked" });
-        }
-
-        if (error.message === "USER_NOT_FOUND") {
-          return res.status(404).json({ error: "User not found" });
-        }
-
-        return res
-          .status(500)
-          .json({ error: "Payment verification failed" });
+      } catch (err: any) {
+        console.error("❌ verifyWebRazorpayPayment:", err.message);
+        return res.status(400).json({
+          error: "Payment verification failed",
+          reason: err.message,
+        });
       }
     });
   }
 );
-
