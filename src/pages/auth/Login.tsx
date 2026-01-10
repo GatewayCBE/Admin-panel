@@ -85,6 +85,11 @@ const Login: React.FC = () => {
         "user_email",
         role === "user" ? account.user_email : account.owner_email
       );
+      localStorage.setItem("user_mobile_number",
+        role === "user"
+          ? account.user_mobile_number
+          : account.owner_mobile_number
+      );
       localStorage.setItem("user_role", role);
       localStorage.setItem("is_logged_in", "true");
 
