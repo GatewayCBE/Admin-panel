@@ -1,13 +1,13 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import LogoImg from "../../../assets/LogoImg.png";
 
 const AdminNavbar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
 
-  const handleToggle = () => {
-    setIsOpen(!isOpen);
-  };
+ 
+   const closeMenu = () => setIsOpen(false);
 
   const handleNavItemClick = () => {
     setIsOpen(false);
@@ -29,23 +29,43 @@ const AdminNavbar: React.FC = () => {
   };
 
   return (
-    <nav className="navbar navbar-expand-lg navbar-dark" style={{ background: "linear-gradient(90deg, #67a521ff, #67a521ff)",
- }}>
-      <div className="container-fluid">
-        <Link className="navbar-brand fw-bold" to="/" onClick={handleNavItemClick}>
-          BookYourTurf
-        </Link>
-
-        <button
-          className="navbar-toggler"
-          type="button"
-          aria-controls="navbarNav"
-          aria-expanded={isOpen ? "true" : "false"}
-          aria-label="Toggle navigation"
-          onClick={handleToggle}
-        >
-          <span className="navbar-toggler-icon"></span>
-        </button>
+     <nav
+        className="navbar navbar-expand-lg navbar-dark fixed-top"
+        style={{
+          backgroundColor: "#67a521ff",
+                 height: "70px",
+  
+        }}
+      >
+        <div className="container ">
+  
+          {/* LOGO */}
+          <Link
+            to="/"
+            className="navbar-brand d-flex align-items-center"
+            onClick={closeMenu}
+          >
+            <img
+                src={LogoImg} 
+              alt="BookYourTurf Logo" 
+              style={{
+                height: "100px",
+                width: "auto",
+                objectFit: "contain",
+                marginTop: "-25px",
+                marginBottom: "-20px",
+              }}
+            />
+          </Link>
+  
+          {/* TOGGLER */}
+          <button
+            className="navbar-toggler"
+            type="button"
+            onClick={() => setIsOpen(!isOpen)}
+          >
+            <span className="navbar-toggler-icon"></span>
+          </button>
 
         <div className={`collapse navbar-collapse ${isOpen ? "show" : ""}`} id="navbarNav">
           <ul className="navbar-nav mx-auto">
@@ -77,13 +97,24 @@ const AdminNavbar: React.FC = () => {
           </ul>
           {/* Logout Button */}
           <div className="d-flex">
-            <button 
-              className="btn btn-outline-light fw-bold" 
-              onClick={handleLogout}
-              style={{ borderRadius: "20px", padding: "5px 20px" }}
-            >
-              Logout
-            </button>
+            <button
+            className="btn fw-bold px-4"
+            style={{
+              backgroundColor: "#e63946",
+              color: "#fff",
+              borderRadius: "20px",
+              transition: "0.3s",
+            }}
+            onMouseEnter={(e) =>
+              (e.currentTarget.style.transform = "scale(1.05)")
+            }
+            onMouseLeave={(e) =>
+              (e.currentTarget.style.transform = "scale(1)")
+            }
+            onClick={handleLogout}
+          >
+            Logout
+          </button>
           </div>
         </div>
       </div>

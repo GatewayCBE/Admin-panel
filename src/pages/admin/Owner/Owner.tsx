@@ -19,7 +19,7 @@ const Owner: React.FC = () => {
   return (
     <div className="admin-page-container">
       <AdminNavbar />
-      <h2 className="text-center text-success mb-4 fw-bold">
+      <h2 className="text-center text-success mt-5 pt-4 mb-4 fw-bold">
         Channel Partner List
       </h2>
 

@@ -76,7 +76,7 @@ const RecentBookingsPage: React.FC = () => {
   return (
     <div className="admin-page-container">
       <AdminNavbar />
-        <div className="container-fluid py-5 px-4">
+        <div className="container-fluid py-5 px-4 mt-5">
           {/* Header */}
           <div className="d-flex align-items-center justify-content-between mb-5">
             <div className="d-flex align-items-center gap-4">

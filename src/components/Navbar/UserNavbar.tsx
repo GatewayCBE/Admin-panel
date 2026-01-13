@@ -2,10 +2,15 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { signOut } from "firebase/auth";
 import { auth } from "../../firebase";
+import LogoImg from "../../assets/LogoImg.png";
+
 
 const Navbar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
+
+     const closeMenu = () => setIsOpen(false);
+
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -14,25 +19,32 @@ const Navbar: React.FC = () => {
 
   return (
     <nav
-      className="navbar navbar-expand-lg navbar-dark sticky-top shadow"
-     style={{
-                background: "linear-gradient(90deg, #2d6a4f, #2d6a4f)",
-
-  }}
-    >
+        className="navbar navbar-expand-lg navbar-dark fixed-top"
+        style={{
+          backgroundColor: "#67a521ff",
+                 height: "70px",
+  
+        }}
+      >
       <div className="container">
-           <Link
-                 className="navbar-brand fw-bold"
-                 to="/"
-                 style={{
-                   fontSize: "1.8rem",
-                   letterSpacing: "1px",
-                   textShadow: "2px 2px 4px rgba(0,0,0,0.5)",
-                 }}
-               >
-                 <span style={{ color: "#14012bff" }}>Book </span>
-                 <span style={{ color: "#27ac3dff" }}>Your Turf</span>
-               </Link>
+           {/* LOGO */}
+                     <Link
+                       to="/"
+                       className="navbar-brand d-flex align-items-center"
+                       onClick={closeMenu}
+                     >
+                       <img
+                           src={LogoImg} 
+                         alt="BookYourTurf Logo" 
+                         style={{
+                           height: "100px",
+                           width: "auto",
+                           objectFit: "contain",
+                           marginTop: "-25px",
+                           marginBottom: "-20px",
+                         }}
+                       />
+                     </Link>
 
         <button
           className="navbar-toggler"
@@ -43,9 +55,9 @@ const Navbar: React.FC = () => {
 
         <div className={`collapse navbar-collapse ${isOpen ? "show" : ""}`}>
           <ul className="navbar-nav mx-auto gap-4">
-            <Link className="nav-link fs-5" to="/">Home</Link>
-            <Link className="nav-link fs-5" to="/ugames">Games</Link>
-            <Link className="nav-link fs-5" to="/user/turfs">Venues</Link>
+            <Link className="nav-link text-white fs-5" to="/">Home</Link>
+            <Link className="nav-link text-white fs-5" to="/ugames">Games</Link>
+            <Link className="nav-link text-white fs-5" to="/user/turfs">Venues</Link>
           </ul>
 
           <button

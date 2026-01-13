@@ -7,9 +7,9 @@ import AdminNavbar from "./Analytics/AdminNavbar";
 
 const Dashboard: React.FC = () => {
   return (
-    <div className="admin-page-container">
+    <>
       <AdminNavbar />
-      <div className="row g-4 justify-content-center text-center mt-2">
+      <div className="row g-4 justify-content-center text-center mt-5  pt-4">
         {/* Owner Details */}
         <div className="col-12 col-sm-6 col-md-4">
           <Link
@@ -41,7 +41,7 @@ const Dashboard: React.FC = () => {
           </Link>
         </div>
       </div>
-    </div>
+      </>
   );
 };
 
