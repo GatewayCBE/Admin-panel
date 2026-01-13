@@ -47,6 +47,27 @@ const isNightSlot = (slot: string) => {
   return hour >= 18 || hour < 6;
 };
 
+const normalizeSlotTime = (slot: string): string => {
+  // Already 24-hour format
+  if (/^\d{2}:\d{2}$/.test(slot)) {
+    return slot;
+  }
+
+  const match = slot.match(/(\d+):(\d+)\s?(AM|PM)/i);
+  if (!match) {
+    throw new Error(`INVALID_SLOT_FORMAT: ${slot}`);
+  }
+
+  let hour = parseInt(match[1], 10);
+  const minute = match[2];
+  const meridian = match[3].toUpperCase();
+
+  if (meridian === "PM" && hour !== 12) hour += 12;
+  if (meridian === "AM" && hour === 12) hour = 0;
+
+  return `${hour.toString().padStart(2, "0")}:${minute}`;
+};
+
 /* =========================================================
    1️⃣ CREATE RAZORPAY ORDER (WEB)
 ========================================================= */
@@ -59,9 +80,9 @@ export const createWebRazorpayOrder = onRequest(
           return res.status(405).json({ error: "Method not allowed" });
         }
 
-        const { turf_id, sport, date, slots, payment_type } = req.body;
+        const { turf_id, turf_name, sport, date, slots, payment_type } = req.body;
 
-        if (!turf_id || !sport || !date || !Array.isArray(slots) || !slots.length) {
+        if (!turf_id || !turf_name || !sport || !date || !Array.isArray(slots) || !slots.length) {
           return res.status(400).json({ error: "INVALID_REQUEST" });
         }
 
@@ -85,7 +106,8 @@ export const createWebRazorpayOrder = onRequest(
         }
 
         let slotTotal = 0;
-        for (const slot of slots) {
+        for (const rawSlot of slots) {
+          const slot = normalizeSlotTime(rawSlot);
           slotTotal += isNightSlot(slot)
             ? Number(pricing.night)
             : Number(pricing.day);
@@ -104,7 +126,7 @@ export const createWebRazorpayOrder = onRequest(
         const order = await razorpay.orders.create({
           amount: paidAmount * 100,
           currency: "INR",
-          receipt: `WEB_${turf_id}_${Date.now()}`,
+          receipt: `BS_${turf_name}_${Date.now()}`,
           payment_capture: true,
         });
 
@@ -212,9 +234,11 @@ export const verifyWebRazorpayPayment = onRequest(
             payment_type === "advance" ? slots.length : totalAmount;
           const unpaidAmount = totalAmount - paidAmount;
 
-          const bookingId = `WEB_${turf_id}_${Date.now()}`;
+          const bookingId = `BS_${turf_name}_${Date.now()}`;
 
-          for (const slot of slots) {
+          for (const rawSlot of slots) {
+            const slot = normalizeSlotTime(rawSlot);
+            
             const slotRef = db
               .collection("environment")
               .doc("testing")

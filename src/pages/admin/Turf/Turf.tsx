@@ -8,18 +8,70 @@ const Turf: React.FC = () => {
   const navigate = useNavigate();
 
   const [search, setSearch] = useState("");
+    const [selectedSport, setSelectedSport] = useState<string>("all");
+
   const [contactInfo, setContactInfo] = useState<{
     name: string;
     phone: string;
   } | null>(null);
 
-  const filteredTurfs = turfs.filter(
-    (turf) =>
-      turf.turf_name.toLowerCase().includes(search.toLowerCase()) ||
-      turf.turf_location.toLowerCase().includes(search.toLowerCase())
-  );
+// ⭐ GROUPING (MOVE THIS UP)
+const extractSports = (raw: string): string[] => {
+  if (!raw) return [];
 
-  // ⭐ GROUPING
+  return raw
+    .toLowerCase()
+    .replace(/&/g, ",")
+    .replace(/\//g, ",")
+    .split(",")
+    .map(s => s.trim())
+    .filter(s =>
+      s.length >= 3 &&
+      !/^\d+$/.test(s) &&
+      !s.includes("road") &&
+      !s.includes("rd") &&
+      !s.includes("street") &&
+      !s.includes("colony") &&
+      !s.includes("nagar") &&
+      !s.includes("salem") &&
+      !s.includes("tamil") &&
+      !s.includes("district")
+    )
+    .map(s => {
+      if (s.includes("cricket")) return "Cricket";
+      if (s.includes("football") || s === "footbal") return "Football";
+      if (s.includes("badminton") || s === "batminton") return "Badminton";
+      if (s.includes("pickle")) return "Pickleball";
+      return s.charAt(0).toUpperCase() + s.slice(1);
+    });
+};
+
+// ✅ NOW use it
+const filteredTurfs = turfs.filter(turf => {
+  const matchesSearch =
+    turf.turf_name.toLowerCase().includes(search.toLowerCase()) ||
+    turf.turf_location.toLowerCase().includes(search.toLowerCase());
+
+  const matchesSport =
+    selectedSport === "all" ||
+    turf.available_sports_list?.some((sport: string) =>
+      extractSports(sport).includes(selectedSport)
+    );
+
+  return matchesSearch && matchesSport;
+});
+
+
+const availableSports = Array.from(
+  new Set(
+    turfs.flatMap(turf =>
+      turf.available_sports_list?.flatMap((sport: string) =>
+        extractSports(sport)
+      ) || []
+    )
+  )
+).sort();
+
   const bookNowTurfs = filteredTurfs.filter(
     (t) => t.booking_type === "book_now"
   );
@@ -161,16 +213,60 @@ const Turf: React.FC = () => {
 
       {/* Search */}
       <div className="row justify-content-center mb-4">
-        <div className="col-md-8 col-lg-6">
-          <input
-            type="text"
-            className="form-control form-control-lg rounded-pill"
-            placeholder="Search by name or location..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
+  <div className="col-md-10 col-lg-8">
+    <div className="d-flex gap-3 align-items-center">
+      
+      {/* Search */}
+      <div className="input-group input-group-lg shadow-sm rounded-pill flex-grow-1">
+        <span className="input-group-text bg-white border-end-0 rounded-start-pill">
+          🔍
+        </span>
+        <input
+          type="text"
+          className="form-control border-start-0 rounded-end-pill"
+          placeholder="Search by name or location..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
       </div>
+
+      {/* Sports Filter */}
+<div className="dropdown">
+  <button
+    className="btn btn-outline-success btn-lg rounded-pill dropdown-toggle"
+    data-bs-toggle="dropdown"
+  >
+    {selectedSport === "all" ? "Filter Sports" : selectedSport}
+  </button>
+
+  <ul className="dropdown-menu">
+    <li>
+      <button
+        className="dropdown-item"
+        onClick={() => setSelectedSport("all")}
+      >
+        All Sports
+      </button>
+    </li>
+
+    {availableSports.map((sport) => (
+      <li key={sport}>
+        <button
+          className="dropdown-item"
+          onClick={() => setSelectedSport(sport)}
+        >
+          {sport}
+        </button>
+      </li>
+    ))}
+  </ul>
+</div>
+
+
+
+    </div>
+  </div>
+</div>
 
       {/* ONLINE BOOKING */}
 {bookNowTurfs.length > 0 && (
