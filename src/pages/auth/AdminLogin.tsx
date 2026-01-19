@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
 
 const AdminLogin: React.FC = () => {
   const [name, setName] = useState("");
@@ -7,19 +8,23 @@ const AdminLogin: React.FC = () => {
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
+  const handleLogin = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setError("");
 
-    // Hardcoded credentials check
-    if (name === "admin" && password === "Admin@123") {
-      localStorage.setItem("user_role", "admin");
-      localStorage.setItem("is_logged_in", "true");
-      navigate("/dashboard"); // Adjust path as needed
-    } else {
-      setError("Invalid Admin Credentials");
-    }
-  };
+  try {
+    const auth = getAuth();
+    await signInWithEmailAndPassword(
+      auth,
+      "admin@bookyourturf.com",
+      password
+    );
+
+    navigate("/dashboard");
+  } catch (err) {
+    setError("Invalid admin credentials");
+  }
+};
 
   return (
     <div className="min-vh-100 d-flex justify-content-center align-items-center bg-light">

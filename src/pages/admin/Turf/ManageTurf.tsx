@@ -4,9 +4,11 @@ import { deleteTurf, updateTurf } from "../../../services/firestoreService";
 import AdminNavbar from "../Analytics/AdminNavbar";
 import { uploadTurfImages } from "../../../services/storageService";
 import { getAuth } from "firebase/auth"; 
+import { useAuth } from "./useAuth";
 
 const ManageTurf: React.FC = () => {
   const { turfs } = useTurf();
+  const { user, loading } = useAuth();
   const [search, setSearch] = useState("");
   
   // State for Modal and Editing
@@ -101,15 +103,16 @@ const availableSports = Array.from(
   const handleDelete = async (turfId: string, name: string) => {
   if (!window.confirm(`Delete "${name}"?`)) return;
 
-  const auth = getAuth();
-  const user = auth.currentUser;
-
-  if (!user) {
-    alert("Not logged in");
+  if (loading) {
+    alert("Auth loading, please wait");
     return;
   }
 
-  // 🔍 ADD THIS BLOCK (TEMPORARY DEBUG)
+  if (!user) {
+    alert("Session expired. Please login again.");
+    return;
+  }
+
   const tokenResult = await user.getIdTokenResult(true);
   console.log("Admin claim:", tokenResult.claims.admin);
 
@@ -117,7 +120,6 @@ const availableSports = Array.from(
     alert("❌ You are not an admin");
     return;
   }
-  // 🔍 END DEBUG BLOCK
 
   const token = await user.getIdToken(true);
 
@@ -145,53 +147,53 @@ const availableSports = Array.from(
 };
 
 
-  // --- MODIFY LOGIC ---
-  const handleModify = (turf: any) => {
-    // Ensure we are setting the turf object including the 'id'
-  console.log("Setting selected turf for modification:", turf);
-    setSelectedTurf({ ...turf }); // Clone the turf data into state
-  };
+//   // --- MODIFY LOGIC ---
+//   const handleModify = (turf: any) => {
+//     // Ensure we are setting the turf object including the 'id'
+//   console.log("Setting selected turf for modification:", turf);
+//     setSelectedTurf({ ...turf }); // Clone the turf data into state
+//   };
 
-  const handleUpdateSubmit = async () => {
-  if (!selectedTurf?.id) return;
-  setIsUpdating(true);
+//   const handleUpdateSubmit = async () => {
+//   if (!selectedTurf?.id) return;
+//   setIsUpdating(true);
 
-  try {
-    let finalImageUrls = selectedTurf.turf_images || [];
+//   try {
+//     let finalImageUrls = selectedTurf.turf_images || [];
 
-    // 1. If new files are selected, upload them to Storage
-    if (selectedFiles.length > 0) {
-      // Pass turfId, ownerId (from selectedTurf), and the files array
-      const uploadedUrls = await uploadTurfImages(
-        selectedTurf.id, 
-        selectedTurf.owner_id, 
-        selectedFiles
-      );
-      // Replace or append? Usually, for a single primary image, we replace:
-      finalImageUrls = uploadedUrls; 
-    }
+//     // 1. If new files are selected, upload them to Storage
+//     if (selectedFiles.length > 0) {
+//       // Pass turfId, ownerId (from selectedTurf), and the files array
+//       const uploadedUrls = await uploadTurfImages(
+//         selectedTurf.id, 
+//         selectedTurf.owner_id, 
+//         selectedFiles
+//       );
+//       // Replace or append? Usually, for a single primary image, we replace:
+//       finalImageUrls = uploadedUrls; 
+//     }
 
-    const updatedData = {
-      turf_name: selectedTurf.turf_name,
-      turf_location: selectedTurf.turf_location,
-      turf_mobile_number: selectedTurf.turf_mobile_number,
-      turf_available_sports_list: selectedTurf.available_sports_list,
-      turf_images: finalImageUrls, // Save the URLs to Firestore
-    };
+//     const updatedData = {
+//       turf_name: selectedTurf.turf_name,
+//       turf_location: selectedTurf.turf_location,
+//       turf_mobile_number: selectedTurf.turf_mobile_number,
+//       available_sports_list: selectedTurf.available_sports_list,
+//       turf_images: finalImageUrls, // Save the URLs to Firestore
+//     };
 
-    await updateTurf(selectedTurf.id, updatedData);
-    alert("Updated successfully!");
+//     await updateTurf(selectedTurf.id, updatedData);
+//     alert("Updated successfully!");
     
-    setSelectedTurf(null);
-    clearImageStates();
-    window.location.reload();
-  } catch (error) {
-    console.error("Update failed:", error);
-    alert("Update failed. Please check permissions.");
-  } finally {
-    setIsUpdating(false);
-  }
-};
+//     setSelectedTurf(null);
+//     clearImageStates();
+//     window.location.reload();
+//   } catch (error) {
+//     console.error("Update failed:", error);
+//     alert("Update failed. Please check permissions.");
+//   } finally {
+//     setIsUpdating(false);
+//   }
+// };
 
   const sportIcon = (sport: string) => {
     sport = sport.toLowerCase();
@@ -315,12 +317,12 @@ const availableSports = Array.from(
 
                 {/* ACTION BUTTONS */}
                 <div className="d-flex gap-2">
-                  <button
+                  {/* <button
   className="btn btn-outline-primary flex-grow-1 rounded-pill fw-semibold"
   onClick={() => handleModify(turf)}
 >
   ✏️ Modify
-</button>
+</button> */}
                   <button
                     className="btn btn-outline-danger flex-grow-1 rounded-pill fw-semibold"
                     onClick={() => handleDelete(turf.id, turf.turf_name)}
@@ -334,7 +336,7 @@ const availableSports = Array.from(
         ))}
       </div>
 
-      {/* --- EDIT MODAL --- */}
+      {/* --- EDIT MODAL
       {selectedTurf && (
         <div className="modal fade show d-block" id="editModal" tabIndex={-1} style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-dialog modal-dialog-centered">
@@ -347,7 +349,6 @@ const availableSports = Array.from(
                 <div className="mb-3">
   <label className="form-label small fw-bold">Update Turf Image</label>
   <div className="d-flex align-items-center gap-3 p-2 border rounded-3 bg-light">
-    {/* Show Preview if selected, else show existing image */}
     <img 
       src={previews.length > 0 ? previews[0] : (selectedTurf.turf_images?.[0] || "https://via.placeholder.com/100")} 
       alt="Turf" 
@@ -427,7 +428,7 @@ const availableSports = Array.from(
             </div>
           </div>
         </div>
-      )}
+      )} --- */}
     </div>
     </div>
   );

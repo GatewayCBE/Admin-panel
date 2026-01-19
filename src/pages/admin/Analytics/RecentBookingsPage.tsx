@@ -7,8 +7,8 @@ import AdminNavbar from "./AdminNavbar";
 type BookingRow = {
   booking_id: string;
   booking_username?: string;
-  turfName?: string;
   turf_name?: string;
+  turfName?: string;
   sport?: string;
   court?: string;
   date?: string;
@@ -16,9 +16,13 @@ type BookingRow = {
   time?: string;
   paid_amount?: number;
   unpaid_amount?: number;
-  payment_status?: string;
+
+  // ✅ NEW NORMALIZED STATUS
+  booking_status: "paid" | "pending" | "cancelled";
+
+  // optional but useful
+  cancelled?: boolean;
   payment_initiated_time?: string;
-  [key: string]: any;
 };
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
@@ -49,22 +53,23 @@ const RecentBookingsPage: React.FC = () => {
   }, []);
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return bookings.filter((b) => {
-      if (statusFilter !== "all") {
-        const st = (b.payment_status || "").toLowerCase();
-        if (statusFilter === "paid" && !st.includes("pay") && st !== "paymentsuccess") return false;
-        if (statusFilter === "pending" && st.includes("pay")) return false;
-      }
-      if (!q) return true;
-      return (
-        (b.booking_username || "").toLowerCase().includes(q) ||
-        (b.booking_id || "").toLowerCase().includes(q) ||
-        (b.turfName || b.turf_name || "").toLowerCase().includes(q) ||
-        (b.sport || "").toLowerCase().includes(q)
-      );
-    });
-  }, [bookings, search, statusFilter]);
+  const q = search.trim().toLowerCase();
+
+  return bookings.filter((b) => {
+    if (statusFilter !== "all" && b.booking_status !== statusFilter) {
+      return false;
+    }
+
+    if (!q) return true;
+
+    return (
+      (b.booking_username || "").toLowerCase().includes(q) ||
+      (b.booking_id || "").toLowerCase().includes(q) ||
+      (b.turf_name || "").toLowerCase().includes(q) ||
+      (b.sport || "").toLowerCase().includes(q)
+    );
+  });
+}, [bookings, search, statusFilter]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
   const pageData = filtered.slice(page * pageSize, (page + 1) * pageSize);
@@ -115,9 +120,10 @@ const RecentBookingsPage: React.FC = () => {
                 onChange={(e) => setStatusFilter(e.target.value)}
                 style={{ width: 160 }}
               >
-                <option value="all">All Statuses</option>
+                <option value="all">All Status</option>
                 <option value="paid">Paid</option>
                 <option value="pending">Pending</option>
+                <option value="cancelled">Cancelled</option>
               </select>
 
               <select
@@ -176,18 +182,24 @@ const RecentBookingsPage: React.FC = () => {
                               ₹{Number(b.unpaid_amount || 0).toLocaleString("en-IN")}
                             </td>
                             <td className="text-center pe-4 py-4">
-                              <span className={`badge px-4 py-2 fs-6 fw-semibold rounded-pill ${
-                                (b.payment_status || "").toString().toLowerCase().includes("pay") ||
-                                (b.payment_status || "").toString().toLowerCase() === "paymentsuccess"
-                                  ? "bg-success text-white"
-                                  : "bg-warning text-dark"
-                              }`}>
-                                {(b.payment_status || "").toString().toLowerCase().includes("pay") ||
-                                (b.payment_status || "").toString().toLowerCase() === "paymentsuccess"
-                                  ? "Paid"
-                                  : "Pending"}
-                              </span>
-                            </td>
+  {b.booking_status === "paid" && (
+    <span className="badge px-4 py-2 fs-6 fw-semibold rounded-pill bg-success text-white">
+      Paid
+    </span>
+  )}
+
+  {b.booking_status === "pending" && (
+    <span className="badge px-4 py-2 fs-6 fw-semibold rounded-pill bg-warning text-dark">
+      Pending
+    </span>
+  )}
+
+  {b.booking_status === "cancelled" && (
+    <span className="badge px-4 py-2 fs-6 fw-semibold rounded-pill bg-danger text-white">
+      Cancelled
+    </span>
+  )}
+</td>
                           </tr>
                         ))}
                       </tbody>

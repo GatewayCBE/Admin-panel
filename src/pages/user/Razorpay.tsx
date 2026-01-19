@@ -43,7 +43,7 @@ const RazorpayPage = () => {
            1️⃣ CREATE RAZORPAY ORDER
         =============================== */
         const selectedSlots = state.bookingPayload.selectedSlots?.map(
-          (s: any) => s.startLabel.replace(/\s/g, "")
+          (s: any) => s.startLabel.trim()
         );
 
         if (!Array.isArray(selectedSlots) || selectedSlots.length === 0) {
@@ -55,6 +55,7 @@ const RazorpayPage = () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             turf_id: state.bookingPayload.turf.turf_id,
+            turf_name: state.bookingPayload.turf.turf_name,
             sport: state.bookingPayload.selectedSport,
             date: state.bookingPayload.selectedDate,
             slots: selectedSlots,

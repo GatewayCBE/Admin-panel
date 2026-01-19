@@ -259,7 +259,7 @@ export const verifyWebRazorpayPayment = onRequest(
               user_id,
               booked_sports_name: sport,
               court,
-              formattedDate,
+              date: formattedDate,
               slot_start_time: slot,
               day_price: pricing.day,
               night_price: pricing.night,

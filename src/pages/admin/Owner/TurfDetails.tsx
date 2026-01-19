@@ -84,7 +84,7 @@ const TurfDetails: React.FC = () => {
 
           {/* RIGHT: DETAILS */}
           <div className="col-lg-7">
-            <div className="d-flex justify-content-between align-items-center mb-3">
+            <div className="d-flex justify-content-between align-items-center mt-5 mb-3">
               <button className="btn btn-secondary" onClick={handleActivateTurf}>{turf.turf_active_status ? "Turf Active" : "Inactive"}</button>
             </div>
             {/* Quick Info */}

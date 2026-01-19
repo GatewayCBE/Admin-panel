@@ -22,6 +22,6 @@ async function setAdmin(uid) {
 }
 
 // 🔁 REPLACE THIS
-const ADMIN_UID = "cncP11ayPAc1hOoFCgcoVkn0opm1";
+const ADMIN_UID = "zx1mlwMcTtNJVyQwTMCpzxjHCiq2";
 
 setAdmin(ADMIN_UID);
