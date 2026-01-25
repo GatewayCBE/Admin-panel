@@ -202,7 +202,14 @@ export const getTurfById = async (turfId: string) => {
 export const getOwnerById = async (ownerId: string) => {
   const ownerRef = doc(db, "environment", "testing", "owners", ownerId);
   const snapshot = await getDoc(ownerRef);
+  // console.log('getOwnerById snap',ownerRef);
+  
   return snapshot.exists() ? snapshot.data() : null;
+};
+
+export const updateOwnerProfile = async (ownerId: string, data: any) => {
+  const ownerRef = doc(db, "environment", "testing", "owners", ownerId);
+  await updateDoc(ownerRef, data);
 };
 
 export const getTurfsByOwner = async (ownerId: string) => {
@@ -312,9 +319,7 @@ export async function createTurfBookingSafe({
   }
 }
 
-/**
- * Get owner details using owner_id field
- */
+
 export const getOwnerByOwnerId = async (
   ownerId: string
 ): Promise<Owner | null> => {
@@ -322,6 +327,7 @@ export const getOwnerByOwnerId = async (
     const ownerRef = collection(db, "environment", "testing", "owners");
     const q = query(ownerRef, where("owner_id", "==", ownerId));
     const snap = await getDocs(q);
+console.log('getOwnerByOwnerId snap',ownerRef);
 
     if (snap.empty) return null;
 

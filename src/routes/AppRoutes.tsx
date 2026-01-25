@@ -28,6 +28,7 @@ import ManageTurf from "../pages/admin/Turf/ManageTurf";
 import AdvancePayment from "../pages/user/AdvancePayment";
 import RazorpayPage from "../pages/user/Razorpay";
 import ChannelPartnerDashboard from "../pages/admin/Owner/ChannelPartnerDashboard";
+import OwnerProfile from "../pages/admin/Owner/OwnerProfile";
 
 const AppRoutes: React.FC = () => {
   return (
@@ -54,6 +55,8 @@ const AppRoutes: React.FC = () => {
       <Route element={<OwnerLayout/>}>
         <Route path="/owner/dashboard" element={<AddTurfForm />} />
         <Route path="/owner/channelpartnerdashboard" element={<ChannelPartnerDashboard/>} />
+        <Route path="/owner/profile" element={<OwnerProfile />} />
+
 
       </Route>
 

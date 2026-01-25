@@ -43,6 +43,8 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+const [passwordError, setPasswordError] = useState("");
+const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -133,7 +135,7 @@ const Login: React.FC = () => {
     <div className="min-vh-100 d-flex justify-content-center align-items-center bg-light">
       <div className="card shadow p-5" style={{ maxWidth: 450 }}>
         <h2 className="text-center text-success mb-4">
-          Login as {role === "user" ? "Player" : "Channel Partner"}
+          Login as {role === "user" ? "User" : "Channel Partner"}
         </h2>
 
         {error && <div className="alert alert-danger">{error}</div>}
@@ -141,19 +143,38 @@ const Login: React.FC = () => {
         <form onSubmit={handleLogin}>
           <input
             className="form-control mb-3"
-            placeholder="Email"
+            placeholder="Email / Mobile Number"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
           />
-          <input
-            type="password"
-            className="form-control mb-3"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+          <div className="input-group mb-1">
+
+     <input
+    type={showPassword ? "text" : "password"}
+    className={`form-control form-control-lg ${passwordError ? "is-invalid" : ""}`}
+    value={password}
+    onChange={(e) => {
+      const val = e.target.value;
+      setPassword(val);
+
+      if (val.length < 7)
+        setPasswordError("Password must be at least 7 characters");
+      else if (val.length > 15)
+        setPasswordError("Password cannot exceed 15 characters");
+      else setPasswordError("");
+    }}
+    placeholder="Create Password"
+  />
+  <span
+    className="input-group-text bg-white"
+    style={{ cursor: "pointer" }}
+    onClick={() => setShowPassword(!showPassword)}
+  >
+    <i className={`bi ${showPassword ? "bi-eye-slash" : "bi-eye"}`}></i>
+  </span>
+            
+       </div>   
 
           <button className="btn btn-success w-100" disabled={loading}>
             Login

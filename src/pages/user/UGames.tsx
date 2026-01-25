@@ -4,7 +4,7 @@ import tennis from "../assets/tennis.png";
 import volleyball from "../assets/volleyball.png";
 import badminton from "../../assets/badminton.png";
 import football from "../../assets/football.png";
-import pickleball from "../../assets/PickleImg.jpg";
+import pickleball from "../../assets/PickleImg.png";
 
 
 const sports = [

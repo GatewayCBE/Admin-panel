@@ -1,7 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { uploadTurfImages } from '../../../services/storageService';
 import { createTurf, generateTurfId } from '../../../services/firestoreService';
+import pickleballImg from "../../../assets/PickleImg.png";
+import BadmintonImg from "../../../assets/badminton.png";
+import boxcricket from "../../../assets/boxcricket_football.png";
+import football from "../../../assets/football.png";
+
 
 interface TurfData {
   turfImages: File[];
@@ -52,42 +57,57 @@ interface Sport {
   courtCount: string;
 }
 
-type VenueType = 'turf' | 'badminton' | 'pickleball' | null;
-// const [venueType, setVenueType] = useState<VenueType>(null);
+
 
 const AddTurfForm: React.FC = () => {
   const [step, setStep] = useState(1);
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [imagePreview, setImagePreview] = useState<string>('');
-  const [sports, setSports] = useState<Sport[]>([]);
   const [currentSport, setCurrentSport] = useState('');
   const [expandedSections, setExpandedSections] = useState<{[key: string]: boolean}>({});
   const [addedViaWeb, setAddedViaWeb] = useState(false);
-  
-  const [formData, setFormData] = useState<TurfData>({
-    turfImages: [],
-    turfName: '',
-    turfMobileNumber: '',
-    turfAddress: '',
-    turfDescription: '',
-    latitude: 0,
-    longitude: 0,
-    dimensionUnit: 'feet',
-    turfLength: '',
-    turfBreadth: '',
-    turfHeight: '',
-    facilities: [],
-    hasBadmintonCourt: false,
-    badmintonCourtType: undefined,
-    createdAt: new Date()
-  });
+const [errors, setErrors] = useState<Record<string, string>>({});
+
+
+  type VenueType = 'turf' | 'badminton' | 'pickleball' | null;
+const [venueType, setVenueType] = useState<VenueType>(null);
+
+
+
+const [turfSports, setTurfSports] = useState<Sport[]>([]);
+const [badmintonSports, setBadmintonSports] = useState<Sport[]>([]);
+const [pickleballSports, setPickleballSports] = useState<Sport[]>([]);
+
+
+const createInitialForm = (): TurfData => ({
+  turfImages: [],
+  turfName: '',
+  turfMobileNumber: '',
+  turfAddress: '',
+  turfDescription: '',
+  latitude: 0,
+  longitude: 0,
+  dimensionUnit: 'feet',
+  turfLength: '',
+  turfBreadth: '',
+  turfHeight: '',
+  facilities: [],
+  hasBadmintonCourt: false,
+  badmintonCourtType: undefined,
+  createdAt: new Date()
+});
+
+const [turfData, setTurfData] = useState<TurfData>(createInitialForm());
+const [badmintonData, setBadmintonData] = useState<TurfData>(createInitialForm());
+const [pickleballData, setPickleballData] = useState<TurfData>(createInitialForm());
+
 
   const facilitiesList = [
     'Parking',
     'Drinking water',
     'Rest room',
     'Dressing room',
-    'Sports related things',
+    'Sports Kits',
     'CCTV',
     'Music systems'
   ];
@@ -109,6 +129,79 @@ const AddTurfForm: React.FC = () => {
       }
     }
   };
+
+  const getActiveForm = () => {
+  if (venueType === 'turf') return [turfData, setTurfData, turfSports, setTurfSports] as const;
+  if (venueType === 'badminton') return [badmintonData, setBadmintonData, badmintonSports, setBadmintonSports] as const;
+  return [pickleballData, setPickleballData, pickleballSports, setPickleballSports] as const;
+};
+
+const [formData, setFormData, sports, setSports] = getActiveForm();
+
+useEffect(() => {
+  setStep(1);
+  setSelectedImages([]);
+  setImagePreview('');
+  setExpandedSections({});
+}, [venueType]);
+
+useEffect(() => {
+  if (venueType === 'turf') setTurfData(createInitialForm());
+  if (venueType === 'badminton') setBadmintonData(createInitialForm());
+  if (venueType === 'pickleball') setPickleballData(createInitialForm());
+}, [venueType]);
+
+const validateStep1 = () => {
+  const newErrors: any = {};
+
+  if (!formData.turfName.trim()) newErrors.turfName = "Venue name is required";
+  if (!formData.turfMobileNumber.trim()) newErrors.turfMobileNumber = "Mobile number is required";
+  if (!formData.turfAddress.trim()) newErrors.turfAddress = "Address is required";
+
+  if (!formData.turfDescription.trim())
+    newErrors.turfDescription = "Description is required";
+  else if (formData.turfDescription.trim().length < 30)
+    newErrors.turfDescription = "Minimum 30 characters required";
+
+  if (selectedImages.length === 0)
+    newErrors.images = "At least 1 image required";
+
+  setErrors(newErrors);
+  return Object.keys(newErrors).length === 0;
+};
+
+
+const validateStep2 = () => {
+  const newErrors: any = {};
+
+  sports.forEach((sport, index) => {
+    if (!sport.openingTime) newErrors[`openingTime-${index}`] = "Required";
+    if (!sport.closingTime) newErrors[`closingTime-${index}`] = "Required";
+    if (!sport.daySlotStart) newErrors[`dayStart-${index}`] = "Required";
+    if (!sport.daySlotEnd) newErrors[`dayEnd-${index}`] = "Required";
+    if (!sport.nightSlotStart) newErrors[`nightStart-${index}`] = "Required";
+    if (!sport.nightSlotEnd) newErrors[`nightEnd-${index}`] = "Required";
+
+    Object.entries(sport.dayPrices).forEach(([day, price]) => {
+      if (!price) newErrors[`dayPrice-${day}-${index}`] = "Required";
+    });
+
+    Object.entries(sport.nightPrices).forEach(([day, price]) => {
+      if (!price) newErrors[`nightPrice-${day}-${index}`] = "Required";
+    });
+
+    if (!sport.maxPersons) newErrors[`maxPersons-${index}`] = "Required";
+    else if (Number(sport.maxPersons) > 50)
+      newErrors[`maxPersons-${index}`] = "Max persons cannot exceed 50";
+
+    if (!sport.courtCount) newErrors[`courtCount-${index}`] = "Required";
+    else if (Number(sport.courtCount) > 10)
+      newErrors[`courtCount-${index}`] = "Court count cannot exceed 10";
+  });
+
+  setErrors(newErrors);
+  return Object.keys(newErrors).length === 0;
+};
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -194,10 +287,11 @@ const AddTurfForm: React.FC = () => {
     const ownerId = localStorage.getItem("user_id");
     const ownerName = localStorage.getItem("user_name");
 
-    if (!addedViaWeb) {
-  alert("Please confirm turf is added via Website");
-  return;
-}
+
+//     if (!addedViaWeb) {
+//   alert("Please confirm turf is added via Website");
+//   return;
+// }
 
     if (!ownerId || !ownerName) {
       alert("Owner not logged in");
@@ -222,6 +316,7 @@ const AddTurfForm: React.FC = () => {
       ownerId,
       ownerName,
       imageUrls,
+      venueType,
       turf_opened: true, 
       turf_active_status: true,
       addedSource: {
@@ -230,6 +325,15 @@ const AddTurfForm: React.FC = () => {
     });
 
     alert("✅ Turf added successfully");
+       setFormData(createInitialForm);
+    setSports([]);
+    setSelectedImages([]);
+    setImagePreview("");
+    setExpandedSections({});
+    setErrors({});
+    setStep(1);          // go back to step 1
+    setVenueType(null); 
+    
   } catch (err) {
     console.error(err);
     alert("❌ Failed to add turf");
@@ -266,12 +370,116 @@ const AddTurfForm: React.FC = () => {
   return { prices, timings, persons, sportNames };
 };
 
+if (!venueType) {
+  return (
+    <div className="app-container mt-5 pt-4">
+      <div className="header">
+        <h1 className="header-title text-center mb-5 text-success mt-4">Manage Sports Venue</h1>
+      </div>
+
+      <div className="content d-flex justify-content-center">
+        <div className="d-flex gap-4 flex-wrap justify-content-center">
+
+  <div
+  className="venue-card d-flex flex-column align-items-center"
+  onClick={() => setVenueType('turf')}
+>
+  <div className="d-flex gap-2 mb-2">
+    <img src={football} alt="" width="30" height="40" />
+    <img src={boxcricket} alt="" width="30" height="40" />
+  </div>
+  <h4 className="mb-0">Turf</h4>
+</div>
+
+
+
+          <div className="venue-card" onClick={() => setVenueType('badminton')}>
+            <img src={BadmintonImg} alt="Badminton" />
+            <h4>Badminton</h4>
+          </div>
+
+          <div className="venue-card" onClick={() => setVenueType('pickleball')}>
+            <img src={pickleballImg} alt="Pickleball" height={'60px'} width={'60px'}/>
+            <h4>Pickleball</h4>
+          </div>
+
+        </div>
+      </div>
+
+      <style>{`
+        .venue-card {
+          width: 160px;
+          height: 140px;
+          border: 2px solid #198754;
+          border-radius: 16px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: 0.3s;
+          background: #f8fff9;
+        }
+        .venue-card:hover {
+          transform: translateY(-5px);
+          box-shadow: 0 6px 18px rgba(0,0,0,0.15);
+        }
+        .venue-card img {
+          width: 50px;
+          margin-bottom: 10px;
+        }
+      `}</style>
+    </div>
+  );
+}
+
   const renderStep1 = () => (
-    <div className="step-container">
+    
+    <>
+    <button
+  className="btn-back"
+  onClick={() => {
+    if (step === 2) {
+      setStep(1);
+    } else {
+      setVenueType(null); // 🔥 Go back to venue type selection
+    }
+  }}
+>
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="26"
+    height="26"
+    fill="black"
+    viewBox="0 0 16 16"
+  >
+    <path
+      fillRule="evenodd"
+      d="M15 8a.5.5 0 0 0-.5-.5H3.707l4.147-4.146a.5.5 0 1 0-.708-.708l-5 5a.5.5 0 0 0 0 .708l5 5a.5.5 0 0 0 .708-.708L3.707 8.5H14.5A.5.5 0 0 0 15 8z"
+    />
+  </svg>
+  </button>
+    <h1 className="header-title fw-bold fs-3 text-success text-center">
+  {step === 1 && venueType === 'turf' && 'Add Turf'}
+  {step === 1 && venueType === 'badminton' && 'Add Badminton Venue'}
+  {step === 1 && venueType === 'pickleball' && 'Add Pickleball Venue'}
+
+  {step === 2 && venueType === 'turf' && 'Add Turf Sports Info'}
+  {step === 2 && venueType === 'badminton' && 'Badminton Court Pricing'}
+  {step === 2 && venueType === 'pickleball' && 'Pickleball Court Pricing'}
+</h1>
+
+ 
+    <div className="step-container mt-5">
+
+
       <div className="mb-4">
-        <label className="form-label text-muted">
-          Turf Images (1-5 required) <span className="text-danger">*</span>
-        </label>
+        
+  <label className="form-label text-muted">
+  {venueType === 'turf' ? 'Turf Images' : 'Court Images'} (1–5 required)
+  <span className="text-danger">*</span>
+</label>
+
         <div className="d-flex justify-content-center mb-3">
           <label htmlFor="imageUpload" style={{ cursor: 'pointer' }}>
             <div className="image-upload-box">
@@ -304,35 +512,41 @@ const AddTurfForm: React.FC = () => {
         <input
           type="text"
           className="form-control custom-input"
-          placeholder="Venue name *"
+          placeholder='Venue Name *'
           name="turfName"
           value={formData.turfName}
           onChange={handleInputChange}
+          
         />
+        {errors.turfName && <small className="text-danger">{errors.turfName}</small>}
+
       </div>
 
       <div className="mb-3">
         <input
           type="text"
           className="form-control custom-input"
-          placeholder="Venue MobileNumber *"
+          placeholder="Venue Mobile Number *"
           name="turfMobileNumber"
           value={formData.turfMobileNumber}
           onChange={handleInputChange}
         />
+        {errors.turfMobileNumber && <small className="text-danger">{errors.turfMobileNumber}</small>}
+
       </div>
 
-      {/* Turf Address with Google Maps Preview */}
 <div className="mb-3">
   <div className="position-relative">
     <input
       type="text"
       className="form-control custom-input"
-      placeholder="venue Address"
+      placeholder="Enter City *"
       name="turfAddress"
       value={formData.turfAddress}
       onChange={handleInputChange}
     />
+            {errors.turfAddress && <small className="text-danger">{errors.turfAddress}</small>}
+
   </div>
 
   {/* Conditional "View on Maps" Button */}
@@ -358,12 +572,20 @@ const AddTurfForm: React.FC = () => {
       <div className="mb-4">
         <textarea
           className="form-control custom-input"
-          placeholder="Turf Description & Achievements *"
+       placeholder={
+  venueType === 'turf'
+    ? 'Turf Description & Achievements *'
+    : 'Description & Achievements *'
+}
+
           name="turfDescription"
           value={formData.turfDescription}
           onChange={handleInputChange}
           rows={6}
         />
+{errors.turfDescription && (
+  <small className="text-danger">{errors.turfDescription}</small>
+)}
       </div>
 
       <div className="mb-3">
@@ -378,6 +600,7 @@ const AddTurfForm: React.FC = () => {
               checked={formData.dimensionUnit === 'feet'}
               onChange={() => setFormData(prev => ({ ...prev, dimensionUnit: 'feet' }))}
             />
+            
             <label className="form-check-label" htmlFor="feet">Feet</label>
           </div>
           <div className="form-check">
@@ -449,6 +672,28 @@ const AddTurfForm: React.FC = () => {
               </div>
             </div>
           ))}
+          {venueType === 'badminton' && (
+  <div className="mb-4">
+    <h6>Court Type *</h6>
+    <div className="d-flex gap-3">
+      <button
+        type="button"
+        className={`court-type-btn ${formData.badmintonCourtType === 'synthetic' ? 'active' : ''}`}
+        onClick={() => setFormData(prev => ({ ...prev, badmintonCourtType: 'synthetic' }))}
+      >
+        Synthetic
+      </button>
+      <button
+        type="button"
+        className={`court-type-btn ${formData.badmintonCourtType === 'wooden' ? 'active' : ''}`}
+        onClick={() => setFormData(prev => ({ ...prev, badmintonCourtType: 'wooden' }))}
+      >
+        Wooden
+      </button>
+    </div>
+  </div>
+)}
+
         </div>
       </div>
 
@@ -456,30 +701,87 @@ const AddTurfForm: React.FC = () => {
       <div className="text-center">
         <button 
           className="btn btn-next"
-          onClick={() => setStep(2)}
+       onClick={() => {
+        
+const sportName =
+  venueType === 'turf'
+    ? 'Football / Box Cricket'
+    : venueType === 'badminton'
+    ? 'Badminton'
+    : 'Pickleball';
+
+    if (sports.length === 0) {
+      const newSport = {
+        id: Date.now().toString(),
+        name: sportName,
+        openingTime: '',
+        closingTime: '',
+        daySlotStart: '',
+        daySlotEnd: '',
+        nightSlotStart: '',
+        nightSlotEnd: '',
+        dayPrices: { monday:'',tuesday:'',wednesday:'',thursday:'',friday:'',saturday:'',sunday:'' },
+        nightPrices: { monday:'',tuesday:'',wednesday:'',thursday:'',friday:'',saturday:'',sunday:'' },
+        maxPersons: '',
+        courtCount: ''
+      };
+      setSports([newSport]);
+      setExpandedSections({ [`${newSport.id}-day`]: true, [`${newSport.id}-night`]: true });
+    }
+       if (!validateStep1()) return;
+
+  setStep(2);
+}}
+
         >
           Next
         </button>
       </div>
     </div>
+       </>
   );
 
   const renderStep2 = () => (
+    <>
+        <button
+  className="btn-back"
+  onClick={() => {
+    if (step === 2) {
+      setStep(1);
+    } else {
+      setVenueType(null); // 🔥 Go back to venue type selection
+    }
+  }}
+>
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="26"
+    height="26"
+    fill="black"
+    viewBox="0 0 16 16"
+  >
+    <path
+      fillRule="evenodd"
+      d="M15 8a.5.5 0 0 0-.5-.5H3.707l4.147-4.146a.5.5 0 1 0-.708-.708l-5 5a.5.5 0 0 0 0 .708l5 5a.5.5 0 0 0 .708-.708L3.707 8.5H14.5A.5.5 0 0 0 15 8z"
+    />
+  </svg>
+  </button>
     <div className="step-container">
       <div className="mb-4">
         <div className="d-flex gap-2 align-items-center mb-4">
-       <h3>Football & boxcricket</h3>
+     <h3 className="text-capitalize">{venueType === "turf" ? "football & boxcricket" : (venueType)}</h3>
+
 
         </div>
 
-        {sports.map((sport) => (
+        {sports.map((sport , index) => (
           <div key={sport.id} className="sport-card mb-3">
            
 
             <div className="sport-content">
               <div className="row g-3 mb-3">
                 <div className="col-6">
-                  <label className="time-label">Opening Time *</label>
+                  <label className="time-label">Opening Time <span className='text-danger'>*</span></label>
                   <input
                     type="time"
                     className="form-control custom-input"
@@ -488,7 +790,7 @@ const AddTurfForm: React.FC = () => {
                   />
                 </div>
                 <div className="col-6">
-                  <label className="time-label">Closing Time *</label>
+                  <label className="time-label">Closing Time <span className='text-danger'>*</span></label>
                   <input
                     type="time"
                     className="form-control custom-input"
@@ -512,7 +814,7 @@ const AddTurfForm: React.FC = () => {
                   <div className="section-content">
                     <div className="row g-3 mb-3">
                       <div className="col-6">
-                        <label className="time-label">Day Start *</label>
+                        <label className="time-label">Day Start<span className='text-danger'>*</span></label>
                         <input
                           type="time"
                           className="form-control custom-input"
@@ -521,7 +823,7 @@ const AddTurfForm: React.FC = () => {
                         />
                       </div>
                       <div className="col-6">
-                        <label className="time-label">Day End *</label>
+                        <label className="time-label">Day End <span className='text-danger'>*</span></label>
                         <input
                           type="time"
                           className="form-control custom-input"
@@ -543,7 +845,7 @@ const AddTurfForm: React.FC = () => {
                               value={sport.dayPrices[day as keyof typeof sport.dayPrices]}
                               onChange={(e) => updateSportPrice(sport.id, 'dayPrices', day, e.target.value)}
                             />
-                            <span className="required-star">*</span>
+                            <span className="required-star"><span className='text-danger'>*</span></span>
                           </div>
                         </div>
                       ))}
@@ -566,7 +868,7 @@ const AddTurfForm: React.FC = () => {
                   <div className="section-content">
                     <div className="row g-3 mb-3">
                       <div className="col-6">
-                        <label className="time-label">Night Start *</label>
+                        <label className="time-label">Night Start <span className='text-danger'>*</span></label>
                         <input
                           type="time"
                           className="form-control custom-input"
@@ -575,7 +877,7 @@ const AddTurfForm: React.FC = () => {
                         />
                       </div>
                       <div className="col-6">
-                        <label className="time-label">Night End *</label>
+                        <label className="time-label">Night End <span className='text-danger'>*</span></label>
                         <input
                           type="time"
                           className="form-control custom-input"
@@ -597,7 +899,7 @@ const AddTurfForm: React.FC = () => {
                               value={sport.nightPrices[day as keyof typeof sport.nightPrices]}
                               onChange={(e) => updateSportPrice(sport.id, 'nightPrices', day, e.target.value)}
                             />
-                            <span className="required-star">*</span>
+                            <span className="required-star text-danger">*</span>
                           </div>
                         </div>
                       ))}
@@ -611,36 +913,54 @@ const AddTurfForm: React.FC = () => {
                   <div className="person-input-wrapper">
                     <span className="person-icon">👤</span>
                     <input
-                      type="number"
-                      className="form-control custom-input"
-                      placeholder="Max persons"
-                      value={sport.maxPersons}
-                      onChange={(e) => updateSportField(sport.id, 'maxPersons', e.target.value)}
-                    />
+  type="number"
+  className={`form-control custom-input ${errors[`maxPersons-${index}`] ? 'is-invalid' : ''}`}
+  placeholder="Max persons *"
+  value={sport.maxPersons}
+  onChange={(e) => {
+    const value = Number(e.target.value);
+
+    updateSportField(sport.id, 'maxPersons', e.target.value);
+
+    setErrors(prev => ({
+      ...prev,
+      [`maxPersons-${index}`]:
+        value > 50 ? "Maximum 50 persons allowed" : ""
+    }));
+  }}
+/>
+
+{errors[`maxPersons-${index}`] && (
+  <small className="text-danger">{errors[`maxPersons-${index}`]}</small>
+)}
+
                   </div>
                 </div>
                 <div className="col-5">
                   <div className="position-relative">
-                    <label className="court-label">Court count *</label>
+                    <label className="court-label">Court count <span className='text-danger'>*</span></label>
                     <input
                       type="number"
                       className="form-control custom-input"
                       value={sport.courtCount}
                       onChange={(e) => updateSportField(sport.id, 'courtCount', e.target.value)}
                     />
+                    {errors[`courtCount-${index}`] && (
+  <small className="text-danger">{errors[`courtCount-${index}`]}</small>
+)}
                   </div>
                 </div>
                 <div className="form-check mt-4">
-  <input
+  {/* <input
     className="form-check-input"
     type="checkbox"
     id="addedViaWeb"
     checked={addedViaWeb}
     onChange={(e) => setAddedViaWeb(e.target.checked)}
-  />
-  <label className="form-check-label fw-semibold" htmlFor="addedViaWeb">
+  /> */}
+  {/* <label className="form-check-label fw-semibold" htmlFor="addedViaWeb">
     I confirm this turf is being added via Website
-  </label>
+  </label> */}
 </div>
 
               </div>
@@ -652,12 +972,18 @@ const AddTurfForm: React.FC = () => {
       <div className="text-center">
         <button 
           className="btn btn-next"
-          onClick={handleSubmit}
+  onClick={() => {
+    if (!validateStep2()) return;  // ⛔ STOP if validation fails
+    handleSubmit();                // ✅ Only runs if valid
+  }}
+
         >
-          Add Turf
+          Add Venue
         </button>
       </div>
     </div>
+        </>
+
   );
 
   return (
@@ -668,7 +994,11 @@ const AddTurfForm: React.FC = () => {
             <path fillRule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8z"/>
           </svg>
         </button>
-        <h1 className="header-title">{step === 1 ? 'Add Turf' : 'Add Sports Info'}</h1>
+<h1 className="header-title">
+  {step === 1
+    ? `Add ${venueType === 'turf' ? 'Turf' : venueType === 'badminton' ? 'Badminton Venue' : 'Pickleball Venue'}`
+    : `${venueType === 'turf' ? 'Add Sports Info' : venueType + ' Court Pricing'}`}
+</h1>
       </div>
 
       <div className="content">

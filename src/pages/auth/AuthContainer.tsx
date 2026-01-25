@@ -18,7 +18,7 @@ const AuthContainer: React.FC = () => {
               className="btn btn-success btn-lg fw-bold"
               onClick={() => navigate("/login", { state: { role: "user" } })}
             >
-              Player (User)
+              User
             </button>
 
             <button
