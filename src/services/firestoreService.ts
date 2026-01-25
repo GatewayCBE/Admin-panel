@@ -199,6 +199,12 @@ export const getTurfById = async (turfId: string) => {
   }
 };
 
+export const getOwnerById = async (ownerId: string) => {
+  const ownerRef = doc(db, "environment", "testing", "owners", ownerId);
+  const snapshot = await getDoc(ownerRef);
+  return snapshot.exists() ? snapshot.data() : null;
+};
+
 export const getTurfsByOwner = async (ownerId: string) => {
   try {
     const turfRef = collection(db, "environment", "testing", "turfs");

@@ -52,6 +52,9 @@ interface Sport {
   courtCount: string;
 }
 
+type VenueType = 'turf' | 'badminton' | 'pickleball' | null;
+// const [venueType, setVenueType] = useState<VenueType>(null);
+
 const AddTurfForm: React.FC = () => {
   const [step, setStep] = useState(1);
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
@@ -267,7 +270,7 @@ const AddTurfForm: React.FC = () => {
     <div className="step-container">
       <div className="mb-4">
         <label className="form-label text-muted">
-          Turf Images (1-7 required) <span className="text-danger">*</span>
+          Turf Images (1-5 required) <span className="text-danger">*</span>
         </label>
         <div className="d-flex justify-content-center mb-3">
           <label htmlFor="imageUpload" style={{ cursor: 'pointer' }}>
@@ -294,14 +297,14 @@ const AddTurfForm: React.FC = () => {
             style={{ display: 'none' }}
           />
         </div>
-        <small className="text-muted">{selectedImages.length}/7 images selected</small>
+        <small className="text-muted">{selectedImages.length}/5 images selected</small>
       </div>
 
       <div className="mb-3">
         <input
           type="text"
           className="form-control custom-input"
-          placeholder="Turf name *"
+          placeholder="Venue name *"
           name="turfName"
           value={formData.turfName}
           onChange={handleInputChange}
@@ -312,7 +315,7 @@ const AddTurfForm: React.FC = () => {
         <input
           type="text"
           className="form-control custom-input"
-          placeholder="Turf MobileNumber *"
+          placeholder="Venue MobileNumber *"
           name="turfMobileNumber"
           value={formData.turfMobileNumber}
           onChange={handleInputChange}
@@ -325,7 +328,7 @@ const AddTurfForm: React.FC = () => {
     <input
       type="text"
       className="form-control custom-input"
-      placeholder="Turf Address"
+      placeholder="venue Address"
       name="turfAddress"
       value={formData.turfAddress}
       onChange={handleInputChange}
@@ -449,52 +452,6 @@ const AddTurfForm: React.FC = () => {
         </div>
       </div>
 
-      <div className="mb-4">
-        <h6 className="mb-3">Do you have a badminton court?</h6>
-        <div className="d-flex gap-4 mb-3">
-          <div className="form-check">
-            <input
-              className="form-check-input"
-              type="radio"
-              name="hasBadmintonCourt"
-              id="badmintonYes"
-              checked={formData.hasBadmintonCourt === true}
-              onChange={() => setFormData(prev => ({ ...prev, hasBadmintonCourt: true }))}
-            />
-            <label className="form-check-label" htmlFor="badmintonYes">Yes</label>
-          </div>
-          <div className="form-check">
-            <input
-              className="form-check-input"
-              type="radio"
-              name="hasBadmintonCourt"
-              id="badmintonNo"
-              checked={formData.hasBadmintonCourt === false}
-              onChange={() => setFormData(prev => ({ ...prev, hasBadmintonCourt: false, badmintonCourtType: undefined }))}
-            />
-            <label className="form-check-label" htmlFor="badmintonNo">No</label>
-          </div>
-        </div>
-
-        {formData.hasBadmintonCourt && (
-          <div className="d-flex gap-3 mt-3">
-            <button
-              type="button"
-              className={`court-type-btn ${formData.badmintonCourtType === 'synthetic' ? 'active' : ''}`}
-              onClick={() => setFormData(prev => ({ ...prev, badmintonCourtType: 'synthetic' }))}
-            >
-              Synthetic
-            </button>
-            <button
-              type="button"
-              className={`court-type-btn ${formData.badmintonCourtType === 'wooden' ? 'active' : ''}`}
-              onClick={() => setFormData(prev => ({ ...prev, badmintonCourtType: 'wooden' }))}
-            >
-              ✓ Wooden
-            </button>
-          </div>
-        )}
-      </div>
 
       <div className="text-center">
         <button 
@@ -511,26 +468,13 @@ const AddTurfForm: React.FC = () => {
     <div className="step-container">
       <div className="mb-4">
         <div className="d-flex gap-2 align-items-center mb-4">
-          <input
-            type="text"
-            className="form-control custom-input"
-            placeholder="Available Sports *"
-            value={currentSport}
-            onChange={(e) => setCurrentSport(e.target.value)}
-          />
-          <button 
-            className="btn btn-add"
-            onClick={handleAddSport}
-          >
-            Add
-          </button>
+       <h3>Football & boxcricket</h3>
+
         </div>
 
         {sports.map((sport) => (
           <div key={sport.id} className="sport-card mb-3">
-            <div className="sport-header">
-              <h6 className="sport-name mb-0">{sport.name}</h6>
-            </div>
+           
 
             <div className="sport-content">
               <div className="row g-3 mb-3">

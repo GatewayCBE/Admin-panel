@@ -41,7 +41,7 @@ const AdvancePayment: React.FC = () => {
     paymentType === "advance" ? advanceAmount : fullAmount;
 
   return (
-    <div className="container min-vh-100 d-flex justify-content-center align-items-center">
+    <div className="container min-vh-100 d-flex justify-content-center align-items-center mt-5 pt-5">
       <div
         className="card shadow-sm border-0 rounded-4 p-4"
         style={{ width: 420 }}

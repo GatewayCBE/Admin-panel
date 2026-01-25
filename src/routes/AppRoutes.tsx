@@ -17,7 +17,7 @@ import Login from "../pages/auth/Login";
 import Register from "../pages/auth/Register";
 import AuthContainer from "../pages/auth/AuthContainer";
 
-import { PublicLayout, UserLayout, AdminLayout } from "./Layout";
+import { PublicLayout, AdminLayout, OwnerLayout, UserLayout } from "./Layout";
 import TurfDetail from "../pages/user/TurfDetail";
 import SlotDetails from "../pages/user/SlotDetails";
 import OwnerDashboard from "../pages/owner/OwnerDashboard";
@@ -27,6 +27,7 @@ import UGames from "../pages/user/UGames";
 import ManageTurf from "../pages/admin/Turf/ManageTurf";
 import AdvancePayment from "../pages/user/AdvancePayment";
 import RazorpayPage from "../pages/user/Razorpay";
+import ChannelPartnerDashboard from "../pages/admin/Owner/ChannelPartnerDashboard";
 
 const AppRoutes: React.FC = () => {
   return (
@@ -39,7 +40,7 @@ const AppRoutes: React.FC = () => {
       </Route>
 
       {/* 👤 User pages */}
-      <Route element={<UserLayout />}>
+      <Route element={<UserLayout/>}>
         <Route path="/user/turfs" element={<Turf />} />
         <Route path="/ugames" element={<UGames />} />
         <Route path="/user/turfs/:turfId" element={<TurfDetail />} />
@@ -50,8 +51,10 @@ const AppRoutes: React.FC = () => {
       <Route path="/user/razorpay" element={<RazorpayPage />} />
 
       {/* 👤 Owner pages */}
-      <Route element={<UserLayout />}>
+      <Route element={<OwnerLayout/>}>
         <Route path="/owner/dashboard" element={<AddTurfForm />} />
+        <Route path="/owner/channelpartnerdashboard" element={<ChannelPartnerDashboard/>} />
+
       </Route>
 
       {/* 🛠 Admin pages */}
