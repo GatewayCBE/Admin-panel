@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { getTurfsByOwner } from "../../../services/firestoreService";
+import { getTurfsByOwner , getOwnerById  } from "../../../services/firestoreService";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "../../../firebase";
 import AdminNavbar from "../Analytics/AdminNavbar";
@@ -11,17 +11,23 @@ import cricketImg from "../../../assets/boxcricket_football.png";
 const TurfDetails: React.FC = () => {
   const { ownerId, turfId } = useParams<{ ownerId: string; turfId: string }>();
   const [turf, setTurf] = useState<any | null>(null);
+const [owner, setOwner] = useState<any | null>(null);
 
-  useEffect(() => {
-    if (ownerId && turfId) {
-      (async () => {
-        const turfs = await getTurfsByOwner(ownerId);
-        const selectedTurf = turfs.find((t: any) => t.turf_id === turfId);
-        setTurf(selectedTurf || null);
-      })();
-    }
-    window.scrollTo(0, 0);
-  }, [ownerId, turfId]);
+useEffect(() => {
+  if (ownerId && turfId) {
+    (async () => {
+      const turfs = await getTurfsByOwner(ownerId);
+      const selectedTurf = turfs.find((t: any) => t.turf_id === turfId);
+      setTurf(selectedTurf || null);
+
+      // 🔹 Fetch owner details
+      const ownerData = await getOwnerById(ownerId);
+      setOwner(ownerData);
+    })();
+  }
+  window.scrollTo(0, 0);
+}, [ownerId, turfId]);
+
 
   if (!turf) {
     return (
@@ -66,9 +72,32 @@ const TurfDetails: React.FC = () => {
   return (
     <div style={{ fontFamily: "Poppins, sans-serif" }}>
       <AdminNavbar />
+{owner && (
+  <div className="container mt-5">
+    <div className="card shadow-sm mb-4 border-0">
+      <div className="card-body">
+        <h5 className="fw-bold text-success mb-3">👤 Owner Details</h5>
+        <div className="row">
+          <div className="col-md-4">
+            <p className="mb-1"><strong>Name:</strong> {owner.owner_name}</p>
+          </div>
+          <div className="col-md-4">
+            <p className="mb-1"><strong>Email:</strong> {owner.owner_email}</p>
+          </div>
+          <div className="col-md-4">
+            <p className="mb-1"><strong>Mobile:</strong> {owner.owner_mobile_number}</p>
+          </div>
+        </div>
+        {owner.owner_address && (
+          <p className="mb-0 mt-2"><strong>Address:</strong> {owner.owner_address}</p>
+        )}
+      </div>
+    </div>
+  </div>
+)}
 
       {/* Details Section */}
-      <div className="container mt-4">
+      <div className="container mt-5 pt-5">
         <div className="row">
           {/* LEFT: IMAGE */}
           <div className="col-lg-5">

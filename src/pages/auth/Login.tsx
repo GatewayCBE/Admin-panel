@@ -93,7 +93,7 @@ const Login: React.FC = () => {
       localStorage.setItem("user_role", role);
       localStorage.setItem("is_logged_in", "true");
 
-      navigate(role === "user" ? "/user/turfs" : "/owner/dashboard");
+      navigate(role === "user" ? "/user/turfs" : "/owner/channelpartnerdashboard");
     } finally {
       setLoading(false);
     }
@@ -126,7 +126,7 @@ const Login: React.FC = () => {
     localStorage.setItem("user_role", role);
     localStorage.setItem("is_logged_in", "true");
 
-    navigate(role === "user" ? "/user/turfs" : "/owner/dashboard");
+    navigate(role === "user" ? "/user/turfs" : "/owner/channelpartnerdashboard");
   };
 
   return (

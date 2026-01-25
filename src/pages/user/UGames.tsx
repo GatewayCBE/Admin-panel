@@ -1,22 +1,23 @@
 import React from "react";
 import cricket from "../../assets/boxcricket_football.png";
-import tennis from "../../assets/tennis.png";
-import volleyball from "../../assets/volleyball.png";
+import tennis from "../assets/tennis.png";
+import volleyball from "../assets/volleyball.png";
 import badminton from "../../assets/badminton.png";
 import football from "../../assets/football.png";
+import pickleball from "../../assets/PickleImg.jpg";
 
-// Sample sports data
+
 const sports = [
   { name: "Football", image: football },
   { name: "Cricket", image: cricket },
-  { name: "Volleyball", image: volleyball },
-  { name: "Tennis", image: tennis },
+  { name: "Pickleball", image: pickleball },
+  // { name: "Tennis", image: tennis },
   { name: "Badminton", image: badminton },
 ];
 
 const UGames: React.FC = () => {
   return (
-    <div className="container py-5 text-center">
+    <div className="container py-5 text-center mt-5">
       <h2 className="fw-bold mb-4 text-success">Available Games</h2>
 
     <div className="row g-4 justify-content-center">
