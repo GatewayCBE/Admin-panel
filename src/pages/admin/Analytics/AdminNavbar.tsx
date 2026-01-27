@@ -6,119 +6,141 @@ const AdminNavbar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
 
- 
-   const closeMenu = () => setIsOpen(false);
-
-  const handleNavItemClick = () => {
-    setIsOpen(false);
-  };
+  const closeMenu = () => setIsOpen(false);
 
   const handleLogout = () => {
-    // 1. Clear all session data
     localStorage.removeItem("user_id");
     localStorage.removeItem("user_name");
     localStorage.removeItem("user_email");
     localStorage.removeItem("user_role");
     localStorage.removeItem("is_logged_in");
-    
-    // 2. Close the mobile menu if open
     setIsOpen(false);
-
-    // 3. Navigate back to the landing page
     navigate("/");
   };
 
   return (
-     <nav
-        className="navbar navbar-expand-lg navbar-dark fixed-top"
+    <nav
+      className="navbar navbar-expand-lg navbar-dark fixed-top shadow-sm"
         style={{
-          backgroundColor: "#67a521ff",
-                 height: "70px",
-  
-        }}
-      >
-        <div className="container ">
-  
-          {/* LOGO */}
-          <Link
-            to="/"
-            className="navbar-brand d-flex align-items-center"
-            onClick={closeMenu}
-          >
-            <img
-                src={LogoImg} 
-              alt="BookYourTurf Logo" 
-              style={{
-                height: "100px",
-                width: "auto",
-                objectFit: "contain",
-                marginTop: "-25px",
-                marginBottom: "-20px",
-              }}
-            />
-          </Link>
-  
-          {/* TOGGLER */}
-          <button
-            className="navbar-toggler"
-            type="button"
-            onClick={() => setIsOpen(!isOpen)}
-          >
-            <span className="navbar-toggler-icon"></span>
-          </button>
+        backgroundColor: "#67a521ff",
+        height: "70px",
+        padding: "0.5rem 0",
+      }}
+    >
+      <div className="container px-3 px-lg-4">
 
-        <div className={`collapse navbar-collapse ${isOpen ? "show" : ""}`} id="navbarNav">
-          <ul className="navbar-nav mx-auto">
+        {/* LOGO */}
+        <Link to="/" className="navbar-brand d-flex align-items-center" onClick={closeMenu}>
+          <img
+            src={LogoImg}
+            alt="BookYourTurf Logo"
+            style={{
+              height: "80px",
+              objectFit: "contain",
+            }}
+          />
+        </Link>
+
+        {/* TOGGLER */}
+        <button
+          className="navbar-toggler border-0"
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+        >
+          <span className="navbar-toggler-icon"></span>
+        </button>
+
+        {/* MENU */}
+        <div className={`collapse navbar-collapse ${isOpen ? "show" : ""}`}>
+          
+          {/* CENTER LINKS */}
+          <ul className="navbar-nav mx-auto text-center text-lg-start gap-lg-3">
             <li className="nav-item">
-              <Link className="nav-link text-white fs-5" to="/" onClick={handleNavItemClick}>
+              <Link className="nav-link text-white fs-5" to="/" onClick={closeMenu}>
                 Home
               </Link>
             </li>
             <li className="nav-item">
-              <Link className="nav-link text-white fs-5" to="/dashboard" onClick={handleNavItemClick}>
+              <Link className="nav-link text-white fs-5" to="/dashboard" onClick={closeMenu}>
                 Dashboard
               </Link>
             </li>
             <li className="nav-item">
-              <Link className="nav-link text-white fs-5" to="/admin/recentbookings" onClick={handleNavItemClick}>
+              <Link className="nav-link text-white fs-5" to="/admin/recentbookings" onClick={closeMenu}>
                 Bookings
               </Link>
             </li>
-            {/* <li className="nav-item">
-              <Link className="nav-link text-white fs-5" to="/admin/turfs" onClick={handleNavItemClick}>
-                Turfs
-              </Link>
-            </li>
-            <li className="nav-item">
-              <Link className="nav-link text-white fs-5" to="/admin/users" onClick={handleNavItemClick}>
-                Users
-              </Link>
-            </li> */}
           </ul>
-          {/* Logout Button */}
-          <div className="d-flex">
+
+          {/* RIGHT SIDE LOGOUT */}
+          <div className="d-lg-flex align-items-center text-center mt-3 mt-lg-0">
             <button
-            className="btn fw-bold px-4"
-            style={{
-              backgroundColor: "#e63946",
-              color: "#fff",
-              borderRadius: "20px",
-              transition: "0.3s",
-            }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.transform = "scale(1.05)")
-            }
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.transform = "scale(1)")
-            }
-            onClick={handleLogout}
-          >
-            Logout
-          </button>
+              className="btn fw-bold px-4"
+              style={{
+                backgroundColor: "#e63946",
+                color: "#fff",
+                borderRadius: "20px",
+                transition: "0.3s",
+              }}
+              onClick={handleLogout}
+            >
+              Logout
+            </button>
           </div>
+
         </div>
       </div>
+           <style>{`
+        @media (max-width: 991.98px) {
+          .navbar-collapse {
+            position: absolute !important;
+            top: 80px !important;
+            left: 0 !important;
+            right: 0 !important;
+            background-color: #67a521!important;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
+            border-radius: 0 0 10px 10px !important;
+            padding: 1.5rem 1rem !important;
+            z-index: 1000 !important;
+          }
+          
+          .navbar-collapse .nav-link {
+            color: #333 !important;
+            padding: 0.75rem 0 !important;
+          }
+          
+          .navbar-collapse .nav-link:hover {
+            color: #67a521ff !important;
+          }
+          
+          .navbar-collapse .nav-item:last-child .nav-link {
+            border-bottom: none;
+          }
+        }
+        
+        @media (min-width: 992px) {
+          .navbar-collapse {
+            position: relative !important;
+            top: auto !important;
+            background-color: transparent !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            padding: 0 !important;
+          }
+          
+          .navbar-collapse .nav-link {
+            color: #fff !important;
+            padding: 0.5rem 0 !important;
+            border-bottom: none !important;
+          }
+          
+          .navbar-collapse .nav-link:hover {
+            color: #f0f0f0 !important;
+          }
+        }
+      `}</style>
     </nav>
+    
   );
 };
 

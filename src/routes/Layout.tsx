@@ -5,6 +5,7 @@ import Navbar from "../components/Navbar/Navbar";
 import FooterInfo from "../components/FooterInfo/FooterInfo";
 import Footer from "../components/Footer/Footer";
 import UserNavbar from "../components/Navbar/UserNavbar";
+import OwnerNavbar from "../components/Navbar/OwnerNavbar";
 // import AdminSidebar from "../components/Admin/AdminSidebar"; // optional
 
 
@@ -37,14 +38,28 @@ export const PublicLayout: React.FC = () => {
 export const UserLayout: React.FC = () => {
   return (
     <div>
-      <UserNavbar />
+      <UserNavbar/>
+      <main>
+        <Outlet />
+      </main>
+        <footer className="bg-dark text-white">
+        <FooterInfo />
+        <Footer />
+      </footer>
+    </div>
+  );
+};
+
+export const OwnerLayout: React.FC = () => {
+  return (
+    <div>
+      <OwnerNavbar/>
       <main>
         <Outlet />
       </main>
     </div>
   );
 };
-
 
 /* -----------------------------------
    🛠 ADMIN LAYOUT (Admin panel style)

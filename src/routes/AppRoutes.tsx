@@ -17,7 +17,7 @@ import Login from "../pages/auth/Login";
 import Register from "../pages/auth/Register";
 import AuthContainer from "../pages/auth/AuthContainer";
 
-import { PublicLayout, UserLayout, AdminLayout } from "./Layout";
+import { PublicLayout, AdminLayout, OwnerLayout, UserLayout } from "./Layout";
 import TurfDetail from "../pages/user/TurfDetail";
 import SlotDetails from "../pages/user/SlotDetails";
 import OwnerDashboard from "../pages/owner/OwnerDashboard";
@@ -29,6 +29,11 @@ import AdvancePayment from "../pages/user/AdvancePayment";
 import RazorpayPage from "../pages/user/Razorpay";
 import AllTurfs from "../pages/admin/Turf/AllTurfs";
 import EditTurf from "../pages/admin/Owner/EditTurf";
+import ChannelPartnerDashboard from "../pages/admin/Owner/ChannelPartnerDashboard";
+import OwnerProfile from "../pages/admin/Owner/OwnerProfile";
+import SlotManagement from "../pages/admin/Owner/SlotManagement";
+import SlotBookingConfirmation from "../pages/admin/Owner/SlotBookingConfirmation";
+import ViewBookings from "../pages/admin/Owner/ViewBookings";
 
 const AppRoutes: React.FC = () => {
   return (
@@ -41,7 +46,7 @@ const AppRoutes: React.FC = () => {
       </Route>
 
       {/* 👤 User pages */}
-      <Route element={<UserLayout />}>
+      <Route element={<UserLayout/>}>
         <Route path="/user/turfs" element={<Turf />} />
         <Route path="/ugames" element={<UGames />} />
         <Route path="/user/turfs/:turfId" element={<TurfDetail />} />
@@ -52,8 +57,16 @@ const AppRoutes: React.FC = () => {
       <Route path="/user/razorpay" element={<RazorpayPage />} />
 
       {/* 👤 Owner pages */}
-      <Route element={<UserLayout />}>
+      <Route element={<OwnerLayout/>}>
         <Route path="/owner/dashboard" element={<AddTurfForm />} />
+        <Route path="/owner/channelpartnerdashboard" element={<ChannelPartnerDashboard/>} />
+        <Route path="/owner/profile" element={<OwnerProfile />} />
+        <Route path="/owner/slotmanagement" element={<SlotManagement/>} />
+<Route path="/owner/booking-confirmation" element={<SlotBookingConfirmation/>} />
+<Route path="/owner/viewbookings" element={<ViewBookings/>} />
+
+
+
       </Route>
 
       {/* 🛠 Admin pages */}

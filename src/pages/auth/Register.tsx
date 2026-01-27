@@ -42,6 +42,10 @@ const Register: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+const [mobileError, setMobileError] = useState("");
+const [passwordError, setPasswordError] = useState("");
+const [showPassword, setShowPassword] = useState(false);
+const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
@@ -147,29 +151,67 @@ const Register: React.FC = () => {
                 onChange={(e) => setName(e.target.value)}
                 required
               />
-              <input
-                className="form-control form-control-lg mb-3"
-                placeholder="+91XXXXXXXXXX"
-                value={mobile}
-                onChange={(e) => setMobile(e.target.value)}
-                required
-              />
-              <input
-                type="password"
-                className="form-control form-control-lg mb-3"
-                placeholder="Create Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-              <input
-                type="password"
-                className="form-control form-control-lg mb-4"
-                placeholder="Confirm Password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-              />
+          <div className="input-group mb-3">
+  <span className="input-group-text">+91</span>
+  <input
+    className={`form-control form-control-lg ${mobileError ? "is-invalid" : ""}`}
+    value={mobile}
+    onChange={(e) => {
+      let value = e.target.value.replace(/\D/g, "");
+      if (value.length > 10) return;
+      setMobile(value);
+      setMobileError(value.length === 10 ? "" : "Please enter valid mobile number");
+    }}
+    placeholder="Enter 10 digit mobile"
+  />
+</div>
+{mobileError && <small className="text-danger">{mobileError}</small>}
+
+           
+<div className="input-group mb-1">
+  <input
+    type={showPassword ? "text" : "password"}
+    className={`form-control form-control-lg ${passwordError ? "is-invalid" : ""}`}
+    value={password}
+    onChange={(e) => {
+      const val = e.target.value;
+      setPassword(val);
+
+      if (val.length < 7)
+        setPasswordError("Password must be at least 7 characters");
+      else if (val.length > 15)
+        setPasswordError("Password cannot exceed 15 characters");
+      else setPasswordError("");
+    }}
+    placeholder="Create Password"
+  />
+  <span
+    className="input-group-text bg-white"
+    style={{ cursor: "pointer" }}
+    onClick={() => setShowPassword(!showPassword)}
+  >
+    <i className={`bi ${showPassword ? "bi-eye-slash" : "bi-eye"}`}></i>
+  </span>
+</div>
+{passwordError && <small className="text-danger">{passwordError}</small>}
+          <div className="input-group mb-3">
+  <input
+    type={showConfirmPassword ? "text" : "password"}
+    className="form-control form-control-lg"
+    value={confirmPassword}
+    onChange={(e) => setConfirmPassword(e.target.value)}
+    placeholder="Confirm Password"
+  />
+
+  <span
+    className="input-group-text bg-white"
+    style={{ cursor: "pointer" }}
+    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+  >
+    <i className={`bi ${showConfirmPassword ? "bi-eye-slash" : "bi-eye"}`}></i>
+  </span>
+</div>
+
               <div className="form-check mb-3">
   <input
     className="form-check-input"

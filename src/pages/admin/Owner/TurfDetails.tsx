@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
+import { getTurfsByOwner , getOwnerById  } from "../../../services/firestoreService";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "../../../firebase";
 import { getTurfById, getOwnerByOwnerId } from "../../../services/firestoreService";
@@ -31,6 +33,25 @@ const TurfDetails: React.FC = () => {
   const [showOwnerModal, setShowOwnerModal] = useState(false);
 
   const navigate = useNavigate();
+  const { ownerId, turfId } = useParams<{ ownerId: string; turfId: string }>();
+  const [turf, setTurf] = useState<any | null>(null);
+const [owner, setOwner] = useState<any | null>(null);
+
+useEffect(() => {
+  if (ownerId && turfId) {
+    (async () => {
+      const turfs = await getTurfsByOwner(ownerId);
+      const selectedTurf = turfs.find((t: any) => t.turf_id === turfId);
+      setTurf(selectedTurf || null);
+
+      // 🔹 Fetch owner details
+      const ownerData = await getOwnerById(ownerId);
+      setOwner(ownerData);
+    })();
+  }
+  window.scrollTo(0, 0);
+}, [ownerId, turfId]);
+
 
   const hasBoxFootball = turf
   ? Object.keys(turf.sport_specific_timing || {}).some((sport) =>
@@ -121,6 +142,29 @@ const TurfDetails: React.FC = () => {
   return (
     <div style={{ fontFamily: "Poppins, sans-serif", backgroundColor: "#f8f9fa" }}>
       <AdminNavbar />
+{owner && (
+  <div className="container mt-5">
+    <div className="card shadow-sm mb-4 border-0">
+      <div className="card-body">
+        <h5 className="fw-bold text-success mb-3">👤 Owner Details</h5>
+        <div className="row">
+          <div className="col-md-4">
+            <p className="mb-1"><strong>Name:</strong> {owner.owner_name}</p>
+          </div>
+          <div className="col-md-4">
+            <p className="mb-1"><strong>Email:</strong> {owner.owner_email}</p>
+          </div>
+          <div className="col-md-4">
+            <p className="mb-1"><strong>Mobile:</strong> {owner.owner_mobile_number}</p>
+          </div>
+        </div>
+        {owner.owner_address && (
+          <p className="mb-0 mt-2"><strong>Address:</strong> {owner.owner_address}</p>
+        )}
+      </div>
+    </div>
+  </div>
+)}
 
 {/* Hero Section with Carousel for Multiple Images */}
 <div className="position-relative">

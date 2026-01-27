@@ -4,7 +4,7 @@ import { signOut } from "firebase/auth";
 import { auth } from "../../firebase";
 import LogoImg from "../../assets/LogoImg.png";
 
-const Navbar: React.FC = () => {
+const OwnerNavbar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
 
@@ -24,21 +24,20 @@ const Navbar: React.FC = () => {
         padding: "0.5rem 0",
       }}
     >
-      <div className="container px-3 px-lg-4 h-100">
+      <div className="container px-3 px-lg-4">
 
         {/* LOGO */}
         <Link
           to="/"
-          className="navbar-brand d-flex align-items-center p-0"
+          className="navbar-brand d-flex align-items-center"
           onClick={closeMenu}
-          style={{ height: "100%" }}
         >
           <img
             src={LogoImg}
             alt="BookYourTurf Logo"
-            className="img-fluid"
             style={{
-              height: "80px",
+                           height: "80px",
+
               objectFit: "contain",
             }}
           />
@@ -54,73 +53,51 @@ const Navbar: React.FC = () => {
         </button>
 
         {/* MENU */}
-        <div 
-          className={`collapse navbar-collapse ${isOpen ? "show" : ""}`}
-          style={{
-            position: "absolute",
-            top: "80px",
-            left: "0",
-            right: "0",
-            backgroundColor: "#fff",
-            boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-            borderRadius: "0 0 10px 10px",
-            padding: "1rem",
-            zIndex: 1000,
-          }}
-        >
+        <div className={`collapse navbar-collapse ${isOpen ? "show" : ""}`}>
           
           {/* CENTER LINKS */}
-          <ul className="navbar-nav mx-auto text-center text-lg-start gap-lg-3 mb-0">
+          <ul className="navbar-nav mx-auto text-center text-lg-start gap-lg-3">
             <li className="nav-item">
-              <Link 
-                className="nav-link fs-5 d-lg-inline-block" 
-                style={{ color: "#333" }}
-                to="/" 
-                onClick={closeMenu}
-              >
-                Home
+              <Link className="nav-link text-light me-2 fs-6 fw-bold" to="/owner/channelpartnerdashboard" onClick={closeMenu}>
+                HOME
               </Link>
             </li>
             <li className="nav-item">
-              <Link 
-                className="nav-link fs-5 d-lg-inline-block" 
-                style={{ color: "#333" }}
-                to="/ugames" 
-                onClick={closeMenu}
-              >
-                Games
+              <Link className="nav-link text-white me-2 fs-6 fw-bold" to="/owner/dashboard" onClick={closeMenu}>
+                SPORTS VENUES
               </Link>
             </li>
             <li className="nav-item">
-              <Link 
-                className="nav-link fs-5 d-lg-inline-block" 
-                style={{ color: "#333" }}
-                to="/user/turfs" 
-                onClick={closeMenu}
-              >
-                Venues
+              <Link className="nav-link text-white me-2 fs-6 fw-bold" to="/owner/slotmanagement" onClick={closeMenu}>
+                SLOT MANAGEMENT
+              </Link>
+            </li>
+            <li className="nav-item">
+              <Link className="nav-link text-white me-2 fs-6 fw-bold" to="/owner/viewbookings" onClick={closeMenu}>
+                VIEW BOOKINGS
               </Link>
             </li>
           </ul>
 
           {/* RIGHT SIDE */}
           <div className="d-lg-flex align-items-center text-center mt-3 mt-lg-0">
+            <Link
+              className="nav-link text-white fs-6 me-lg-4 fw-bold"
+              to="/owner/profile"
+              onClick={closeMenu}
+            >
+              PROFILE
+            </Link>
+
             <button
-              className="btn fw-bold px-4 py-2"
+              className="btn fw-bold px-4 mt-2 mt-lg-0"
               style={{
                 backgroundColor: "#e63946",
                 color: "#fff",
                 borderRadius: "20px",
                 transition: "0.3s",
-                fontSize: "0.95rem",
               }}
               onClick={handleLogout}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "#d62839";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "#e63946";
-              }}
             >
               Logout
             </button>
@@ -128,9 +105,7 @@ const Navbar: React.FC = () => {
 
         </div>
       </div>
-      
-      {/* Custom CSS for mobile menu */}
-      <style>{`
+         <style>{`
         @media (max-width: 991.98px) {
           .navbar-collapse {
             position: absolute !important;
@@ -183,4 +158,4 @@ const Navbar: React.FC = () => {
   );
 };
 
-export default Navbar;
+export default OwnerNavbar;
