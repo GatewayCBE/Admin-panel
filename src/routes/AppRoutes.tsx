@@ -27,6 +27,8 @@ import UGames from "../pages/user/UGames";
 import ManageTurf from "../pages/admin/Turf/ManageTurf";
 import AdvancePayment from "../pages/user/AdvancePayment";
 import RazorpayPage from "../pages/user/Razorpay";
+import AllTurfs from "../pages/admin/Turf/AllTurfs";
+import EditTurf from "../pages/admin/Owner/EditTurf";
 import ChannelPartnerDashboard from "../pages/admin/Owner/ChannelPartnerDashboard";
 import OwnerProfile from "../pages/admin/Owner/OwnerProfile";
 import SlotManagement from "../pages/admin/Owner/SlotManagement";
@@ -71,10 +73,13 @@ const AppRoutes: React.FC = () => {
       <Route element={<AdminLayout />}>
       <Route path="/admin" element={ <AdminLogin />} />
         <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/dashboard/turfs" element={<ManageTurf />} />
+        <Route path="/dashboard/turfs" element={<AllTurfs />} />
+        <Route path="/dashboard/manageturf" element={<ManageTurf />} />
         <Route path="/dashboard/owners" element={<Owner />} />
         <Route path="/dashboard/owners/:ownerId" element={<Turfowner />} />
         <Route path="/dashboard/owners/:ownerId/:turfId" element={<TurfDetails />} />
+        <Route path="/dashboard/owners/:ownerId/turfs/:turfId" element={<TurfDetails />} />
+        <Route path="/dashboard/owners/:ownerId/turfs/:turfId/edit" element={<EditTurf />} />
         <Route path="/dashboard/owners/:ownerId/:turfId/slots" element={<TurfBookingsPage />} />
         <Route path="/admin/reports/*" element={<AnalyticsPanel />} />
         <Route path="/admin/recentbookings" element={<RecentBookingsPage />} />

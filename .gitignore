@@ -27,3 +27,6 @@ yarn-error.log*
 
 # Firebase environment variables
 functions/.env
+
+#local environment variables
+.env

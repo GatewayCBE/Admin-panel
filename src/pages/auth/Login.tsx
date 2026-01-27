@@ -7,6 +7,7 @@ import {
   getUserDocByEmail,
   getOwnerDocByEmail,
 } from "../../services/firestoreService";
+import { registerFcmToken } from "../../firebase/messaging";
 
 /* AES CONFIG (MUST MATCH FLUTTER EXACTLY) */
 const AES_KEY_STRING = "DKBMTVig0646YHDBEOCshssi=73HyeMK";
@@ -95,6 +96,12 @@ const [showPassword, setShowPassword] = useState(false);
       localStorage.setItem("user_role", role);
       localStorage.setItem("is_logged_in", "true");
 
+      await registerFcmToken(
+  role === "user" ? account.user_id : account.owner_id,
+  role
+);
+
+      navigate(role === "user" ? "/user/turfs" : "/owner/dashboard");
       navigate(role === "user" ? "/user/turfs" : "/owner/channelpartnerdashboard");
     } finally {
       setLoading(false);
@@ -128,6 +135,12 @@ const [showPassword, setShowPassword] = useState(false);
     localStorage.setItem("user_role", role);
     localStorage.setItem("is_logged_in", "true");
 
+    await registerFcmToken(
+  role === "user" ? account.user_id : account.owner_id,
+  role
+);
+
+    navigate(role === "user" ? "/user/turfs" : "/owner/dashboard");
     navigate(role === "user" ? "/user/turfs" : "/owner/channelpartnerdashboard");
   };
 

@@ -148,52 +148,52 @@ const availableSports = Array.from(
 
 
 //   // --- MODIFY LOGIC ---
-//   const handleModify = (turf: any) => {
-//     // Ensure we are setting the turf object including the 'id'
-//   console.log("Setting selected turf for modification:", turf);
-//     setSelectedTurf({ ...turf }); // Clone the turf data into state
-//   };
+  const handleModify = (turf: any) => {
+    // Ensure we are setting the turf object including the 'id'
+  console.log("Setting selected turf for modification:", turf);
+    setSelectedTurf({ ...turf }); // Clone the turf data into state
+  };
 
-//   const handleUpdateSubmit = async () => {
-//   if (!selectedTurf?.id) return;
-//   setIsUpdating(true);
+  const handleUpdateSubmit = async () => {
+  if (!selectedTurf?.id) return;
+  setIsUpdating(true);
 
-//   try {
-//     let finalImageUrls = selectedTurf.turf_images || [];
+  try {
+    let finalImageUrls = selectedTurf.turf_images || [];
 
-//     // 1. If new files are selected, upload them to Storage
-//     if (selectedFiles.length > 0) {
-//       // Pass turfId, ownerId (from selectedTurf), and the files array
-//       const uploadedUrls = await uploadTurfImages(
-//         selectedTurf.id, 
-//         selectedTurf.owner_id, 
-//         selectedFiles
-//       );
-//       // Replace or append? Usually, for a single primary image, we replace:
-//       finalImageUrls = uploadedUrls; 
-//     }
+    // 1. If new files are selected, upload them to Storage
+    if (selectedFiles.length > 0) {
+      // Pass turfId, ownerId (from selectedTurf), and the files array
+      const uploadedUrls = await uploadTurfImages(
+        selectedTurf.id, 
+        selectedTurf.owner_id, 
+        selectedFiles
+      );
+      // Replace or append? Usually, for a single primary image, we replace:
+      finalImageUrls = uploadedUrls; 
+    }
 
-//     const updatedData = {
-//       turf_name: selectedTurf.turf_name,
-//       turf_location: selectedTurf.turf_location,
-//       turf_mobile_number: selectedTurf.turf_mobile_number,
-//       available_sports_list: selectedTurf.available_sports_list,
-//       turf_images: finalImageUrls, // Save the URLs to Firestore
-//     };
+    const updatedData = {
+      turf_name: selectedTurf.turf_name,
+      turf_location: selectedTurf.turf_location,
+      turf_mobile_number: selectedTurf.turf_mobile_number,
+      available_sports_list: selectedTurf.available_sports_list,
+      turf_images: finalImageUrls, // Save the URLs to Firestore
+    };
 
-//     await updateTurf(selectedTurf.id, updatedData);
-//     alert("Updated successfully!");
+    await updateTurf(selectedTurf.id, updatedData);
+    alert("Updated successfully!");
     
-//     setSelectedTurf(null);
-//     clearImageStates();
-//     window.location.reload();
-//   } catch (error) {
-//     console.error("Update failed:", error);
-//     alert("Update failed. Please check permissions.");
-//   } finally {
-//     setIsUpdating(false);
-//   }
-// };
+    setSelectedTurf(null);
+    clearImageStates();
+    window.location.reload();
+  } catch (error) {
+    console.error("Update failed:", error);
+    alert("Update failed. Please check permissions.");
+  } finally {
+    setIsUpdating(false);
+  }
+};
 
   const sportIcon = (sport: string) => {
     sport = sport.toLowerCase();
@@ -317,12 +317,12 @@ const availableSports = Array.from(
 
                 {/* ACTION BUTTONS */}
                 <div className="d-flex gap-2">
-                  {/* <button
+                  <button
   className="btn btn-outline-primary flex-grow-1 rounded-pill fw-semibold"
   onClick={() => handleModify(turf)}
 >
   ✏️ Modify
-</button> */}
+</button>
                   <button
                     className="btn btn-outline-danger flex-grow-1 rounded-pill fw-semibold"
                     onClick={() => handleDelete(turf.id, turf.turf_name)}
@@ -336,7 +336,7 @@ const availableSports = Array.from(
         ))}
       </div>
 
-      {/* --- EDIT MODAL
+      {/* --- EDIT MODAL --- */}
       {selectedTurf && (
         <div className="modal fade show d-block" id="editModal" tabIndex={-1} style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-dialog modal-dialog-centered">
@@ -428,7 +428,7 @@ const availableSports = Array.from(
             </div>
           </div>
         </div>
-      )} --- */}
+      )} 
     </div>
     </div>
   );
