@@ -58,23 +58,23 @@ const OwnerNavbar: React.FC = () => {
           {/* CENTER LINKS */}
           <ul className="navbar-nav mx-auto text-center text-lg-start gap-lg-3">
             <li className="nav-item">
-              <Link className="nav-link text-white fs-5" to="/owner/channelpartnerdashboard" onClick={closeMenu}>
-                Home
+              <Link className="nav-link text-light me-2 fs-6 fw-bold" to="/owner/channelpartnerdashboard" onClick={closeMenu}>
+                HOME
               </Link>
             </li>
             <li className="nav-item">
-              <Link className="nav-link text-white fs-5" to="/owner/dashboard" onClick={closeMenu}>
-                Sports Venues
+              <Link className="nav-link text-white me-2 fs-6 fw-bold" to="/owner/dashboard" onClick={closeMenu}>
+                SPORTS VENUES
               </Link>
             </li>
             <li className="nav-item">
-              <Link className="nav-link text-white fs-5" to="/owner/slotmanagement" onClick={closeMenu}>
-                Slot Management
+              <Link className="nav-link text-white me-2 fs-6 fw-bold" to="/owner/slotmanagement" onClick={closeMenu}>
+                SLOT MANAGEMENT
               </Link>
             </li>
             <li className="nav-item">
-              <Link className="nav-link text-white fs-5" to="/owner/viewbookings" onClick={closeMenu}>
-                View Bookings
+              <Link className="nav-link text-white me-2 fs-6 fw-bold" to="/owner/viewbookings" onClick={closeMenu}>
+                VIEW BOOKINGS
               </Link>
             </li>
           </ul>
@@ -82,11 +82,11 @@ const OwnerNavbar: React.FC = () => {
           {/* RIGHT SIDE */}
           <div className="d-lg-flex align-items-center text-center mt-3 mt-lg-0">
             <Link
-              className="nav-link text-white fs-5 me-lg-3"
+              className="nav-link text-white fs-6 me-lg-4 fw-bold"
               to="/owner/profile"
               onClick={closeMenu}
             >
-              Profile
+              PROFILE
             </Link>
 
             <button

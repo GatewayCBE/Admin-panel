@@ -207,10 +207,7 @@ export const getOwnerById = async (ownerId: string) => {
   return snapshot.exists() ? snapshot.data() : null;
 };
 
-export const updateOwnerProfile = async (ownerId: string, data: any) => {
-  const ownerRef = doc(db, "environment", "testing", "owners", ownerId);
-  await updateDoc(ownerRef, data);
-};
+
 
 export const getTurfsByOwner = async (ownerId: string) => {
   try {
@@ -319,6 +316,10 @@ export async function createTurfBookingSafe({
   }
 }
 
+export const updateOwnerProfile = async (ownerId: string, data: any) => {
+  const ownerRef = doc(db, "environment", "testing", "owners", ownerId);
+  await updateDoc(ownerRef, data);
+};
 
 export const getOwnerByOwnerId = async (
   ownerId: string
@@ -708,6 +709,235 @@ export async function getAllBookedSlots(
     return [];
   }
 }
+export interface SlotBooking {
+  id: string;
+  turf_id: string;
+  date: string;
+  sport: string;
+  court: string;
+  slot_time: string;
+  booking_username: string;
+  booking_user_mobile: string;
+  paid_amount: number;
+  unpaid_amount: number;
+  payment_status: string;
+}
+
+export const getBookingsByTurfAndDate = async (
+  turfId: string,
+  date: string
+): Promise<SlotBooking[]> => {
+  try {
+    console.log("Fetching bookings for:", { turfId, date });
+
+    // Path: environment/testing/all_turfs_slot_booking/{turfId}/{date}
+    const dateRef = collection(
+      db,
+      "environment",
+      "testing",
+      "all_turfs_slot_booking",
+      turfId,
+      date
+    );
+
+    const dateSnapshot = await getDocs(dateRef);
+    console.log("Date snapshot size:", dateSnapshot.size);
+
+    if (dateSnapshot.empty) {
+      console.log("No bookings found for this date");
+      return [];
+    }
+
+    let allBookings: SlotBooking[] = [];
+
+    // Loop through sports (e.g., "Badminton", "Football")
+    for (const sportDoc of dateSnapshot.docs) {
+      const sportName = sportDoc.id;
+      console.log("Processing sport:", sportName);
+
+      // Path: .../date/{sportName}
+      const courtsRef = collection(
+        db,
+        "environment",
+        "testing",
+        "all_turfs_slot_booking",
+        turfId,
+        date,
+        sportName
+      );
+
+      const courtSnapshots = await getDocs(courtsRef);
+      console.log(`Courts in ${sportName}:`, courtSnapshots.size);
+
+      // Loop through courts (e.g., "Court 1", "Court 2")
+      for (const courtDoc of courtSnapshots.docs) {
+        const courtName = courtDoc.id;
+        console.log("Processing court:", courtName);
+
+        // Path: .../sportName/{courtName}
+        const slotsRef = collection(
+          db,
+          "environment",
+          "testing",
+          "all_turfs_slot_booking",
+          turfId,
+          date,
+          sportName,
+          courtName
+        );
+
+        const slotSnapshots = await getDocs(slotsRef);
+        console.log(`Slots in ${courtName}:`, slotSnapshots.size);
+
+        // Loop through time slots (e.g., "06:00 AM", "07:00 AM")
+        slotSnapshots.forEach((slotDoc) => {
+          const data = slotDoc.data();
+          console.log("Slot data:", slotDoc.id, data);
+
+          allBookings.push({
+            id: slotDoc.id,
+            turf_id: turfId,
+            date,
+            sport: sportName,
+            court: courtName,
+            slot_time: data.slot_start_time || slotDoc.id,
+            booking_username: data.booking_username || "",
+            booking_user_mobile: data.booking_mobile || data.booking_user_mobile || "",
+            paid_amount: Number(data.paid_amount ?? 0),
+            unpaid_amount: Number(data.unpaid_amount ?? 0),
+            payment_status: data.payment_status || "unknown",
+          });
+        });
+      }
+    }
+
+    console.log("Total bookings fetched:", allBookings.length);
+    return allBookings;
+  } catch (error) {
+    console.error("Error fetching turf bookings:", error);
+    return [];
+  }
+};
+
+// ✅ Group bookings by user + court
+export const groupBookings = (slots: SlotBooking[]) => {
+  const grouped: Record<string, any> = {};
+
+  slots.forEach((slot) => {
+    // Group by: username + mobile + court + sport
+    const key = `${slot.booking_username}_${slot.booking_user_mobile}_${slot.court}_${slot.sport}`;
+
+    if (!grouped[key]) {
+      grouped[key] = {
+        id: key,
+        turf_id: slot.turf_id,
+        date: slot.date,
+        sport: slot.sport,
+        court: slot.court,
+        booking_user_name: slot.booking_username,
+        booking_user_mobile: slot.booking_user_mobile,
+        booked_slots: [],
+        total_amount: 0,
+        paid_amount: 0,
+        remaining_amount: 0,
+        payment_status: "advance",
+      };
+    }
+
+    grouped[key].booked_slots.push(slot.slot_time);
+    grouped[key].total_amount += slot.paid_amount + slot.unpaid_amount;
+    grouped[key].paid_amount += slot.paid_amount;
+    grouped[key].remaining_amount += slot.unpaid_amount;
+
+    // Update payment status
+    if (grouped[key].remaining_amount === 0 && grouped[key].total_amount > 0) {
+      grouped[key].payment_status = "paid";
+    } else if (grouped[key].paid_amount > 0) {
+      grouped[key].payment_status = "advance";
+    }
+  });
+
+  return Object.values(grouped);
+};
+
+// ✅ Mark booking as fully paid
+export const markBookingFullyPaid = async (booking: any) => {
+  try {
+    const perSlotAmount = booking.total_amount / booking.booked_slots.length;
+
+    const updates = booking.booked_slots.map(async (slotTime: string) => {
+      const slotRef = doc(
+        db,
+        "environment",
+        "testing",
+        "all_turfs_slot_booking",
+        booking.turf_id,
+        booking.date,
+        booking.sport,
+        booking.court,
+        slotTime
+      );
+
+      return updateDoc(slotRef, {
+        paid_amount: perSlotAmount,
+        unpaid_amount: 0,
+        payment_status: "paid",
+      });
+    });
+
+    await Promise.all(updates);
+    console.log("Booking marked as fully paid");
+  } catch (error) {
+    console.error("Error marking booking as fully paid:", error);
+    throw error;
+  }
+};
+
+
+export const bookSlot = async ({
+  turfId,
+  date,
+  sport,
+  court,
+  slot,
+  bookingName,
+  bookingMobile,
+  price,
+  paidAmount,
+  unpaidAmount,
+  ownerId
+}: any) => {
+  const slotRef = doc(
+    db,
+    "environment",
+    "testing",
+    "all_turfs_slot_booking",
+    turfId,
+    date,
+    sport,
+    court,
+    slot.startTime
+  );
+
+  await setDoc(slotRef, {
+    booking_username: bookingName,
+    booking_mobile: bookingMobile,
+    slot_start_time: slot.startTime,
+    slot_end_time: slot.endTime,
+    time: slot.label,
+    date,
+    court,
+    sport,
+    turf_id: turfId,
+    total_amount: price,
+    paid_amount: paidAmount,
+    unpaid_amount: unpaidAmount,
+    payment_status: unpaidAmount === 0 ? "paid" : "partial",
+    owner_id: ownerId,
+    created_at: new Date()
+  });
+};
+
 
 export async function getAllDatesAndSlots(turfId: string) {
   try {

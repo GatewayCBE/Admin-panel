@@ -72,6 +72,78 @@ const [errors, setErrors] = useState<Record<string, string>>({});
   type VenueType = 'turf' | 'badminton' | 'pickleball' | null;
 const [venueType, setVenueType] = useState<VenueType>(null);
 
+const toMinutes = (time: string) => {
+  if (!time) return null;
+  const [h, m] = time.split(":").map(Number);
+  return h * 60 + m;
+};
+
+const resolveCloseMinutes = (open: string, close: string) => {
+  const openMin = toMinutes(open);
+  let closeMin = toMinutes(close);
+  if (openMin == null || closeMin == null) return null;
+
+  // Overnight support
+  if (closeMin <= openMin) closeMin += 24 * 60;
+  return closeMin;
+};
+
+
+const validateSportTimes = (sport: Sport, index: number) => {
+  const errors: Record<string, string> = {};
+
+  const open = toMinutes(sport.openingTime);
+  const closeRaw = toMinutes(sport.closingTime);
+  const close = resolveCloseMinutes(sport.openingTime, sport.closingTime);
+
+  const dayStart = toMinutes(sport.daySlotStart);
+  const dayEnd = toMinutes(sport.daySlotEnd);
+  const nightStart = toMinutes(sport.nightSlotStart);
+  let nightEnd = toMinutes(sport.nightSlotEnd);
+
+  if (open == null || close == null) return errors;
+
+  // Opening / Closing
+  if (close <= open)
+    errors[`closingTime-${index}`] = "Closing must be after opening";
+
+  // Day must be within opening & closing
+  if (dayStart != null && dayStart < open)
+    errors[`dayStart-${index}`] = "Day start cannot be before opening";
+
+  if (dayEnd != null && dayEnd > close)
+    errors[`dayEnd-${index}`] = "Day end cannot be after closing";
+
+  if (dayStart != null && dayEnd != null && dayEnd <= dayStart)
+    errors[`dayEnd-${index}`] = "Day end must be after day start";
+
+  // Night must be within opening & closing
+  if (nightStart != null && nightStart < open)
+    errors[`nightStart-${index}`] = "Night start cannot be before opening";
+
+  if (nightEnd != null) {
+    if (nightEnd < nightStart!) nightEnd += 1440; // overnight support
+    if (nightEnd > close)
+      errors[`nightEnd-${index}`] = "Night end cannot be after closing";
+  }
+
+  // Day and Night cannot overlap
+  if (dayEnd != null && nightStart != null && nightStart < dayEnd)
+    errors[`nightStart-${index}`] = "Night must start after day ends";
+
+  return errors;
+};
+
+const validatePrice = (value: string) => {
+  if (!value) return "Price required";
+
+  const num = Number(value);
+
+  if (isNaN(num) || num <= 0) return "Invalid price";
+  if (num > 100000) return "Price cannot exceed ₹100000";
+
+  return "";
+};
 
 
 const [turfSports, setTurfSports] = useState<Sport[]>([]);
@@ -101,6 +173,7 @@ const [turfData, setTurfData] = useState<TurfData>(createInitialForm());
 const [badmintonData, setBadmintonData] = useState<TurfData>(createInitialForm());
 const [pickleballData, setPickleballData] = useState<TurfData>(createInitialForm());
 
+const [imagePreviews, setImagePreviews] = useState<string[]>([]);
 
   const facilitiesList = [
     'Parking',
@@ -114,21 +187,42 @@ const [pickleballData, setPickleballData] = useState<TurfData>(createInitialForm
 
   const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      const fileArray = Array.from(files);
-      setSelectedImages(prev => [...prev, ...fileArray].slice(0, 7));
-      
-      if (fileArray[0]) {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setImagePreview(reader.result as string);
-        };
-        reader.readAsDataURL(fileArray[0]);
-      }
+const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const files = Array.from(e.target.files || []);
+  let newErrors: any = {};
+
+  if (files.length + selectedImages.length > 5) {
+    newErrors.images = "Maximum 5 images allowed";
+    setErrors(newErrors);
+    return;
+  }
+
+  const totalSize =
+    [...selectedImages, ...files].reduce((acc, file) => acc + file.size, 0);
+
+  if (totalSize > 25 * 1024 * 1024) {
+    newErrors.images = "Total image size cannot exceed 25MB";
+    setErrors(newErrors);
+    return;
+  }
+
+  for (let file of files) {
+    if (file.size > 5 * 1024 * 1024) {
+      newErrors.images = "Each image must be less than 5MB";
+      setErrors(newErrors);
+      return;
     }
-  };
+  }
+
+  const updatedImages = [...selectedImages, ...files];
+  setSelectedImages(updatedImages);
+
+  const previews = updatedImages.map(file => URL.createObjectURL(file));
+  setImagePreviews(previews);
+
+  setErrors(prev => ({ ...prev, images: "" }));
+};
+
 
   const getActiveForm = () => {
   if (venueType === 'turf') return [turfData, setTurfData, turfSports, setTurfSports] as const;
@@ -163,8 +257,21 @@ const validateStep1 = () => {
   else if (formData.turfDescription.trim().length < 30)
     newErrors.turfDescription = "Minimum 30 characters required";
 
-  if (selectedImages.length === 0)
-    newErrors.images = "At least 1 image required";
+if (selectedImages.length === 0)
+  newErrors.images = "At least 1 image required";
+
+if (selectedImages.length > 5)
+  newErrors.images = "Maximum 5 images allowed";
+
+const totalSize = selectedImages.reduce((acc, file) => acc + file.size, 0);
+
+if (totalSize > 25 * 1024 * 1024)
+  newErrors.images = "Total image size cannot exceed 25MB";
+
+selectedImages.forEach(file => {
+  if (file.size > 5 * 1024 * 1024)
+    newErrors.images = "Each image must be less than 5MB";
+});
 
   setErrors(newErrors);
   return Object.keys(newErrors).length === 0;
@@ -172,36 +279,34 @@ const validateStep1 = () => {
 
 
 const validateStep2 = () => {
-  const newErrors: any = {};
+  let newErrors: Record<string, string> = {};
 
   sports.forEach((sport, index) => {
-    if (!sport.openingTime) newErrors[`openingTime-${index}`] = "Required";
-    if (!sport.closingTime) newErrors[`closingTime-${index}`] = "Required";
-    if (!sport.daySlotStart) newErrors[`dayStart-${index}`] = "Required";
-    if (!sport.daySlotEnd) newErrors[`dayEnd-${index}`] = "Required";
-    if (!sport.nightSlotStart) newErrors[`nightStart-${index}`] = "Required";
-    if (!sport.nightSlotEnd) newErrors[`nightEnd-${index}`] = "Required";
+    newErrors = { ...newErrors, ...validateSportTimes(sport, index) };
 
     Object.entries(sport.dayPrices).forEach(([day, price]) => {
-      if (!price) newErrors[`dayPrice-${day}-${index}`] = "Required";
+      const err = validatePrice(price);
+      if (err) newErrors[`dayPrice-${day}-${index}`] = err;
     });
 
     Object.entries(sport.nightPrices).forEach(([day, price]) => {
-      if (!price) newErrors[`nightPrice-${day}-${index}`] = "Required";
+      const err = validatePrice(price);
+      if (err) newErrors[`nightPrice-${day}-${index}`] = err;
     });
 
     if (!sport.maxPersons) newErrors[`maxPersons-${index}`] = "Required";
-    else if (Number(sport.maxPersons) > 50)
-      newErrors[`maxPersons-${index}`] = "Max persons cannot exceed 50";
+    if (Number(sport.maxPersons) > 50)
+      newErrors[`maxPersons-${index}`] = "Max 50 persons allowed";
 
     if (!sport.courtCount) newErrors[`courtCount-${index}`] = "Required";
-    else if (Number(sport.courtCount) > 10)
-      newErrors[`courtCount-${index}`] = "Court count cannot exceed 10";
+    if (Number(sport.courtCount) > 10)
+      newErrors[`courtCount-${index}`] = "Max 10 courts allowed";
   });
 
   setErrors(newErrors);
   return Object.keys(newErrors).length === 0;
 };
+
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -481,32 +586,55 @@ if (!venueType) {
 </label>
 
         <div className="d-flex justify-content-center mb-3">
-          <label htmlFor="imageUpload" style={{ cursor: 'pointer' }}>
-            <div className="image-upload-box">
-              {imagePreview ? (
-                <img src={imagePreview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '12px' }} />
-              ) : (
-                <div className="d-flex flex-column align-items-center justify-content-center h-100">
-                  <svg width="40" height="40" fill="#999" viewBox="0 0 16 16">
-                    <path d="M6.002 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"/>
-                    <path d="M2.002 1a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2h-12zm12 1a1 1 0 0 1 1 1v6.5l-3.777-1.947a.5.5 0 0 0-.577.093l-3.71 3.71-2.66-1.772a.5.5 0 0 0-.63.062L1.002 12V3a1 1 0 0 1 1-1h12z"/>
-                  </svg>
-                  <small className="text-muted mt-2">Add Photo</small>
-                </div>
-              )}
-            </div>
-          </label>
-          <input
-            id="imageUpload"
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={handleImageUpload}
-            style={{ display: 'none' }}
-          />
-        </div>
+  <label htmlFor="imageUpload" style={{ cursor: "pointer" }}>
+    <div className="image-upload-box">
+      <div className="d-flex flex-column align-items-center justify-content-center h-100">
+        <svg width="40" height="40" fill="#999" viewBox="0 0 16 16">
+          <path d="M6.002 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z" />
+          <path d="M2.002 1a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2h-12zm12 1a1 1 0 0 1 1 1v6.5l-3.777-1.947a.5.5 0 0 0-.577.093l-3.71 3.71-2.66-1.772a.5.5 0 0 0-.63.062L1.002 12V3a1 1 0 0 1 1-1h12z" />
+        </svg>
+        <small className="text-muted mt-2">Add Photos</small>
+      </div>
+    </div>
+  </label>
+
+  <input
+    id="imageUpload"
+    type="file"
+    accept="image/*"
+    multiple
+    onChange={handleImageUpload}
+    style={{ display: "none" }}
+  />
+</div>
+
         <small className="text-muted">{selectedImages.length}/5 images selected</small>
       </div>
+{imagePreviews.length > 0 && (
+  <div className="row g-2 mb-2">
+    {imagePreviews.map((src, i) => (
+      <div key={i} className="col-4 col-md-2 position-relative">
+        <img
+          src={src}
+          alt="preview"
+          className="img-fluid rounded"
+          style={{ height: "90px", objectFit: "cover" }}
+        />
+        <button
+          type="button"
+          className="btn btn-sm btn-danger position-absolute top-0 end-0"
+          onClick={() => {
+            const newImages = selectedImages.filter((_, idx) => idx !== i);
+            setSelectedImages(newImages);
+            setImagePreviews(newImages.map(file => URL.createObjectURL(file)));
+          }}
+        >
+          ✕
+        </button>
+      </div>
+    ))}
+  </div>
+)}
 
       <div className="mb-3">
         <input
@@ -569,24 +697,42 @@ if (!venueType) {
   )}
 </div>
 
-      <div className="mb-4">
-        <textarea
-          className="form-control custom-input"
-       placeholder={
-  venueType === 'turf'
-    ? 'Turf Description & Achievements *'
-    : 'Description & Achievements *'
-}
+     <div className="mb-4">
+  <textarea
+    className={`form-control custom-input ${
+      errors.turfDescription ? "is-invalid" : ""
+    }`}
+    placeholder={
+      venueType === "turf"
+        ? "Turf Description & Achievements *"
+        : "Description & Achievements *"
+    }
+    name="turfDescription"
+    value={formData.turfDescription}
+    onChange={(e) => {
+      const value = e.target.value;
+      handleInputChange(e); // keep your existing state update
 
-          name="turfDescription"
-          value={formData.turfDescription}
-          onChange={handleInputChange}
-          rows={6}
-        />
-{errors.turfDescription && (
-  <small className="text-danger">{errors.turfDescription}</small>
-)}
-      </div>
+      if (value.trim().length < 30) {
+        setErrors(prev => ({
+          ...prev,
+          turfDescription: "Minimum 30 characters required"
+        }));
+      } else {
+        setErrors(prev => ({
+          ...prev,
+          turfDescription: ""
+        }));
+      }
+    }}
+    rows={6}
+  />
+
+  <div className="field-error">
+    {errors.turfDescription}
+  </div>
+</div>
+
 
       <div className="mb-3">
         <h6 className="mb-3">Turf Dimensions</h6>
@@ -781,23 +927,41 @@ const sportName =
             <div className="sport-content">
               <div className="row g-3 mb-3">
                 <div className="col-6">
-                  <label className="time-label">Opening Time <span className='text-danger'>*</span></label>
-                  <input
-                    type="time"
-                    className="form-control custom-input"
-                    value={sport.openingTime}
-                    onChange={(e) => updateSportField(sport.id, 'openingTime', e.target.value)}
-                  />
-                </div>
+  <div className="input-group-vertical">
+    <label className="time-label">
+      Opening Time <span className="text-danger">*</span>
+    </label>
+    <input
+      type="time"
+      className={`form-control custom-input ${errors[`openingTime-${index}`] ? "is-invalid" : ""}`}
+      value={sport.openingTime}
+      onChange={(e) => {
+        updateSportField(sport.id, "openingTime", e.target.value);
+        setErrors(prev => ({ ...prev, ...validateSportTimes({ ...sport, openingTime: e.target.value }, index) }));
+      }}
+    />
+    <div className="field-error">{errors[`openingTime-${index}`]}</div>
+  </div>
+</div>
+
                 <div className="col-6">
-                  <label className="time-label">Closing Time <span className='text-danger'>*</span></label>
-                  <input
-                    type="time"
-                    className="form-control custom-input"
-                    value={sport.closingTime}
-                    onChange={(e) => updateSportField(sport.id, 'closingTime', e.target.value)}
-                  />
-                </div>
+  <div className="input-group-vertical">
+    <label className="time-label">
+      Closing Time <span className="text-danger">*</span>
+    </label>
+    <input
+      type="time"
+      className={`form-control custom-input ${errors[`closingTime-${index}`] ? "is-invalid" : ""}`}
+      value={sport.closingTime}
+      onChange={(e) => {
+        updateSportField(sport.id, "closingTime", e.target.value);
+        setErrors(prev => ({ ...prev, ...validateSportTimes({ ...sport, closingTime: e.target.value }, index) }));
+      }}
+    />
+    <div className="field-error">{errors[`closingTime-${index}`]}</div>
+  </div>
+</div>
+
               </div>
 
               {/* Day Split & Prices */}
@@ -813,41 +977,91 @@ const sportName =
                 {expandedSections[`${sport.id}-day`] && (
                   <div className="section-content">
                     <div className="row g-3 mb-3">
-                      <div className="col-6">
-                        <label className="time-label">Day Start<span className='text-danger'>*</span></label>
-                        <input
-                          type="time"
-                          className="form-control custom-input"
-                          value={sport.daySlotStart}
-                          onChange={(e) => updateSportField(sport.id, 'daySlotStart', e.target.value)}
-                        />
-                      </div>
-                      <div className="col-6">
-                        <label className="time-label">Day End <span className='text-danger'>*</span></label>
-                        <input
-                          type="time"
-                          className="form-control custom-input"
-                          value={sport.daySlotEnd}
-                          onChange={(e) => updateSportField(sport.id, 'daySlotEnd', e.target.value)}
-                        />
-                      </div>
+                     <div className="col-6">
+  <div className="input-group-vertical">
+    <label className="time-label">
+      Day Start <span className="text-danger">*</span>
+    </label>
+    <input
+      type="time"
+      className={`form-control custom-input ${errors[`dayStart-${index}`] ? "is-invalid" : ""}`}
+      value={sport.daySlotStart}
+      onChange={(e) => {
+        updateSportField(sport.id, "daySlotStart", e.target.value);
+        setErrors(prev => ({ ...prev, ...validateSportTimes({ ...sport, daySlotStart: e.target.value }, index) }));
+      }}
+    />
+    <div className="field-error">{errors[`dayStart-${index}`]}</div>
+  </div>
+</div>
+
+                    <div className="col-6">
+  <div className="input-group-vertical">
+    <label className="time-label">
+      Day End <span className="text-danger">*</span>
+    </label>
+    <input
+      type="time"
+      className={`form-control custom-input ${errors[`dayEnd-${index}`] ? "is-invalid" : ""}`}
+      value={sport.daySlotEnd}
+      onChange={(e) => {
+        updateSportField(sport.id, "daySlotEnd", e.target.value);
+        setErrors(prev => ({ ...prev, ...validateSportTimes({ ...sport, daySlotEnd: e.target.value }, index) }));
+      }}
+    />
+    <div className="field-error">{errors[`dayEnd-${index}`]}</div>
+  </div>
+</div>
+
                     </div>
 
                     <div className="row g-2">
                       {daysOfWeek.map((day) => (
-                        <div key={day} className="col-6">
-                          <div className="price-input-wrapper">
-                            <span className="rupee-symbol">₹</span>
-                            <input
-                              type="number"
-                              className="form-control price-input"
-                              placeholder={day.charAt(0).toUpperCase() + day.slice(1)}
-                              value={sport.dayPrices[day as keyof typeof sport.dayPrices]}
-                              onChange={(e) => updateSportPrice(sport.id, 'dayPrices', day, e.target.value)}
-                            />
-                            <span className="required-star"><span className='text-danger'>*</span></span>
-                          </div>
-                        </div>
+                        <div className="col-6" key={day}>
+  <div className="input-group-vertical">
+    <div className="price-input-wrapper">
+      <span className="rupee-symbol">₹</span>
+
+      <input
+        type="number"
+        className={`form-control price-input ${
+          errors[`dayPrice-${day}-${index}`] ? "is-invalid" : ""
+        }`}
+        placeholder={day.charAt(0).toUpperCase() + day.slice(1)}
+        value={sport.dayPrices[day as keyof typeof sport.dayPrices]}
+        onChange={(e) => {
+          const value = e.target.value;
+
+          if (value === "") {
+            updateSportPrice(sport.id, "dayPrices", day, "");
+            setErrors(prev => ({ ...prev, [`dayPrice-${day}-${index}`]: "Price required" }));
+            return;
+          }
+
+          if (!/^\d+$/.test(value)) return;
+
+          const num = Number(value);
+          if (num > 100000) {
+            setErrors(prev => ({
+              ...prev,
+              [`dayPrice-${day}-${index}`]: "Price cannot exceed ₹100000"
+            }));
+            return;
+          }
+
+          updateSportPrice(sport.id, "dayPrices", day, value);
+          setErrors(prev => ({ ...prev, [`dayPrice-${day}-${index}`]: "" }));
+        }}
+      />
+    </div>
+
+    {/* ERROR MESSAGE — ALWAYS TAKES SPACE */}
+    <div className="field-error">
+      {errors[`dayPrice-${day}-${index}`]}
+    </div>
+  </div>
+</div>
+
                       ))}
                     </div>
                   </div>
@@ -867,43 +1081,105 @@ const sportName =
                 {expandedSections[`${sport.id}-night`] && (
                   <div className="section-content">
                     <div className="row g-3 mb-3">
-                      <div className="col-6">
-                        <label className="time-label">Night Start <span className='text-danger'>*</span></label>
-                        <input
-                          type="time"
-                          className="form-control custom-input"
-                          value={sport.nightSlotStart}
-                          onChange={(e) => updateSportField(sport.id, 'nightSlotStart', e.target.value)}
-                        />
-                      </div>
-                      <div className="col-6">
-                        <label className="time-label">Night End <span className='text-danger'>*</span></label>
-                        <input
-                          type="time"
-                          className="form-control custom-input"
-                          value={sport.nightSlotEnd}
-                          onChange={(e) => updateSportField(sport.id, 'nightSlotEnd', e.target.value)}
-                        />
-                      </div>
+                     <div className="col-6">
+  <div className="input-group-vertical">
+    <label className="time-label">
+      Night Start <span className="text-danger">*</span>
+    </label>
+    <input
+      type="time"
+      className={`form-control custom-input ${errors[`nightStart-${index}`] ? "is-invalid" : ""}`}
+      value={sport.nightSlotStart}
+      onChange={(e) => {
+        updateSportField(sport.id, "nightSlotStart", e.target.value);
+        setErrors(prev => ({ ...prev, ...validateSportTimes({ ...sport, nightSlotStart: e.target.value }, index) }));
+      }}
+    />
+    <div className="field-error">{errors[`nightStart-${index}`]}</div>
+  </div>
+</div>
+
+                     <div className="col-6">
+  <div className="input-group-vertical">
+    <label className="time-label">
+      Night End <span className="text-danger">*</span>
+    </label>
+    <input
+      type="time"
+      className={`form-control custom-input ${errors[`nightEnd-${index}`] ? "is-invalid" : ""}`}
+      value={sport.nightSlotEnd}
+      onChange={(e) => {
+        updateSportField(sport.id, "nightSlotEnd", e.target.value);
+        setErrors(prev => ({ ...prev, ...validateSportTimes({ ...sport, nightSlotEnd: e.target.value }, index) }));
+      }}
+    />
+    <div className="field-error">{errors[`nightEnd-${index}`]}</div>
+  </div>
+</div>
+
                     </div>
 
-                    <div className="row g-2">
-                      {daysOfWeek.map((day) => (
-                        <div key={day} className="col-6">
-                          <div className="price-input-wrapper">
-                            <span className="rupee-symbol">₹</span>
-                            <input
-                              type="number"
-                              className="form-control price-input"
-                              placeholder={day.charAt(0).toUpperCase() + day.slice(1)}
-                              value={sport.nightPrices[day as keyof typeof sport.nightPrices]}
-                              onChange={(e) => updateSportPrice(sport.id, 'nightPrices', day, e.target.value)}
-                            />
-                            <span className="required-star text-danger">*</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+               <div className="row g-2">
+  {daysOfWeek.map((day) => (
+    <div key={day} className="col-6">
+      <div className="input-group-vertical">
+
+        <div className="price-input-wrapper">
+          <span className="rupee-symbol">₹</span>
+
+          <input
+            type="number"
+            className={`form-control price-input ${
+              errors[`nightPrice-${day}-${index}`] ? "is-invalid" : ""
+            }`}
+            placeholder={day.charAt(0).toUpperCase() + day.slice(1)}
+            value={sport.nightPrices[day as keyof typeof sport.nightPrices]}
+            onChange={(e) => {
+              const value = e.target.value;
+
+              if (value === "") {
+                updateSportPrice(sport.id, "nightPrices", day, "");
+                setErrors(prev => ({
+                  ...prev,
+                  [`nightPrice-${day}-${index}`]: "Price required"
+                }));
+                return;
+              }
+
+              if (!/^\d+$/.test(value)) return;
+
+              const num = Number(value);
+
+              if (num > 100000) {
+                setErrors(prev => ({
+                  ...prev,
+                  [`nightPrice-${day}-${index}`]:
+                    "Price cannot exceed ₹100000"
+                }));
+                return;
+              }
+
+              updateSportPrice(sport.id, "nightPrices", day, value);
+              setErrors(prev => ({
+                ...prev,
+                [`nightPrice-${day}-${index}`]: ""
+              }));
+            }}
+          />
+
+          <span className="required-star text-danger">*</span>
+        </div>
+
+        {/* Error message ALWAYS below input */}
+        <div className="field-error">
+          {errors[`nightPrice-${day}-${index}`]}
+        </div>
+
+      </div>
+    </div>
+  ))}
+</div>
+
                   </div>
                 )}
               </div>
@@ -918,15 +1194,30 @@ const sportName =
   placeholder="Max persons *"
   value={sport.maxPersons}
   onChange={(e) => {
-    const value = Number(e.target.value);
+    const value = e.target.value;
 
-    updateSportField(sport.id, 'maxPersons', e.target.value);
+    // Allow empty for typing
+    if (value === "") {
+      updateSportField(sport.id, "maxPersons", "");
+      setErrors(prev => ({ ...prev, [`maxPersons-${index}`]: "Required" }));
+      return;
+    }
 
-    setErrors(prev => ({
-      ...prev,
-      [`maxPersons-${index}`]:
-        value > 50 ? "Maximum 50 persons allowed" : ""
-    }));
+    // Allow only numbers
+    if (!/^\d+$/.test(value)) return;
+
+    const num = Number(value);
+
+    if (num > 10) {
+      setErrors(prev => ({
+        ...prev,
+        [`maxPersons-${index}`]: "Maximum 50 persons allowed"
+      }));
+      return; // 🚫 prevents entering 11+
+    }
+
+    updateSportField(sport.id, "maxPersons", value);
+    setErrors(prev => ({ ...prev, [`maxPersons-${index}`]: "" }));
   }}
 />
 
@@ -941,13 +1232,40 @@ const sportName =
                     <label className="court-label">Court count <span className='text-danger'>*</span></label>
                     <input
                       type="number"
+                      placeholder='court count'
                       className="form-control custom-input"
                       value={sport.courtCount}
-                      onChange={(e) => updateSportField(sport.id, 'courtCount', e.target.value)}
-                    />
-                    {errors[`courtCount-${index}`] && (
-  <small className="text-danger">{errors[`courtCount-${index}`]}</small>
-)}
+ onChange={(e) => {
+    const value = e.target.value;
+
+    // Allow empty for typing
+    if (value === "") {
+      updateSportField(sport.id, "courtCount", "");
+      setErrors(prev => ({ ...prev, [`courtCount-${index}`]: "Required" }));
+      return;
+    }
+
+    // Allow only numbers
+    if (!/^\d+$/.test(value)) return;
+
+    const num = Number(value);
+
+    if (num > 10) {
+      setErrors(prev => ({
+        ...prev,
+        [`courtCount-${index}`]: "Maximum 10 courts allowed"
+      }));
+      return; // 🚫 prevents entering 11+
+    }
+
+    updateSportField(sport.id, "courtCount", value);
+    setErrors(prev => ({ ...prev, [`courtCount-${index}`]: "" }));
+  }}
+/>
+
+<div className="field-error">
+  {errors[`courtCount-${index}`]}
+</div>
                   </div>
                 </div>
                 <div className="form-check mt-4">
@@ -1024,6 +1342,20 @@ const sportName =
           background-color: #ffffff;
           box-shadow: 0 0 30px rgba(0,0,0,0.1);
         }
+.input-group-vertical {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.field-error {
+  min-height: 18px;        /* Keeps layout stable */
+  font-size: 12px;
+  color: #dc3545;
+  margin-top: 4px;
+  line-height: 1.2;
+}
+
 
         .header {
           background: linear-gradient(135deg, #198754 0%, #157347 100%);
