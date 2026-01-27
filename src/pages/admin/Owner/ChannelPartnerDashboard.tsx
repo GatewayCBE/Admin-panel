@@ -14,7 +14,7 @@ const ChannelPartnerDashboard: React.FC = () => {
         {/* View Bookings Card */}
         <div className="col-lg-5 col-md-6">
           <Link
-            to="/dashboard/bookings"
+            to="/owner/viewbookings"
             className="text-decoration-none"
           >
             <div
