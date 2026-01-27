@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useParams } from "react-router-dom";
 import { getTurfsByOwner , getOwnerById  } from "../../../services/firestoreService";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "../../../firebase";
@@ -26,7 +25,6 @@ interface TurfData {
 }
 
 const TurfDetails: React.FC = () => {
-  const { turfId } = useParams<{ turfId: string }>();
   const [turf, setTurf] = useState<any>(null);
   const [owner, setOwner] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -34,8 +32,6 @@ const TurfDetails: React.FC = () => {
 
   const navigate = useNavigate();
   const { ownerId, turfId } = useParams<{ ownerId: string; turfId: string }>();
-  const [turf, setTurf] = useState<any | null>(null);
-const [owner, setOwner] = useState<any | null>(null);
 
 useEffect(() => {
   if (ownerId && turfId) {
