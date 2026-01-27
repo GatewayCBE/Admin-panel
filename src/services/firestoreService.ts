@@ -21,6 +21,7 @@ import {
 } from "firebase/functions";
 import { getApp } from "firebase/app";
 import { Owner } from "../types/Owner";
+import { Turf } from "../types/Turf";
 
 /**
  * Generate Custom ID exactly like Flutter app
@@ -182,7 +183,7 @@ export const getTurfs = async () => {
 /**
  * Get a single turf document by ID
  */
-export const getTurfById = async (turfId: string) => {
+export const getTurfById = async (turfId: string): Promise<Turf | null> => {
   try {
     const docRef = doc(db, "environment", "testing", "turfs", turfId);
     const snap = await getDoc(docRef);
@@ -192,7 +193,13 @@ export const getTurfById = async (turfId: string) => {
       return null;
     }
 
-    return { turf_id: snap.id, ...snap.data() };
+    const data = snap.data();
+
+    return {
+      id: snap.id,
+      turf_id: snap.id,
+      ...data,
+    } as Turf;
   } catch (err) {
     console.error("Error fetching turf:", err);
     return null;

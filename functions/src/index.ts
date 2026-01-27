@@ -286,5 +286,6 @@ export const onSlotCreated = onDocumentCreated(
 
 // keep your existing HTTPS function export
 export { getRecentBookings } from "./getRecentBookings";
-export { deleteTurfByAdmin } from "./deleteTurf"
-export { createWebRazorpayOrder, verifyWebRazorpayPayment } from "./razorpayWeb"
+export { deleteTurfByAdmin } from "./deleteTurf";
+export { createWebRazorpayOrder, verifyWebRazorpayPayment } from "./razorpayWeb";
+export { saveFcmToken } from "./saveFcmToken";

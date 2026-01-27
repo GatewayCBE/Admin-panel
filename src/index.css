@@ -16,3 +16,42 @@ code {
   font-weight: normal;
   font-style: normal;
 }
+
+/* Global or component CSS */
+.card {
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  overflow: hidden;
+}
+
+.card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.18) !important;
+}
+
+.btn {
+  transition: transform 0.2s;
+}
+
+.card:hover .btn {
+  transform: translateX(6px);
+}
+
+.hover-lift:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.14) !important;
+  transition: all 0.22s ease;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.modal {
+  z-index: 9999 !important;
+}
+.modal-backdrop {
+  z-index: 9998 !important;
+}

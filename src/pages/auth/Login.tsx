@@ -7,6 +7,7 @@ import {
   getUserDocByEmail,
   getOwnerDocByEmail,
 } from "../../services/firestoreService";
+import { registerFcmToken } from "../../firebase/messaging";
 
 /* AES CONFIG (MUST MATCH FLUTTER EXACTLY) */
 const AES_KEY_STRING = "DKBMTVig0646YHDBEOCshssi=73HyeMK";
@@ -93,6 +94,11 @@ const Login: React.FC = () => {
       localStorage.setItem("user_role", role);
       localStorage.setItem("is_logged_in", "true");
 
+      await registerFcmToken(
+  role === "user" ? account.user_id : account.owner_id,
+  role
+);
+
       navigate(role === "user" ? "/user/turfs" : "/owner/dashboard");
     } finally {
       setLoading(false);
@@ -125,6 +131,11 @@ const Login: React.FC = () => {
     );
     localStorage.setItem("user_role", role);
     localStorage.setItem("is_logged_in", "true");
+
+    await registerFcmToken(
+  role === "user" ? account.user_id : account.owner_id,
+  role
+);
 
     navigate(role === "user" ? "/user/turfs" : "/owner/dashboard");
   };
