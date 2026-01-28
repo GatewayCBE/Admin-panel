@@ -206,13 +206,13 @@ const availableSports = Array.from(
     });
 
   return (
-    <div className="container py-2" style={{ maxWidth: "1200px" }}>
+    <div className="container py-4 mt-5" style={{ maxWidth: "1200px" }}>
       <h2 className="text-center text-success fw-bold mb-4 display-5">
         Turf Details
       </h2>
 
       {/* Search */}
-      <div className="row justify-content-center mb-4">
+      <div className="row justify-content-center mb-4 ">
   <div className="col-md-10 col-lg-8">
     <div className="d-flex gap-3 align-items-center">
       

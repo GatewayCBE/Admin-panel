@@ -1208,7 +1208,7 @@ const sportName =
 
     const num = Number(value);
 
-    if (num > 10) {
+    if (num > 50) {
       setErrors(prev => ({
         ...prev,
         [`maxPersons-${index}`]: "Maximum 50 persons allowed"

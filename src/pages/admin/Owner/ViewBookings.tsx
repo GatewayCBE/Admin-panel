@@ -1,18 +1,49 @@
 import React, { useEffect, useState } from "react";
 import { getTurfsByOwner } from "../../../services/firestoreService";
-import { getBookingsByTurfAndDate } from "../../../services/firestoreService";
-import { groupBookings } from "../../../services/firestoreService";
-import { markBookingFullyPaid } from "../../../services/firestoreService";
+import { getBookingsByTurfAndDate, markBookingFullyPaid } from "../../../services/firestoreService";
+
+interface SlotBooking {
+  id: string;
+  turf_id: string;
+  date: string;
+  sport: string;
+  court: string;
+  slot_time: string;
+  booking_username: string;
+  booking_user_mobile: string;
+  paid_amount: number;
+  unpaid_amount: number;
+  payment_status: string;
+}
 
 const ViewBookings: React.FC = () => {
   const ownerId = localStorage.getItem("user_id") || "";
 
   const [turfs, setTurfs] = useState<any[]>([]);
   const [selectedTurf, setSelectedTurf] = useState<any>(null);
-  const [bookingDate, setBookingDate] = useState<string>(
-    new Date().toISOString().split("T")[0]
+
+  // For Firestore
+  const formatFirestoreDate = (date: Date) =>
+    date
+      .toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
+      .replace(/ /g, "-");
+
+  // For input[type=date]
+  const formatInputDate = (date: Date) => date.toISOString().split("T")[0];
+
+  // State for input control
+  const [bookingDateInput, setBookingDateInput] = useState<string>(
+    formatInputDate(new Date())
   );
-  const [bookings, setBookings] = useState<any[]>([]);
+
+  // Firestore formatted date
+  const bookingDate = formatFirestoreDate(new Date(bookingDateInput));
+
+  const [bookings, setBookings] = useState<SlotBooking[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
 
@@ -35,37 +66,23 @@ const ViewBookings: React.FC = () => {
     loadTurfs();
   }, [ownerId]);
 
-  // Load bookings
+  // Load bookings when turf or date changes
   useEffect(() => {
-    if (!selectedTurf || !bookingDate) return;
+    if (!selectedTurf?.turf_id || !bookingDate) return;
 
     const loadBookings = async () => {
       try {
         setLoading(true);
         setError("");
-        
-        console.log("Fetching bookings for:", {
-          turfId: selectedTurf.turf_id,
-          date: bookingDate
-        });
 
-        const slotDocs = await getBookingsByTurfAndDate(
-          selectedTurf.turf_id,
-          bookingDate
-        );
+        console.log("Fetching bookings for turf:", selectedTurf.turf_id, "Date:", bookingDate);
 
-        console.log("Fetched slot documents:", slotDocs);
+        const data = await getBookingsByTurfAndDate(selectedTurf.turf_id, bookingDate);
 
-        if (slotDocs.length === 0) {
-          setBookings([]);
-          console.log("No bookings found");
-        } else {
-          const grouped = groupBookings(slotDocs);
-          console.log("Grouped bookings:", grouped);
-          setBookings(grouped);
-        }
+        console.log("Bookings fetched:", data);
+        setBookings(data);
       } catch (err) {
-        console.error("Error loading bookings:", err);
+        console.error(err);
         setError("Failed to load bookings");
         setBookings([]);
       } finally {
@@ -74,20 +91,23 @@ const ViewBookings: React.FC = () => {
     };
 
     loadBookings();
-  }, [selectedTurf, bookingDate]);
+  }, [selectedTurf?.turf_id, bookingDate]);
 
-  const handleMarkPaid = async (booking: any) => {
+  const handleMarkPaid = async (booking: SlotBooking) => {
+    if (!window.confirm("Mark this booking as fully paid?")) return;
+
     try {
       setLoading(true);
       await markBookingFullyPaid(booking);
 
+      // Update local state
       setBookings((prev) =>
         prev.map((b) =>
           b.id === booking.id
             ? {
                 ...b,
-                paid_amount: b.total_amount,
-                remaining_amount: 0,
+                paid_amount: b.paid_amount + b.unpaid_amount,
+                unpaid_amount: 0,
                 payment_status: "paid",
               }
             : b
@@ -115,6 +135,9 @@ const ViewBookings: React.FC = () => {
     });
   };
 
+  const totalPaid = bookings.reduce((sum, b) => sum + b.paid_amount, 0);
+  const totalUnpaid = bookings.reduce((sum, b) => sum + b.unpaid_amount, 0);
+
   return (
     <div className="container mt-5 pt-5">
       <h3 className="text-center text-success fw-bold mb-4">View Bookings</h3>
@@ -125,10 +148,12 @@ const ViewBookings: React.FC = () => {
         <select
           className="form-select border-success"
           value={selectedTurf?.turf_id || ""}
-          onChange={(e) =>
-            setSelectedTurf(turfs.find((t) => t.turf_id === e.target.value))
-          }
-          disabled={loading}
+          onChange={(e) => {
+            const turf = turfs.find((t) => t.turf_id === e.target.value);
+            setSelectedTurf(turf);
+            setBookings([]); // Clear previous bookings
+          }}
+          disabled={loading || turfs.length === 0}
         >
           {turfs.length === 0 && <option>No turfs available</option>}
           {turfs.map((turf) => (
@@ -145,14 +170,14 @@ const ViewBookings: React.FC = () => {
         <input
           type="date"
           className="form-control border-success"
-          value={bookingDate}
+          value={bookingDateInput}
           min={new Date().toISOString().split("T")[0]}
           max={maxDate.toISOString().split("T")[0]}
-          onChange={(e) => setBookingDate(e.target.value)}
+          onChange={(e) => setBookingDateInput(e.target.value)}
           disabled={loading}
         />
         <small className="text-muted">
-          Showing bookings for: {formatDate(bookingDate)}
+          Showing bookings for: {formatDate(bookingDateInput)}
         </small>
       </div>
 
@@ -174,7 +199,7 @@ const ViewBookings: React.FC = () => {
       )}
 
       {/* No Bookings State */}
-      {!loading && !error && bookings.length === 0 && (
+      {!loading && !error && bookings.length === 0 && selectedTurf && (
         <div className="text-center py-5">
           <div className="mb-3">
             <svg
@@ -189,104 +214,106 @@ const ViewBookings: React.FC = () => {
           </div>
           <h5 className="text-muted">No bookings found</h5>
           <p className="text-muted">
-            There are no bookings for {formatDate(bookingDate)}
+            There are no bookings for {selectedTurf.turf_name} on {formatDate(bookingDateInput)}
           </p>
         </div>
       )}
 
-      {/* Bookings Count */}
+      {/* Summary Cards */}
       {!loading && bookings.length > 0 && (
-        <div className="d-flex justify-content-between align-items-center mb-3">
-          <p className="text-muted mb-0">
-            <strong>{bookings.length}</strong> booking{bookings.length > 1 ? "s" : ""} found
-          </p>
-        </div>
+        <>
+          <div className="row mb-4">
+            <div className="col-md-4">
+              <div className="card border-0 shadow-sm">
+                <div className="card-body text-center">
+                  <small className="text-muted">Total Bookings</small>
+                  <h3 className="text-primary mb-0">{bookings.length}</h3>
+                </div>
+              </div>
+            </div>
+            <div className="col-md-4">
+              <div className="card border-0 shadow-sm">
+                <div className="card-body text-center">
+                  <small className="text-muted">Total Paid</small>
+                  <h3 className="text-success mb-0">₹{totalPaid}</h3>
+                </div>
+              </div>
+            </div>
+            <div className="col-md-4">
+              <div className="card border-0 shadow-sm">
+                <div className="card-body text-center">
+                  <small className="text-muted">Total Balance</small>
+                  <h3 className="text-danger mb-0">₹{totalUnpaid}</h3>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
       )}
 
       {/* Booking Cards */}
       {!loading &&
         bookings.map((booking) => (
-          <div
-            key={booking.id}
-            className="card shadow-sm mb-4 border-0 rounded-4"
-          >
+          <div key={`${booking.sport}-${booking.court}-${booking.id}`} className="card shadow-sm mb-3 border-0">
             <div className="card-body">
-              <div className="d-flex justify-content-between align-items-start mb-3">
+              <div className="d-flex justify-content-between align-items-center mb-3">
                 <div>
-                  <h6 className="text-muted mb-1">
-                    Booking #{booking.id.slice(-8)}
-                  </h6>
-                  <span className="badge bg-info text-dark">
-                    {booking.sport} - {booking.court}
-                  </span>
+                  <h6 className="mb-1 fw-bold">{booking.booking_username}</h6>
+                  <small className="text-muted">
+                    <i className="bi bi-telephone me-1"></i>
+                    {booking.booking_user_mobile}
+                  </small>
                 </div>
                 <span
                   className={`badge ${
                     booking.payment_status === "paid"
                       ? "bg-success"
                       : "bg-warning text-dark"
-                  } fs-6 px-3 py-2`}
+                  }`}
                 >
-                  {booking.payment_status === "paid" ? "✓ PAID" : "⏳ ADVANCE"}
+                  {booking.payment_status === "paid" ? "PAID" : "ADVANCE"}
                 </span>
               </div>
 
-              <h5 className="fw-bold mt-2">{booking.booking_user_name}</h5>
-              <p className="text-muted mb-1">
-                📱 {booking.booking_user_mobile}
-              </p>
-              <p className="text-muted mb-3">
-                📅 {formatDate(booking.date)}
-              </p>
-
-              <h6 className="fw-bold mb-2">Booked Time Slots:</h6>
-              <div className="d-flex flex-wrap gap-2 mb-3">
-                {booking.booked_slots.map((slot: string, i: number) => (
-                  <span
-                    key={i}
-                    className="badge bg-light text-success border border-success px-3 py-2"
-                    style={{ fontSize: "14px" }}
-                  >
-                    🕐 {slot}
-                  </span>
-                ))}
-              </div>
-
-              {/* Amount Section */}
-              <div className="row text-center bg-light rounded-3 p-3 mb-3">
-                <div className="col-4">
-                  <small className="text-muted">Total Amount</small>
-                  <h5 className="mb-0 fw-bold">₹{booking.total_amount}</h5>
+              <div className="row g-2 mb-3">
+                <div className="col-6">
+                  <small className="text-muted d-block">Sport</small>
+                  <span className="fw-semibold">{booking.sport}</span>
                 </div>
-                <div className="col-4">
-                  <small className="text-muted">Paid</small>
-                  <h5 className="mb-0 fw-bold text-success">
-                    ₹{booking.paid_amount}
-                  </h5>
+                <div className="col-6">
+                  <small className="text-muted d-block">Court</small>
+                  <span className="fw-semibold">{booking.court}</span>
                 </div>
-                <div className="col-4">
-                  <small className="text-muted">Balance</small>
-                  <h5 className="mb-0 fw-bold text-danger">
-                    ₹{booking.remaining_amount}
-                  </h5>
+                <div className="col-6">
+                  <small className="text-muted d-block">Slot Time</small>
+                  <span className="fw-semibold">{booking.slot_time}</span>
+                </div>
+                <div className="col-6">
+                  <small className="text-muted d-block">Date</small>
+                  <span className="fw-semibold">{booking.date}</span>
                 </div>
               </div>
 
-              {/* Mark as Paid Button */}
-              {booking.remaining_amount > 0 && (
+              <div className="row text-center bg-light rounded-3 p-3">
+                <div className="col-6">
+                  <small className="text-muted d-block">Paid Amount</small>
+                  <h5 className="text-success mb-0">₹{booking.paid_amount}</h5>
+                </div>
+                <div className="col-6">
+                  <small className="text-muted d-block">Balance</small>
+                  <h5 className="text-danger mb-0">₹{booking.unpaid_amount}</h5>
+                </div>
+              </div>
+
+              {booking.unpaid_amount > 0 && (
                 <button
-                  className="btn btn-success w-100 py-2 fw-semibold"
+                  className="btn btn-success w-100 mt-3"
                   onClick={() => handleMarkPaid(booking)}
                   disabled={loading}
                 >
-                  💳 Mark as Fully Paid (₹{booking.remaining_amount})
+                  <i className="bi bi-credit-card me-2"></i>
+                  Mark as Fully Paid
                 </button>
-              )}
-
-              {booking.payment_status === "paid" && (
-                <div className="alert alert-success mb-0 text-center" role="alert">
-                  ✓ Fully Paid
-                </div>
               )}
             </div>
           </div>
