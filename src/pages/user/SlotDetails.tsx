@@ -169,7 +169,7 @@ const SlotDetails: React.FC = () => {
     [selectedDate]
   );
 
-  useEffect(() => {
+useEffect(() => {
   async function loadBookedSlots() {
     if (!turf || !selectedSport || !selectedDate) return;
 
@@ -179,7 +179,7 @@ const SlotDetails: React.FC = () => {
         month: "short",
         year: "numeric",
       })
-      .replace(/ /g, "-");
+      .replace(/ /g, "-"); // "23-Jan-2026"
 
     const bookedSlots = await getAllBookedSlots(
       turf.turf_id,
@@ -188,11 +188,17 @@ const SlotDetails: React.FC = () => {
       `court ${selectedCourt}`
     );
 
-    const set = new Set(
-      bookedSlots.map((s) =>
-        (s.slot_start_time || "").replace(/\s/g, "")
-      )
-    );
+const set = new Set(
+  bookedSlots.map((s) => {
+    const raw = s.slot_start_time || "";
+    return convertTo24Hour(raw) || raw; // ensures "6:00 PM" → "18:00"
+  })
+);
+
+console.log("🔴 Booked Slots (24h):", set);
+setBookedSlotSet(set);
+
+    console.log("🔴 Booked Slots:", set);
 
     setBookedSlotSet(set);
   }
@@ -485,14 +491,16 @@ function renderTimelineRow(hours: number[]) {
           const slot = allSlots.find((s) => s.startMin === startMin);
           const price = slot ? calculatePriceForSlot(slot) : null;
 
-          const slotKey =
-  slot?.startLabel?.replace(/\s/g, "") ?? "";
+const slotKey = `${realHour.toString().padStart(2, "0")}:00`;
+const isBooked = bookedSlotSet.has(slotKey);
 
-// ✅ FINAL DISABLE RULE
+
 const disabled =
-  price === null ||                         // no price
-  (isToday && startMin <= nowMinutes) ||    // past time today
-  bookedSlotSet.has(slotKey);               // 🔒 already booked
+  price === null ||
+  (isToday && startMin <= nowMinutes) ||
+  isBooked;
+
+              // 🔒 already booked
 
           const selected = selectedSlots.some(
             (s) => s.startMin === startMin
@@ -501,18 +509,21 @@ const disabled =
           return (
             <div
               key={idx}
-              className={`flex-grow-1 d-flex align-items-center justify-content-center ${
-                disabled
-                  ? "bg-light bg-opacity-50"
-                  : selected
-                  ? "bg-success text-white"
-                  : "bg-white"
-              }`}
+            className={`flex-grow-1 d-flex align-items-center justify-content-center ${
+  isBooked
+    ? "bg-danger text-black"   // 🔴 BOOKED
+    : disabled
+    ? "bg-light bg-opacity-50"
+    : selected
+    ? "bg-success text-white"
+    : "bg-white"
+}`}
+
               style={{
                 borderRight:
-                  idx !== hours.length - 1 ? "1px solid #ccc" : "none",
-                cursor: disabled ? "not-allowed" : "pointer",
-                backgroundImage: disabled
+    idx !== hours.length - 1 ? "1px solid #ccc" : "none",
+  cursor: disabled ? "not-allowed" : "pointer",
+                backgroundColor: disabled
                   ? "repeating-linear-gradient(45deg,#ddd,#ddd 4px,#eee 4px,#eee 8px)"
                   : "none",
               }}

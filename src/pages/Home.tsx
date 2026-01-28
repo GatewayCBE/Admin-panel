@@ -89,7 +89,7 @@ const Home = () => {
       <div
         style={{
           position: "absolute",
-          bottom: "50px",
+          bottom: "70px",
           left: "50%",
           transform: "translateX(-50%)",
           zIndex: 2,
@@ -120,39 +120,7 @@ const Home = () => {
       </div>
 
       {/* SCROLL INDICATOR */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: "100px",
-          left: "50%",
-          transform: "translateX(-50%)",
-          zIndex: 2,
-          animation: "bounce 2s infinite",
-        }}
-      >
-        <div
-          style={{
-            width: "30px",
-            height: "50px",
-            border: "2px solid rgba(255,255,255,0.5)",
-            borderRadius: "20px",
-            display: "flex",
-            justifyContent: "center",
-            paddingTop: "8px",
-          }}
-        >
-          <div
-            style={{
-              width: "6px",
-              height: "10px",
-              background: "#52b788",
-              borderRadius: "3px",
-              animation: "scroll 1.5s infinite",
-            }}
-          />
-        </div>
-      </div>
-
+   
       {/* Animations */}
       <style>
         {`

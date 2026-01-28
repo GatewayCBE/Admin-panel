@@ -120,7 +120,8 @@ const RazorpayPage = () => {
   document.body.style.overflow = "auto";
   document.documentElement.style.overflow = "auto";
 
-            navigate("/admin/recentbookings");
+            // navigate("/admin/recentbookings");
+            navigate("/user/turfs");
           },
 
           prefill: {

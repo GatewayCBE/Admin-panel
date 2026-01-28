@@ -1,6 +1,13 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { bookSlot } from "../../../services/firestoreService";
+import { 
+  bookSlot, 
+  buildWhatsAppBookingMessage, 
+  shareBookingViaWhatsApp,
+  buildBookingEmailMessage,
+  sendBookingEmail
+} from "../../../services/firestoreService";
+
 
 const SlotBookingConfirmation = () => {
   const { state } = useLocation();
@@ -9,6 +16,8 @@ const SlotBookingConfirmation = () => {
   const [paidAmount, setPaidAmount] = useState(0);
   const [markPaid, setMarkPaid] = useState(false);
   const [showModal, setShowModal] = useState(false);
+ const channelPartnerEmail = localStorage.getItem("user_email") || "";
+console.log('channelPartnerEmail',channelPartnerEmail);
 
   if (!state) return <div className="text-center mt-5">No booking data</div>;
 
@@ -27,27 +36,81 @@ const SlotBookingConfirmation = () => {
 
   const remaining = Math.max(price - paidAmount, 0);
 
-  const handleConfirmBooking = async () => {
-    try {
-      await bookSlot({
-        turfId,
-        date,
-        sport,
-        court,
-        slot,
-        bookingName,
-        bookingMobile,
-        price,
-        paidAmount: paidAmount,
-        unpaidAmount: remaining,
-        ownerId
-      });
+const handleConfirmBooking = async () => {
+  
+  try {
+     console.log("🚀 Starting booking process...");
+    const bookedOn = new Date().toLocaleString();
 
-      setShowModal(true);
-    } catch (err) {
-      alert("Booking failed");
+    // 1️⃣ Save slot booking to Firestore
+    await bookSlot({
+      turfId,
+      date,
+      sport,
+      court,
+      slot,
+      bookingName,
+      bookingMobile,
+      price,
+      paidAmount,
+      unpaidAmount: remaining,
+      ownerId
+    });
+ console.log("✅ Slot booking saved to Firestore");
+    // 2️⃣ Build Email Message
+    const emailMessage = buildBookingEmailMessage({
+      bookingUserName: bookingName,
+      turfName,
+      turfMobile: "N/A",
+      sport,
+      court,
+      bookedOn,
+      bookingDate: new Date(date).toDateString(),
+      slots: [slot.label],
+      totalAmount: price,
+      paidAmount,
+      remainingAmount: remaining
+    });
+ console.log("📝 Email message prepared");
+    // 3️⃣ Send Email to Channel Partner
+    if (channelPartnerEmail) {
+      await sendBookingEmail(
+        channelPartnerEmail,
+        "New Turf Booking Confirmation",
+        emailMessage
+      );
     }
-  };
+
+    // 4️⃣ Show Success Modal
+    setShowModal(true);
+console.log("🎉 Booking flow completed");
+  } catch (err) {
+    console.error(err);
+    alert("Booking failed");
+  }
+};
+
+
+const handleShareWhatsApp = () => {
+  const message = buildWhatsAppBookingMessage({
+    bookingUserName: bookingName,
+    turfName,
+    turfMobile: "N/A",
+    sport,
+    court,
+    bookedOn: new Date().toLocaleString(),
+    bookingDate: new Date(date).toDateString(),
+    slots: [slot.label],
+    totalAmount: price,
+    paidAmount,
+    remainingAmount: remaining
+  });
+
+  shareBookingViaWhatsApp(bookingMobile, message);
+};
+
+
+
 
   return (
     <div className="container mt-5 pt-5">
@@ -124,8 +187,8 @@ const SlotBookingConfirmation = () => {
               <p>Booking successfully </p>
               <button
                 className="btn btn-success w-100 me-2"
-                onClick={() => navigate("/owner/slotmanagement")}
-              >
+                // onClick={() => navigate("/owner/slotmanagement")}
+  onClick={handleShareWhatsApp}              >
                 SHARE VIA WHATSAPP
               </button>
                <button

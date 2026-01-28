@@ -21,8 +21,8 @@ const Dashboard: React.FC = () => {
     <>
       <AdminNavbar />
 
-      <div className="container py-5">
-  <h2 className="text-center mb-5 fw-bold text-dark">Admin Dashboard</h2>
+      <div className="container py-5 mt-5">
+  <h2 className="text-center mb-5 fw-bold text-success">Admin Dashboard</h2>
 
   <div className="row g-4 justify-content-center">
     {/* All Turfs – highlight because it shows the big number */}

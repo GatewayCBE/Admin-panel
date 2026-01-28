@@ -18,11 +18,12 @@ const Footer: React.FC = () => {
   <span
     style={{
       fontFamily: "BalloonFont",
-      fontSize: "19px",
-      letterSpacing: "1px",
+      fontStyle:"italic",
+      fontSize: "15px",
+      fontWeight:'bold'
     }}
   >
-    Nottam Infotech Private Limited 
+    NOTTAM INFOTECH PRIVATE LIMITED
   </span>
     <span>  All rights reserved.</span> 
 </p>

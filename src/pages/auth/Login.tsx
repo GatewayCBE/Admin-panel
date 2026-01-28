@@ -6,8 +6,12 @@ import { useNavigate, useLocation } from "react-router-dom";
 import {
   getUserDocByEmail,
   getOwnerDocByEmail,
+  getUserDocByMobile,
+  getOwnerDocByMobile,
 } from "../../services/firestoreService";
 import { registerFcmToken } from "../../firebase/messaging";
+import BgImg from "../../assets/login_background.jpeg";
+
 
 /* AES CONFIG (MUST MATCH FLUTTER EXACTLY) */
 const AES_KEY_STRING = "DKBMTVig0646YHDBEOCshssi=73HyeMK";
@@ -47,23 +51,36 @@ const Login: React.FC = () => {
 const [passwordError, setPasswordError] = useState("");
 const [showPassword, setShowPassword] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
+const handleLogin = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setLoading(true);
+  setError("");
 
-    try {
-      const account =
-        role === "user"
-          ? await getUserDocByEmail(email)
-          : await getOwnerDocByEmail(email);
+  try {
+    const input = email.trim();
+    const isMobileLogin = /^\d{10}$/.test(input); // 10 digit mobile
 
-      if (!account) {
-        setError("No account found for this role");
-        return;
-      }
+    let account: any = null;
 
-      const encryptedPassword =
+    // 🔍 FIND ACCOUNT BY EMAIL OR MOBILE
+    if (role === "user") {
+      account = isMobileLogin
+        ? await getUserDocByMobile(input)
+        : await getUserDocByEmail(input);
+    } else {
+      account = isMobileLogin
+        ? await getOwnerDocByMobile(input)
+        : await getOwnerDocByEmail(input);
+    }
+
+    if (!account) {
+      setError("No account found with this email or mobile number");
+      setLoading(false);
+      return;
+    }
+
+    // 🔐 GET ENCRYPTED PASSWORD (YOU SAVED AS "password")
+    const encryptedPassword =
         role === "user"
           ? account.user_password
           : account.owner_password;
@@ -75,40 +92,56 @@ const [showPassword, setShowPassword] = useState(false);
         return;
       }
 
-      /* STORE SESSION */
-      localStorage.setItem(
-        "user_id",
-        role === "user" ? account.user_id : account.owner_id
-      );
-      localStorage.setItem(
-        "user_name",
-        role === "user" ? account.user_name : account.owner_name
-      );
-      localStorage.setItem(
-        "user_email",
-        role === "user" ? account.user_email : account.owner_email
-      );
-      localStorage.setItem("user_mobile_number",
-        role === "user"
-          ? account.user_mobile_number
-          : account.owner_mobile_number
-      );
-      localStorage.setItem("user_role", role);
-      localStorage.setItem("is_logged_in", "true");
+    // ✅ STORE SESSION
+    localStorage.setItem(
+      "user_id",
+      role === "user" ? account.user_id : account.owner_id
+    );
 
-      await registerFcmToken(
-  role === "user" ? account.user_id : account.owner_id,
-  role
-);
+    localStorage.setItem(
+      "user_name",
+      role === "user" ? account.user_name : account.owner_name
+    );
 
-      navigate(role === "user" ? "/user/turfs" : "/owner/dashboard");
-      navigate(role === "user" ? "/user/turfs" : "/owner/channelpartnerdashboard");
-    } finally {
-      setLoading(false);
+    localStorage.setItem(
+      "user_email",
+      role === "user" ? account.user_email : account.owner_email
+    );
+
+    localStorage.setItem(
+      "user_mobile_number",
+      role === "user"
+        ? account.user_mobile_number
+        : account.owner_mobile_number
+    );
+
+    localStorage.setItem("user_role", role);
+    localStorage.setItem("is_logged_in", "true");
+
+    // 🔔 Register FCM
+    await registerFcmToken(
+      role === "user" ? account.user_id : account.owner_id,
+      role
+    );
+
+    // 🚀 REDIRECT
+    if (role === "user") {
+      navigate("/user/turfs");
+    } else {
+      navigate("/owner/channelpartnerdashboard");
     }
-  };
 
-  const handleGoogleLogin = async () => {
+  } catch (err: any) {
+    console.error("Login error:", err);
+    setError("Login failed. Please try again.");
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+ const handleGoogleLogin = async () => {
+  try {
     const result = await signInWithPopup(auth, googleProvider);
     const email = result.user.email;
     if (!email) return;
@@ -118,7 +151,10 @@ const [showPassword, setShowPassword] = useState(false);
         ? await getUserDocByEmail(email)
         : await getOwnerDocByEmail(email);
 
-    if (!account) return navigate("/auth");
+    if (!account) {
+      setError("No account found. Please register first.");
+      return;
+    }
 
     localStorage.setItem(
       "user_id",
@@ -136,26 +172,36 @@ const [showPassword, setShowPassword] = useState(false);
     localStorage.setItem("is_logged_in", "true");
 
     await registerFcmToken(
-  role === "user" ? account.user_id : account.owner_id,
-  role
-);
+      role === "user" ? account.user_id : account.owner_id,
+      role
+    );
 
-    navigate(role === "user" ? "/user/turfs" : "/owner/dashboard");
     navigate(role === "user" ? "/user/turfs" : "/owner/channelpartnerdashboard");
-  };
+  } catch (err) {
+    setError("Google login failed");
+  }
+};
 
   return (
     <div className="min-vh-100 d-flex justify-content-center align-items-center bg-light">
-      <div className="card shadow p-5" style={{ maxWidth: 450 }}>
-        <h2 className="text-center text-success mb-4">
+      <div className="card shadow-lg border-0 px-5 py-5" style={{ maxWidth: 450,
+           width: '90vw', height:'500px',
+                    borderRadius: '30px',
+                backgroundImage: `url(${BgImg})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                backgroundRepeat: 'no-repeat',
+              
+       }}>
+        <h3 className="text-center text-gray fw-bold mb-5">
           Login as {role === "user" ? "User" : "Channel Partner"}
-        </h2>
+        </h3>
 
         {error && <div className="alert alert-danger">{error}</div>}
 
         <form onSubmit={handleLogin}>
           <input
-            className="form-control mb-3"
+            className="form-control mb-2"
             placeholder="Email / Mobile Number"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -205,7 +251,7 @@ const [showPassword, setShowPassword] = useState(false);
 
         <div className="text-center mt-3">
   <button
-    className="btn btn-link"
+    className="btn text-white"
     onClick={() => navigate("/register", { state: { role } })}
   >
     Don't have an account? <strong>Register</strong>
