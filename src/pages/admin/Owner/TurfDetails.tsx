@@ -115,6 +115,9 @@ const TurfDetails: React.FC = () => {
   const sportImageMap: Record<string, string> = {
     "badminton": badmintonImg,
     "boxcricket & football": cricketImg,
+    "football & boxcricket": cricketImg,
+    "cricket": cricketImg,
+    "football": cricketImg,
     "pickleball": pickleImg,
   };
 
