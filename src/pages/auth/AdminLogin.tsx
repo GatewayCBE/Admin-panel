@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
+import BgImg from "../../assets/BgImg.jpeg";
 
 const AdminLogin: React.FC = () => {
   const [name, setName] = useState("");
@@ -28,14 +29,22 @@ const AdminLogin: React.FC = () => {
 
   return (
     <div className="min-vh-100 d-flex justify-content-center align-items-center bg-light">
-      <div className="card shadow p-5" style={{ maxWidth: 450, width: "100%" }}>
-        <h2 className="text-center text-success mb-4">Admin Login</h2>
+      <div className="card shadow p-5"  style={{
+                  maxWidth: '450px',
+                  width: '90vw',
+                  borderRadius: '30px',
+              backgroundImage: `url(${BgImg})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat'
+                }}>
+        <h2 className="text-center text-white mb-4">Admin Login</h2>
 
         {error && <div className="alert alert-danger text-center">{error}</div>}
 
         <form onSubmit={handleLogin}>
           <div className="mb-3">
-            <label className="form-label">Name</label>
+            <label className="form-label text-white">Name</label>
             <input
               type="text"
               className="form-control"
@@ -47,7 +56,7 @@ const AdminLogin: React.FC = () => {
           </div>
 
           <div className="mb-3">
-            <label className="form-label">Password</label>
+            <label className="form-label text-white">Password</label>
             <input
               type="password"
               className="form-control"
@@ -64,7 +73,7 @@ const AdminLogin: React.FC = () => {
         </form>
 
         <div className="text-center mt-3">
-          <button className="btn btn-link text-decoration-none" onClick={() => navigate("/")}>
+          <button className="btn btn-link text-white text-decoration-none" onClick={() => navigate("/")}>
             Back to Home
           </button>
         </div>

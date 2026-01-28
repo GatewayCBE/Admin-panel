@@ -209,7 +209,7 @@ const availableSports = Array.from(
   };
 
   return (
-    <div className="admin-page-container">
+    <div className="admin-page-container mt-5 pt-4">
         <AdminNavbar />
     <div className="container py-1">
       {/* UPDATED HEADER WITH COUNT */}

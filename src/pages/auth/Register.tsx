@@ -4,6 +4,7 @@ import { auth, googleProvider } from "../../firebase";
 import { signInWithPopup, onAuthStateChanged, User } from "firebase/auth";
 import { useNavigate, useLocation } from "react-router-dom";
 import { saveUserProfile, isMobileRegisteredForRole } from "../../services/firestoreService";
+import BgImg from "../../assets/login_background.jpeg";
 
 // AES Encryption (same as Flutter) — MUST be here
 const AES_KEY_STRING = "DKBMTVig0646YHDBEOCshssi=73HyeMK";
@@ -72,7 +73,7 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     e.preventDefault();
     if (!user) return setError("Please sign in with Google first");
     if (!name.trim()) return setError("Name required");
-    if (!/^\+91[6-9]\d{9}$/.test(mobile)) return setError("Invalid mobile");
+    // if (!/^\+91[6-9]\d{9}$/.test(mobile)) return setError("Invalid mobile");
     if (password.length < 6) return setError("Password too short");
     if (password !== confirmPassword) return setError("Passwords don't match");
     if (!acceptedTerms) { return setError("You must accept the Terms & Conditions"); }
@@ -99,7 +100,7 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
       });
 
       alert("Registration successful!");
-      navigate(role === "user" ? "/user/turfs" : "/owner/dashboard");
+      navigate(role === "user" ? "/user/turfs" : "/owner/channelpartnerdashboard");
     } catch (err: any) {
       setError(err.message || "Registration failed");
     } finally {
@@ -108,148 +109,210 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   };
 
   return (
-    <div className="min-vh-100 d-flex align-items-center justify-content-center bg-light">
-      <div className="card shadow p-5" style={{ maxWidth: "500px", width: "100%" }}>
-        <h3 className="text-center mb-2">Register as {role === "user" ? "Player" : "Channel Partner"}</h3>
-
-        {!user ? (
-          <>
-            <p className="text-center text-muted mb-4">
-              Sign in with Google to continue
-            </p>
-            <button
-              className="btn btn-danger btn-lg w-100 d-flex align-items-center justify-content-center gap-2"
-              onClick={handleGoogleLogin}
-              disabled={loading}
-            >
-              <img src="https://www.google.com/favicon.ico" width="20" alt="G" />
-              {loading ? "Signing in..." : "Continue with Google"}
-            </button>
-            {error && <div className="alert alert-danger mt-3">{error}</div>}
-          </>
-        ) : (
-          <>
-            <div className="text-center mb-4">
-              <img
-                src={user.photoURL || "/default-avatar.png"}
-                alt="Profile"
-                className="rounded-circle mb-3"
-                width="80"
-                height="80"
-              />
-              <p className="text-success fw-bold">{user.displayName}</p>
-              <p className="text-muted">{user.email}</p>
-            </div>
-
-            {error && <div className="alert alert-danger mb-3">{error}</div>}
-
-            <form onSubmit={handleSubmit}>
-              <input
-                className="form-control form-control-lg mb-3"
-                placeholder="Full Name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
-          <div className="input-group mb-3">
-  <span className="input-group-text">+91</span>
-  <input
-    className={`form-control form-control-lg ${mobileError ? "is-invalid" : ""}`}
-    value={mobile}
-    onChange={(e) => {
-      let value = e.target.value.replace(/\D/g, "");
-      if (value.length > 10) return;
-      setMobile(value);
-      setMobileError(value.length === 10 ? "" : "Please enter valid mobile number");
+  <div className="min-vh-100 d-flex align-items-center justify-content-center bg-light">
+  <div 
+    className="card shadow p-5"  
+    style={{ 
+      maxWidth: 450,
+      width: '90vw',
+      borderRadius: '30px',
+      backgroundImage: `url(${BgImg})`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat',
+      position: 'relative',
+      overflow: 'hidden'
     }}
-    placeholder="Enter 10 digit mobile"
-  />
-</div>
-{mobileError && <small className="text-danger">{mobileError}</small>}
-
-           
-<div className="input-group mb-1">
-  <input
-    type={showPassword ? "text" : "password"}
-    className={`form-control form-control-lg ${passwordError ? "is-invalid" : ""}`}
-    value={password}
-    onChange={(e) => {
-      const val = e.target.value;
-      setPassword(val);
-
-      if (val.length < 7)
-        setPasswordError("Password must be at least 7 characters");
-      else if (val.length > 15)
-        setPasswordError("Password cannot exceed 15 characters");
-      else setPasswordError("");
-    }}
-    placeholder="Create Password"
-  />
-  <span
-    className="input-group-text bg-white"
-    style={{ cursor: "pointer" }}
-    onClick={() => setShowPassword(!showPassword)}
   >
-    <i className={`bi ${showPassword ? "bi-eye-slash" : "bi-eye"}`}></i>
-  </span>
-</div>
-{passwordError && <small className="text-danger">{passwordError}</small>}
-          <div className="input-group mb-3">
-  <input
-    type={showConfirmPassword ? "text" : "password"}
-    className="form-control form-control-lg"
-    value={confirmPassword}
-    onChange={(e) => setConfirmPassword(e.target.value)}
-    placeholder="Confirm Password"
-  />
+    {/* Blur overlay */}
+    <div 
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        backdropFilter: 'blur(2px)',
+        WebkitBackdropFilter: 'blur(8px)',
+        zIndex: 1,
+        borderRadius: '30px'
+      }}
+    />
 
-  <span
-    className="input-group-text bg-white"
-    style={{ cursor: "pointer" }}
-    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-  >
-    <i className={`bi ${showConfirmPassword ? "bi-eye-slash" : "bi-eye"}`}></i>
-  </span>
-</div>
+    {/* Content wrapper */}
+    <div style={{ position: 'relative', zIndex: 2 }}>
+      {/* <h3 className="text-center text-white fw-bold mb-2">Register as {role === "user" ? "User" : "Channel Partner"}</h3> */}
 
-              <div className="form-check mb-3">
-  <input
-    className="form-check-input"
-    type="checkbox"
-    id="termsCheck"
-    checked={acceptedTerms}
-    onChange={(e) => setAcceptedTerms(e.target.checked)}
-  />
-  <label className="form-check-label" htmlFor="termsCheck">
-    I agree to the{" "}
-    <a href="/terms" target="_blank" rel="noopener noreferrer">
-      Terms & Conditions
-    </a>
-  </label>
-</div>
-              <button className="btn btn-success btn-lg w-100" disabled={loading}>
-                {loading ? "Saving..." : "Complete Registration"}
-              </button>
-            </form>
-
-            <div className="text-center mt-3">
-              <button
-                className="btn btn-link text-danger"
-                onClick={() => auth.signOut()}
-              >
-                Sign in with different account
-              </button>
-            </div>
-          </>
-        )}
-
-        <div className="text-center mt-4">
-          <button className="btn btn-link" onClick={() => navigate("/auth")}>
-            ← Back to Role Selection
+      {!user ? (
+        <>
+          <p className="text-center text-white mb-4">
+            Sign in with Google to continue
+          </p>
+          <button
+            className="btn btn-danger btn-lg w-100 d-flex align-items-center justify-content-center gap-2"
+            onClick={handleGoogleLogin}
+            disabled={loading}
+          >
+            <img src="https://www.google.com/favicon.ico" width="20" alt="G" />
+            {loading ? "Signing in..." : "Continue with Google"}
           </button>
-        </div>
+          {error && <div className="alert alert-danger mt-3">{error}</div>}
+        </>
+      ) : (
+        <>
+          {/* <div className="text-center mb-4">
+            <img
+              src={user.photoURL || "/default-avatar.png"}
+              alt="Profile"
+              className="rounded-circle mb-3"
+              width="80"
+              height="80"
+            />
+            <p className="text-white fs-5">{user.displayName}</p>
+            <p className="text-white">{user.email}</p>
+          </div> */}
+
+          {error && <div className="alert alert-danger mb-3">{error}</div>}
+
+       <form onSubmit={handleSubmit}>
+  {/* Name */}
+  <div className="mb-2">
+    <label className="form-label text-white">Name</label>
+    <input
+      className="form-control form-control-lg mb-3"
+      placeholder="Name"
+      value={name}
+      onChange={(e) => setName(e.target.value)}
+      required
+    />
+  </div>
+
+  {/* Mobile Number */}
+  <div className="mb-2">
+    <label className="form-label text-white">Mobile Number</label>
+    <div className="input-group mb-1">
+      <span className="input-group-text">+91</span>
+      <input
+        className={`form-control form-control-lg ${
+          mobileError ? "is-invalid" : ""
+        }`}
+        value={mobile}
+        onChange={(e) => {
+          let value = e.target.value.replace(/\D/g, "");
+          if (value.length > 10) return;
+          setMobile(value);
+          setMobileError(
+            value.length === 10 ? "" : "Please enter valid mobile number"
+          );
+        }}
+        placeholder="Enter 10 digits"
+      />
+    </div>
+    {mobileError && <small className="text-danger">{mobileError}</small>}
+  </div>
+
+  {/* Password */}
+  <div className="mb-2">
+    <label className="form-label text-white">Create Password</label>
+    <div className="input-group mb-1">
+      <input
+        type={showPassword ? "text" : "password"}
+        className={`form-control form-control-lg ${
+          passwordError ? "is-invalid" : ""
+        }`}
+        value={password}
+        onChange={(e) => {
+          const val = e.target.value;
+          setPassword(val);
+
+          if (val.length < 7)
+            setPasswordError("Password must be at least 7 characters");
+          else if (val.length > 15)
+            setPasswordError("Password cannot exceed 15 characters");
+          else setPasswordError("");
+        }}
+        placeholder="Create Password"
+      />
+      <span
+        className="input-group-text bg-white"
+        style={{ cursor: "pointer" }}
+        onClick={() => setShowPassword(!showPassword)}
+      >
+        <i className={`bi ${showPassword ? "bi-eye-slash" : "bi-eye"}`}></i>
+      </span>
+    </div>
+    {passwordError && <small className="text-danger">{passwordError}</small>}
+  </div>
+
+  {/* Confirm Password */}
+  <div className="mb-3">
+    <label className="form-label text-white">Confirm Password</label>
+    <div className="input-group">
+      <input
+        type={showConfirmPassword ? "text" : "password"}
+        className="form-control form-control-lg"
+        value={confirmPassword}
+        onChange={(e) => setConfirmPassword(e.target.value)}
+        placeholder="Confirm Password"
+      />
+      <span
+        className="input-group-text bg-white"
+        style={{ cursor: "pointer" }}
+        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+      >
+        <i
+          className={`bi ${
+            showConfirmPassword ? "bi-eye-slash" : "bi-eye"
+          }`}
+        ></i>
+      </span>
+    </div>
+  </div>
+
+  {/* Terms & Conditions */}
+  <div className="form-check mb-3">
+    <input
+      className="form-check-input"
+      type="checkbox"
+      id="termsCheck"
+      checked={acceptedTerms}
+      onChange={(e) => setAcceptedTerms(e.target.checked)}
+    />
+    <label className="form-check-label text-white" htmlFor="termsCheck">
+      I agree to the{" "}
+      <a href="/terms" target="_blank" rel="noopener noreferrer">
+        Terms & Conditions
+      </a>
+    </label>
+  </div>
+
+  {/* Submit Button */}
+  <button className="btn btn-success btn-lg w-100" disabled={loading}>
+    {loading ? "Saving..." : "Complete Registration"}
+  </button>
+</form>
+
+
+          <div className="text-center mt-3">
+            <button
+              className="btn btn-link text-danger"
+              onClick={() => auth.signOut()}
+            >
+              Sign in with different account
+            </button>
+          </div>
+        </>
+      )}
+
+      <div className="text-center mt-4">
+        <button className="btn btn-link text-white" onClick={() => navigate("/auth")}>
+          ← Back to Role Selection
+        </button>
       </div>
     </div>
+  </div>
+</div>
   );
 };
 

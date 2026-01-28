@@ -16,7 +16,6 @@ interface TimeSlot {
 }
 
 
-
 const SlotManagement: React.FC = () => {
   const ownerId = localStorage.getItem("user_id") || "";
 const navigate = useNavigate();
@@ -319,6 +318,7 @@ const isNight = hour >= nightStartHour;
     });
   };
 
+  
   return (
     <div style={{ backgroundColor: '#f8f9fa', minHeight: '100vh' }} className='mt-5 pt-5'>
       <div className="">

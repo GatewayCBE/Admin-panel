@@ -157,13 +157,37 @@ export const getOwnerDocByEmail = async (email: string) => {
   return snap.docs[0].data();
 };
 
-// Get user by mobile (optional helper)
-export const getUserDocByMobile = async (mobile: string) => {
-  const docRef = doc(db, "environment/testing/users", mobile);
-  const snap = await getDoc(docRef);
-  return snap.exists() ? snap.data() : null;
-};
+export const getOwnerDocByMobile = async (mobile: string) => {
+  const colRef = collection(db, "environment/testing/owners");
+  const q = query(colRef, where("owner_mobile_number", "==", mobile));
+  const snap = await getDocs(q);
 
+  if (snap.empty) return null;
+
+  return {
+    docId: snap.docs[0].id,
+    ...snap.docs[0].data(),
+  };
+};
+// Get user by mobile (optional helper)
+// export const getUserDocByMobile = async (mobile: string) => {
+//   const docRef = doc(db, "environment/testing/users", mobile);
+//   const snap = await getDoc(docRef);
+//   return snap.exists() ? snap.data() : null;
+// };
+
+export const getUserDocByMobile = async (mobile: string) => {
+  const colRef = collection(db, "environment", "testing", "users");
+  const q = query(colRef, where("user_mobile_number", "==", mobile));
+  const snap = await getDocs(q);
+
+  if (snap.empty) return null;
+
+  return {
+    docId: snap.docs[0].id,
+    ...snap.docs[0].data(),
+  };
+};
 // Get all turf details
 export const getTurfs = async () => {
   try {
@@ -657,6 +681,19 @@ export interface BookedSlot {
   [key: string]: any;
 }
 
+
+function format24ToAmPm(time24: string) {
+  const [hStr, mStr] = time24.split(":");
+  let h = parseInt(hStr, 10);
+  const m = parseInt(mStr, 10);
+
+  const ampm = h >= 12 ? "PM" : "AM";
+  if (h === 0) h = 12;
+  else if (h > 12) h -= 12;
+
+  return `${h}:${m.toString().padStart(2, "0")} ${ampm}`;
+}
+
 export async function getAllBookedSlots(
   turfId: string,
   date: string,
@@ -685,6 +722,9 @@ export async function getAllBookedSlots(
     const slots: BookedSlot[] = snapshot.docs.map((doc) => {
       const data = doc.data() || {};
 
+      // Ensure slot_start_time is ALWAYS a string
+      const rawTime: string = data.slot_start_time || doc.id;
+
       return {
         booking_id: doc.id,
         booking_username: data.booking_username || "",
@@ -695,9 +735,9 @@ export async function getAllBookedSlots(
         date: data.date || date,
         turf_name: data.turf_name || "",
 
-        slot_start_time: data.slot_start_time || doc.id,
+        slot_start_time: rawTime,
         slot_end_time: data.slot_end_time || null,
-        time: data.slot_start_time || data.time || doc.id,
+        time: data.time || rawTime,
 
         paid_amount: Number(data.paid_amount ?? 0),
         unpaid_amount: Number(data.unpaid_amount ?? 0),
@@ -705,8 +745,6 @@ export async function getAllBookedSlots(
         payment_initiated_time: data.payment_initiated_time || "",
 
         owner_id: data.owner_id || "",
-
-        ...data, // keep remaining Firestore fields
       };
     });
 
@@ -716,6 +754,8 @@ export async function getAllBookedSlots(
     return [];
   }
 }
+
+
 export interface SlotBooking {
   id: string;
   turf_id: string;
@@ -899,6 +939,122 @@ export const markBookingFullyPaid = async (booking: any) => {
     throw error;
   }
 };
+
+export const buildWhatsAppBookingMessage = ({
+  bookingUserName,
+  turfName,
+  turfMobile,
+  sport,
+  court,
+  bookedOn,
+  bookingDate,
+  slots,
+  totalAmount,
+  paidAmount,
+  remainingAmount
+}: any) => {
+  const status = remainingAmount > 0 ? "Partial Payment" : "Fully Paid";
+
+  return `*Booking Confirmed!* 
+
+ Dear ${bookingUserName}
+ Sports Venue: ${turfName}
+ Mobile: ${turfMobile}
+ Sport: ${sport}
+ Court: ${court}
+ Booked On: ${bookedOn}
+ Booking Date: ${bookingDate}
+ Reserved Slots: ${slots.join(", ")}
+
+ *Total Amount:* ₹${totalAmount}
+ *Paid Amount:* ₹${paidAmount}
+ *Remaining:* ₹${remainingAmount}
+*Status:* ${status}
+
+Thank you for booking with us! 
+Book Your Turf
+
+For more information:
+Download our app:
+https://play.google.com/store/apps/details?id=com.bookyourturf.app`;
+};
+
+export const shareBookingViaWhatsApp = (phone: string, message: string) => {
+  const cleanPhone = phone.replace(/\D/g, ""); // remove + and spaces
+  const encodedMessage = encodeURIComponent(message);
+
+  const url = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
+  window.open(url, "_blank");
+};
+
+export const buildBookingEmailMessage = (data: {
+  bookingUserName: string;
+  turfName: string;
+  turfMobile: string;
+  sport: string;
+  court: string;
+  bookedOn: string;
+  bookingDate: string;
+  slots: string[];
+  totalAmount: number;
+  paidAmount: number;
+  remainingAmount: number;
+}) => {
+  return `
+Booking Confirmed
+
+Dear ${data.bookingUserName},
+
+Here are the booking details:
+
+Sports Venue: ${data.turfName}
+Mobile: ${data.turfMobile}
+Sports: ${data.sport}
+Court: ${data.court}
+Booked On: ${data.bookedOn}
+Booking Date: ${data.bookingDate}
+Reserved Slots: ${data.slots.join(", ")}
+
+Total Amount: ₹${data.totalAmount}
+Paid Amount: ₹${data.paidAmount}
+Remaining Amount: ₹${data.remainingAmount}
+Status: ${data.remainingAmount > 0 ? "Partial Payment" : "Fully Paid"}
+
+Thank you for booking with us!
+
+Book Your Turf App:
+https://play.google.com/store/apps/details?id=com.bookyourturf.app
+`;
+};
+
+
+export const sendBookingEmail = async (
+  toEmail: string,
+  subject: string,
+  message: string
+) => {
+  try {
+     console.log("📧 Sending booking email...");
+    console.log("➡️ To:", toEmail);
+    console.log("📝 Subject:", subject);
+ const res = await fetch("https://your-server.com/send-booking-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        to: toEmail,
+        subject,
+        message,
+      }),
+    });
+    const data = await res.json();
+
+    console.log("✅ Email API response:", data);
+    console.log("📧 Booking email sent successfully!");
+  } catch (error) {
+    console.error("❌ Email sending failed:", error);
+  }
+};
+
 
 
 export const bookSlot = async ({

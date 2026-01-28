@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
-const SERVICE_FEE_PER_SLOT = 10;
+// const SERVICE_FEE_PER_SLOT = 10;
 const ADVANCE_PER_SLOT = 1;
 
 const AdvancePayment: React.FC = () => {
@@ -33,8 +33,8 @@ const AdvancePayment: React.FC = () => {
   /* ===============================
      💰 Price Calculations
      =============================== */
-  const serviceFee = SERVICE_FEE_PER_SLOT * slotCount;
-  const fullAmount = totalPrice + serviceFee;
+  // const serviceFee = SERVICE_FEE_PER_SLOT * slotCount;
+  const fullAmount = totalPrice ;
   const advanceAmount = ADVANCE_PER_SLOT * slotCount;
 
   const payableAmount =
@@ -69,12 +69,12 @@ const AdvancePayment: React.FC = () => {
           <span>₹{totalPrice}</span>
         </div>
 
-        <div className="d-flex justify-content-between mb-2">
+        {/* <div className="d-flex justify-content-between mb-2">
           <span className="text-muted">
             Service Fee (₹{SERVICE_FEE_PER_SLOT} × {slotCount})
           </span>
           <span>₹{serviceFee}</span>
-        </div>
+        </div> */}
 
         <div className="d-flex justify-content-between fw-bold mt-2">
           <span>Total</span>
