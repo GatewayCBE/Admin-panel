@@ -121,7 +121,6 @@ export const createWebRazorpayOrder = onRequest(
             : Number(pricing.day);
         }
 
-        // const serviceFee = 10 * slots.length;
         const totalAmount = slotTotal;
         const paidAmount = payment_type === "advance" ? slots.length : totalAmount;
 
@@ -144,7 +143,6 @@ export const createWebRazorpayOrder = onRequest(
           key_id: RAZORPAY_KEY_ID,
           pricing: {
             slot_total: slotTotal,
-            // service_fee: serviceFee,
             total_amount: totalAmount,
             paid_amount: paidAmount,
             unpaid_amount: totalAmount - paidAmount,
@@ -225,7 +223,6 @@ export const verifyWebRazorpayPayment = onRequest(
               : Number(pricing.day);
           }
 
-          // const serviceFee = 10 * slots.length;
           const totalAmount = slotTotal;
           const paidAmount = payment_type === "advance" ? slots.length : totalAmount;
           const unpaidAmount = totalAmount - paidAmount;
@@ -292,6 +289,7 @@ export const verifyWebRazorpayPayment = onRequest(
 
           return { success: true, booking_id: bookingId };
         });
+        
 
         /* =====================================================
            🔔 SEND NOTIFICATIONS (OUTSIDE TRANSACTION)

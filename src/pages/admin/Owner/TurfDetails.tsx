@@ -23,6 +23,28 @@ interface TurfData {
   [key: string]: any;
 }
 
+const isCurrentlyOpen = (openStr: string, closeStr: string): boolean => {
+  if (!openStr || !closeStr) return false;
+
+  // Parse "05:00" → {h:5, m:0}
+  const parseTime = (timeStr: string) => {
+    const [h, m] = timeStr.split(":").map(Number);
+    return h * 60 + (m || 0);
+  };
+
+  const openMin = parseTime(openStr);
+  const closeMin = parseTime(closeStr);
+  const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+
+  // Simple same-day case
+  if (closeMin > openMin) {
+    return nowMin >= openMin && nowMin <= closeMin;
+  }
+
+  // Overnight case (closing is next day)
+  return nowMin >= openMin || nowMin <= closeMin;
+};
+
 const TurfDetails: React.FC = () => {
   const { turfId } = useParams<{ turfId: string }>();
   const [turf, setTurf] = useState<any>(null);
@@ -318,12 +340,16 @@ const TurfDetails: React.FC = () => {
                     </p>
                   </div>
                   <span
-                    className={`badge fs-6 px-3 py-1 ${
-                      timing.sport_available ? "bg-success" : "bg-danger"
-                    }`}
-                  >
-                    {timing.sport_available ? "Available" : "Closed"}
-                  </span>
+  className={`badge fs-6 px-3 py-1 ${
+    isCurrentlyOpen(timing.opening_time, timing.closing_time)
+      ? "bg-success"
+      : "bg-danger"
+  }`}
+>
+  {isCurrentlyOpen(timing.opening_time, timing.closing_time)
+    ? "Available"
+    : "Closed"}
+</span>
                 </div>
               );
             })}
@@ -480,12 +506,16 @@ const TurfDetails: React.FC = () => {
                         <td>{nightStart} – {nightEnd}</td>
                         <td>
                           <span
-                            className={`badge fs-6 px-3 py-2 ${
-                              isAvailable ? "bg-success" : "bg-danger"
-                            }`}
-                          >
-                            {isAvailable ? "Available" : "Closed"}
-                          </span>
+  className={`badge fs-6 px-3 py-1 ${
+    isCurrentlyOpen(timing.opening_time, timing.closing_time)
+      ? "bg-success"
+      : "bg-danger"
+  }`}
+>
+  {isCurrentlyOpen(timing.opening_time, timing.closing_time)
+    ? "Available"
+    : "Closed"}
+</span>
                         </td>
                       </tr>
                     );

@@ -866,7 +866,7 @@ const AddTurfForm: React.FC = () => {
           onClick={() => {
             const sportName =
               venueType === 'turf'
-                ? 'Football / Box Cricket'
+                ? 'Football & Boxcricket'
                 : venueType === 'badminton'
                 ? 'Badminton'
                 : 'Pickleball';
@@ -1120,21 +1120,41 @@ const AddTurfForm: React.FC = () => {
                   <div className="person-input-wrapper">
                     <span className="person-icon">👤</span>
                     <input
-                      type="number"
-                      className={`form-control custom-input ${errors[`maxPersons-${index}`] ? "is-invalid" : ""}`}
-                      placeholder="Max persons *"
-                      value={sport.maxPersons}
-                      onChange={(e) => {
-                        updateSportField(sport.id, "maxPersons", e.target.value);
-                        const val = e.target.value.trim();
-                        if (val && !isNaN(Number(val)) && Number(val) <= 50) {
-                          setErrors(prev => ({ ...prev, [`maxPersons-${index}`]: "" }));
-                        }
-                      }}
-                    />
-                    {errors[`maxPersons-${index}`] && (
-                      <small className="text-danger d-block mt-1">{errors[`maxPersons-${index}`]}</small>
-                    )}
+  type="number"
+  className={`form-control custom-input ${errors[`maxPersons-${index}`] ? 'is-invalid' : ''}`}
+  placeholder="Max persons *"
+  value={sport.maxPersons}
+  onChange={(e) => {
+    const value = e.target.value;
+
+    // Allow empty for typing
+    if (value === "") {
+      updateSportField(sport.id, "maxPersons", "");
+      setErrors(prev => ({ ...prev, [`maxPersons-${index}`]: "Required" }));
+      return;
+    }
+
+    // Allow only numbers
+    if (!/^\d+$/.test(value)) return;
+
+    const num = Number(value);
+
+    if (num > 50) {
+      setErrors(prev => ({
+        ...prev,
+        [`maxPersons-${index}`]: "Maximum 50 persons allowed"
+      }));
+      return; // 🚫 prevents entering 11+
+    }
+
+    updateSportField(sport.id, "maxPersons", value);
+    setErrors(prev => ({ ...prev, [`maxPersons-${index}`]: "" }));
+  }}
+/>
+
+{errors[`maxPersons-${index}`] && (
+  <small className="text-danger">{errors[`maxPersons-${index}`]}</small>
+)}
                   </div>
                 </div>
 
