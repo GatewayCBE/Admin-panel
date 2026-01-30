@@ -608,11 +608,6 @@ const AddTurfForm: React.FC = () => {
   </svg>
   </button>
     <h1 className="header-title fw-bold fs-3 text-success text-center">
-  {step === 1 && venueType === 'turf' && 'Add Turf Venue'}
-  {step === 1 && venueType === 'badminton' && 'Add Badminton Venue'}
-  {step === 1 && venueType === 'pickleball' && 'Add Pickleball Venue'}
-
-    <h1 className="header-title fw-bold fs-3 text-success text-center">
       {step === 1 && venueType === 'turf' && 'Add Turf'}
       {step === 1 && venueType === 'badminton' && 'Add Badminton Venue'}
       {step === 1 && venueType === 'pickleball' && 'Add Pickleball Venue'}
@@ -786,6 +781,7 @@ const AddTurfForm: React.FC = () => {
     }}
     rows={6}
   />
+  </div>
 
       {/* TURF DIMENSIONS – ONLY FOR TURF */}
       {venueType === 'turf' && (
