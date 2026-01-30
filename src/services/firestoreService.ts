@@ -1,4 +1,4 @@
-import { db } from "../firebase";
+import { auth, db } from "../firebase";
 import {
   collection,
   query,
@@ -22,6 +22,7 @@ import {
 import { getApp } from "firebase/app";
 import { Owner } from "../types/Owner";
 import { Turf } from "../types/Turf";
+import { getAuth } from "firebase/auth";
 
 /**
  * Generate Custom ID exactly like Flutter app
@@ -1331,3 +1332,358 @@ export async function getAllBookings(): Promise<any[]> {
     return [];
   }
 }
+
+export interface Booking {
+  id: string;
+  booking_id?: string;
+  date: string;                   // "01-Feb-2026"
+  turf_name?: string;
+  booked_sports_name?: string;
+  court?: string;
+  slot_start_time?: string;
+  slot_end_time?: string;
+  total_amount?: number;
+  paid_amount?: number;
+  unpaid_amount?: number;
+  payment_status?: string;
+  paymentStatus?: string;         // some bookings use camelCase
+  user_id: string;
+  // add other fields you care about
+  [key: string]: any;             // allow extra fields
+}
+
+export const getCurrentUserId = (): string | null => {
+  const auth = getAuth();
+  const currentUser = auth.currentUser;
+
+  if (currentUser) {
+    console.log("[getCurrentUserId] Firebase Auth UID:", currentUser.uid);
+    return currentUser.uid;
+  }
+
+  // Fallback to localStorage (for legacy or special cases)
+  const stored = localStorage.getItem("user_id");
+  if (stored) {
+    console.log("[getCurrentUserId] Fallback to localStorage:", stored);
+    return stored;
+  }
+
+  console.warn("[getCurrentUserId] No user ID found");
+  return null;
+};
+
+// Fetch all bookings for the current user
+export const getUserBookings = async (): Promise<Booking[]> => {
+  const bookingsRef = collection(db, "environments", "testing", "bookings");
+
+  // No where() clause at all — get everything
+  const q = query(bookingsRef);
+
+  console.log("[ADMIN] Fetching ALL bookings (no filters)");
+
+  try {
+    const querySnapshot = await getDocs(q);
+    
+    console.log("[ADMIN] Total raw documents fetched:", querySnapshot.size);
+    console.log("[ADMIN] All booking IDs:", querySnapshot.docs.map(d => d.id));
+
+    const bookings: Booking[] = querySnapshot.docs
+      // Optional: filter only user bookings (BYT_U_ prefix) client-side
+      .filter(doc => doc.id.startsWith("BYT_U_"))
+      .map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      } as Booking));
+
+    console.log("[ADMIN] Filtered BYT_U_ count:", bookings.length);
+
+    // Sort newest first
+    bookings.sort((a, b) => {
+      const parseDate = (dateStr: string = ""): Date => {
+        if (!dateStr.trim()) return new Date(0);
+        try {
+          dateStr = dateStr.trim();
+
+          if (dateStr.match(/^\d{1,2}-[A-Za-z]{3}-\d{4}$/i)) {
+            const [day, monthStr, year] = dateStr.split("-");
+            const monthMap: Record<string, number> = {
+              jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+              jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11
+            };
+            const month = monthMap[monthStr.toLowerCase()];
+            if (month === undefined) return new Date(0);
+            return new Date(Number(year), month, Number(day));
+          }
+          else if (dateStr.match(/^\d{1,2}-\d{1,2}-\d{4}$/)) {
+            const [day, month, year] = dateStr.split("-").map(Number);
+            return new Date(year, month - 1, day);
+          }
+          else if (dateStr.match(/^\d{4}-\d{1,2}-\d{1,2}$/)) {
+            const [year, month, day] = dateStr.split("-").map(Number);
+            return new Date(year, month - 1, day);
+          }
+
+          const native = new Date(dateStr);
+          if (!isNaN(native.getTime())) return native;
+          return new Date(0);
+        } catch {
+          return new Date(0);
+        }
+      };
+
+      const dateA = parseDate(a.date || a.selectedDate);
+      const dateB = parseDate(b.date || b.selectedDate);
+      return dateB.getTime() - dateA.getTime();
+    });
+
+    return bookings;
+  } catch (err) {
+    console.error("[ADMIN] Fetch error:", err);
+    throw err;
+  }
+};
+
+/**
+ * Cancel a booking and FREE the slot for others to book
+ * Works for both user dashboard and admin panel
+ */
+export const cancelBooking = async (
+  bookingId: string,
+  reason: string = "Cancelled via admin panel",
+  cancelledBy: "user" | "admin" = "admin"
+): Promise<boolean> => {
+  const currentUserId = getCurrentUserId();
+  if (!currentUserId) throw new Error("User not logged in");
+
+  const bookingRef = doc(db, "environments", "testing", "bookings", bookingId);
+  const bookingSnap = await getDoc(bookingRef);
+
+  if (!bookingSnap.exists()) throw new Error("Booking not found");
+
+  const data = bookingSnap.data();
+
+  // Authorization
+  const tokenResult = await auth.currentUser?.getIdTokenResult();
+  const isAdmin = tokenResult?.claims?.admin === true;
+  const isAuthorized =
+    isAdmin ||
+    data.user_id === currentUserId ||
+    data.owner_id === currentUserId ||
+    data.userId === currentUserId ||
+    data.ownerId === currentUserId;
+
+  if (!isAuthorized) throw new Error("Not authorized");
+
+  // Update booking status
+  await updateDoc(bookingRef, {
+    payment_status: "CANCELLED",
+    cancelled_at: new Date().toISOString(),
+    cancel_reason: reason,
+    cancelled_by: cancelledBy,
+    cancelled_by_uid: currentUserId,
+  });
+
+  // Best-effort slot info
+  let turfId = data.turf_id || data.turfId || data.turf || null;
+  let dateRaw = data.date || data.selectedDate || data.selecteddated || null;
+  let sport = data.booked_sports_name || data.bookedSportsName || data.sport || null;
+  let court = data.court || data.Court || "court 1";
+
+  // Guess sport from turf name if missing
+  if (!sport) {
+    const turfNameLower = (data.turfName || data.turf_name || "").toLowerCase();
+    if (turfNameLower.includes("badminton")) sport = "badminton";
+    else if (turfNameLower.includes("pickle")) sport = "pickleball";
+    else if (turfNameLower.includes("football") || turfNameLower.includes("box")) sport = "football & boxcricket";
+    else sport = "football & boxcricket"; // default
+  }
+
+  // Handle allSlots array
+  let slotStarts = 
+    data.slot_start_time || 
+    data.slotStartTime || 
+    data.slotStart || 
+    (Array.isArray(data.allSlots) && data.allSlots.length > 0 ? data.allSlots[0] : null);
+
+  // Normalize date
+  let normalizedDate = null;
+  if (dateRaw) {
+    try {
+      const d = new Date(dateRaw);
+      if (!isNaN(d.getTime())) {
+        const day = String(d.getDate()).padStart(2, "0");
+        const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+        normalizedDate = `${day}-${monthNames[d.getMonth()]}-${d.getFullYear()}`;
+      }
+    } catch {}
+  }
+
+  // Try to free the slot
+  if (turfId && normalizedDate && sport && court && slotStarts) {
+    const slotPath = `environment/testing/all_turfs_slot_booking/${turfId}/${normalizedDate}/${sport}/${court}/${slotStarts}`;
+    const slotRef = doc(db, slotPath);
+
+    console.log("[CANCEL] Deleting slot:", slotPath);
+
+    try {
+      await deleteDoc(slotRef);
+      console.log("[CANCEL] Slot freed successfully");
+    } catch (err) {
+      console.warn("[CANCEL] Slot already free or delete failed:", (err as Error).message);
+    }
+  } else {
+    console.warn("[CANCEL] Could not free slot – missing fields", {
+      turfId, normalizedDate, sport, court, slotStarts
+    });
+  }
+
+  return true;
+};
+
+/**
+ * Helper: Normalize date to "DD-MMM-YYYY" format used in slot collection
+ */
+function formatDateForSlot(dateInput: string | Date): string {
+  const d = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
+  if (isNaN(d.getTime())) return "";
+
+  const day = String(d.getDate()).padStart(2, "0");
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const month = monthNames[d.getMonth()];
+  const year = d.getFullYear();
+
+  return `${day}-${month}-${year}`;
+}
+
+export const canCancelBooking = (booking: any): boolean => {
+  if (booking.payment_status === "CANCELLED" || booking.paymentStatus === "CANCELLED") {
+    return false;
+  }
+
+  const dateStr = booking.date || booking.selectedDate || booking.selecteddated || "";
+  if (!dateStr) return false;
+
+  const timeStr =
+    booking.slot_start_time ||
+    booking.slotStartTime ||
+    booking.slotStart ||
+    "";
+
+  try {
+    // Parse date (handles "01-Feb-2026", "2026-02-01", "30-01-2026")
+    let bookingDate: Date;
+    if (dateStr.match(/^\d{1,2}-[A-Za-z]{3}-\d{4}$/)) {
+      const [day, monthStr, year] = dateStr.split("-");
+      const monthMap = {
+        Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
+        Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
+      };
+      const month = monthMap[monthStr as keyof typeof monthMap];
+      if (month === undefined) return false;
+      bookingDate = new Date(Number(year), month, Number(day));
+    } else {
+      bookingDate = new Date(dateStr);
+    }
+
+    if (isNaN(bookingDate.getTime())) return false;
+
+    // Add time if available
+    if (timeStr) {
+      const [h, m] = timeStr.split(":").map(Number);
+      if (!isNaN(h) && !isNaN(m)) {
+        bookingDate.setHours(h, m, 0, 0);
+      }
+    }
+
+    // Can cancel if current time is before booking start
+    return new Date() < bookingDate;
+  } catch (err) {
+    console.warn("canCancelBooking parse error:", err);
+    return false;
+  }
+};
+
+/**
+ * ADMIN ONLY: Fetch ALL channel partner bookings (IDs starting with BYT_P_)
+ */
+export const getChannelPartnerBookings = async (): Promise<Booking[]> => {
+  const bookingsRef = collection(db, "environments", "testing", "bookings");
+
+  // Fetch everything — no where() clause
+  const q = query(bookingsRef);
+
+  console.log("[getChannelPartnerBookings] Starting unrestricted fetch for BYT_P_...");
+
+  try {
+    const querySnapshot = await getDocs(q);
+
+    console.log("[getChannelPartnerBookings] Raw fetch count:", querySnapshot.size);
+    console.log("[getChannelPartnerBookings] All fetched IDs:", querySnapshot.docs.map(d => d.id));
+
+    // Filter client-side for channel partner bookings only
+    const channelBookings = querySnapshot.docs
+      .filter(doc => doc.id.startsWith("BYT_P_"))
+      .map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          // Normalize fields (same as before)
+          date: data.date || data.selectedDate || data.selecteddated || "",
+          slot_start_time: data.slot_start_time || data.slotStartTime || data.slotStart || "",
+          slot_end_time: data.slot_end_time || data.slotEndTime || data.slotEnd || "",
+          turf_name: data.turf_name || data.turfName || "Unknown Turf",
+          booked_sports_name: data.booked_sports_name || data.bookedSportsName || data.sport || "—",
+          total_amount: data.total_amount ?? data.totalAmount ?? 0,
+          paid_amount: data.paid_amount ?? data.paidAmount ?? 0,
+          payment_status: data.payment_status || data.paymentStatus || data.paymentstatus || "Unknown",
+        } as Booking;
+      });
+
+    console.log("[getChannelPartnerBookings] Filtered BYT_P_ count:", channelBookings.length);
+
+    // Sort newest first
+    channelBookings.sort((a, b) => {
+      const parseDate = (dateStr: string = ""): Date => {
+        if (!dateStr.trim()) return new Date(0);
+        try {
+          dateStr = dateStr.trim();
+
+          if (dateStr.match(/^\d{1,2}-[A-Za-z]{3}-\d{4}$/i)) {
+            const [day, monthStr, year] = dateStr.split("-");
+            const monthMap: Record<string, number> = {
+              jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+              jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11
+            };
+            const month = monthMap[monthStr.toLowerCase()];
+            if (month === undefined) return new Date(0);
+            return new Date(Number(year), month, Number(day));
+          }
+          else if (dateStr.match(/^\d{1,2}-\d{1,2}-\d{4}$/)) {
+            const [day, month, year] = dateStr.split("-").map(Number);
+            return new Date(year, month - 1, day);
+          }
+          else if (dateStr.match(/^\d{4}-\d{1,2}-\d{1,2}$/)) {
+            const [year, month, day] = dateStr.split("-").map(Number);
+            return new Date(year, month - 1, day);
+          }
+
+          const native = new Date(dateStr);
+          if (!isNaN(native.getTime())) return native;
+          return new Date(0);
+        } catch {
+          return new Date(0);
+        }
+      };
+
+      const dateA = parseDate(a.date);
+      const dateB = parseDate(b.date);
+      return dateB.getTime() - dateA.getTime();
+    });
+
+    return channelBookings;
+  } catch (err) {
+    console.error("[getChannelPartnerBookings] Fetch error:", err);
+    throw err;
+  }
+};
