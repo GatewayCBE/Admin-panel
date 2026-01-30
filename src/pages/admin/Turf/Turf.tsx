@@ -125,7 +125,6 @@ const availableSports = Array.from(
       (e.currentTarget.style.transform = "translateY(0)")
     }
   >
-    {/* Image */}
     <img
       src={
         turf.turf_image_url ||

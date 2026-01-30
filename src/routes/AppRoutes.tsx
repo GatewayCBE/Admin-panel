@@ -34,6 +34,9 @@ import OwnerProfile from "../pages/admin/Owner/OwnerProfile";
 import SlotManagement from "../pages/admin/Owner/SlotManagement";
 import SlotBookingConfirmation from "../pages/admin/Owner/SlotBookingConfirmation";
 import ViewBookings from "../pages/admin/Owner/ViewBookings";
+import UserProfile from "../pages/user/UserProfile";
+import UserBookingHistory from "../pages/user/UserBookings";
+import UserBookingHistoryPage from "../pages/user/UserBookings";
 
 const AppRoutes: React.FC = () => {
   return (
@@ -52,6 +55,10 @@ const AppRoutes: React.FC = () => {
         <Route path="/user/turfs/:turfId" element={<TurfDetail />} />
         <Route path="/user/turfs/:turfId/slots" element={<SlotDetails />} />
         <Route path="/user/advancepayment" element={<AdvancePayment />} />
+        <Route path="/user/profile" element={<UserProfile />} />
+        <Route path="/user/bookinghistory" element={<UserBookingHistoryPage />} />
+
+
         
       </Route>
       <Route path="/user/razorpay" element={<RazorpayPage />} />

@@ -73,38 +73,56 @@ const Navbar: React.FC = () => {
           <ul className="navbar-nav mx-auto text-center text-lg-start gap-lg-3 mb-0">
             <li className="nav-item">
               <Link 
-                className="nav-link fs-5 d-lg-inline-block" 
+                className="nav-link fs-6 fw-bold d-lg-inline-block" 
                 style={{ color: "#333" }}
                 to="/" 
                 onClick={closeMenu}
               >
-                Home
+                HOME
               </Link>
             </li>
             <li className="nav-item">
               <Link 
-                className="nav-link fs-5 d-lg-inline-block" 
+                className="nav-link fs-6 fw-bold d-lg-inline-block" 
                 style={{ color: "#333" }}
                 to="/ugames" 
                 onClick={closeMenu}
               >
-                Games
+                GAMES
               </Link>
             </li>
             <li className="nav-item">
               <Link 
-                className="nav-link fs-5 d-lg-inline-block" 
+                className="nav-link fs-6 fw-bold d-lg-inline-block" 
                 style={{ color: "#333" }}
                 to="/user/turfs" 
                 onClick={closeMenu}
               >
-                Venues
+                VENUES
+              </Link>
+            </li>
+              <li className="nav-item">
+              <Link 
+                className="nav-link fs-6 fw-bold d-lg-inline-block" 
+                style={{ color: "#333" }}
+                to="/user/bookinghistory" 
+                onClick={closeMenu}
+              >
+                BOOKING HISTORY
               </Link>
             </li>
           </ul>
 
           {/* RIGHT SIDE */}
           <div className="d-lg-flex align-items-center text-center mt-3 mt-lg-0">
+              <Link 
+                className="nav-link fs-6 fw-bold d-lg-inline-block me-4" 
+                style={{ color: "#333" }}
+                to="/user/profile" 
+                onClick={closeMenu}
+              >
+                PROFILE
+              </Link>
             <button
               className="btn fw-bold px-4 py-2"
               style={{
@@ -124,6 +142,7 @@ const Navbar: React.FC = () => {
             >
               Logout
             </button>
+
           </div>
 
         </div>

@@ -565,7 +565,7 @@ if (!venueType) {
   </svg>
   </button>
     <h1 className="header-title fw-bold fs-3 text-success text-center">
-  {step === 1 && venueType === 'turf' && 'Add Turf'}
+  {step === 1 && venueType === 'turf' && 'Add Turf Venue'}
   {step === 1 && venueType === 'badminton' && 'Add Badminton Venue'}
   {step === 1 && venueType === 'pickleball' && 'Add Pickleball Venue'}
 
@@ -581,7 +581,7 @@ if (!venueType) {
       <div className="mb-4">
         
   <label className="form-label text-muted">
-  {venueType === 'turf' ? 'Turf Images' : 'Court Images'} (1–5 required)
+  {venueType === 'turf' ? 'Venue Images' : 'Venue Images'} (1–5 required)
   <span className="text-danger">*</span>
 </label>
 
@@ -677,7 +677,6 @@ if (!venueType) {
 
   </div>
 
-  {/* Conditional "View on Maps" Button */}
   {formData.turfAddress.trim().length > 5 && (
     <div className="mt-2 text-end">
       <button
@@ -685,7 +684,6 @@ if (!venueType) {
         className="btn btn-sm btn-outline-primary"
         onClick={() => {
           const encodedAddress = encodeURIComponent(formData.turfAddress);
-          // Standard Google Maps search URL
           const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
           window.open(mapUrl, "_blank");
         }}
@@ -711,7 +709,7 @@ if (!venueType) {
     value={formData.turfDescription}
     onChange={(e) => {
       const value = e.target.value;
-      handleInputChange(e); // keep your existing state update
+      handleInputChange(e); 
 
       if (value.trim().length < 30) {
         setErrors(prev => ({
@@ -895,7 +893,7 @@ const sportName =
     if (step === 2) {
       setStep(1);
     } else {
-      setVenueType(null); // 🔥 Go back to venue type selection
+      setVenueType(null); 
     }
   }}
 >

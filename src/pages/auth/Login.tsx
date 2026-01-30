@@ -51,26 +51,31 @@ const Login: React.FC = () => {
 const [passwordError, setPasswordError] = useState("");
 const [showPassword, setShowPassword] = useState(false);
 
+const normalizeMobile = (value: string) => {
+  const digits = value.replace(/\D/g, "");
+  return digits.slice(-10);
+};
+
 const handleLogin = async (e: React.FormEvent) => {
   e.preventDefault();
   setLoading(true);
   setError("");
 
   try {
-    const input = email.trim();
-    const isMobileLogin = /^\d{10}$/.test(input); // 10 digit mobile
+   const input = email.trim();
+   const normalizedMobile = normalizeMobile(input);
+   const isMobileLogin = /^\d{10}$/.test(normalizedMobile);
 
     let account: any = null;
 
-    // 🔍 FIND ACCOUNT BY EMAIL OR MOBILE
     if (role === "user") {
       account = isMobileLogin
-        ? await getUserDocByMobile(input)
-        : await getUserDocByEmail(input);
+        ? await getUserDocByMobile(normalizedMobile)
+        : await getUserDocByEmail(input.toLowerCase());
     } else {
       account = isMobileLogin
-        ? await getOwnerDocByMobile(input)
-        : await getOwnerDocByEmail(input);
+        ? await getOwnerDocByMobile(normalizedMobile)
+        : await getOwnerDocByEmail(input.toLowerCase());
     }
 
     if (!account) {
@@ -79,20 +84,18 @@ const handleLogin = async (e: React.FormEvent) => {
       return;
     }
 
-    // 🔐 GET ENCRYPTED PASSWORD (YOU SAVED AS "password")
     const encryptedPassword =
-        role === "user"
-          ? account.user_password
-          : account.owner_password;
+      role === "user" ? account.user_password : account.owner_password;
 
-      const plain = await decryptAES(encryptedPassword);
+    const plain = await decryptAES(encryptedPassword);
 
-      if (plain !== password) {
-        setError("Incorrect password");
-        return;
-      }
+    if (plain !== password) {
+      setError("Incorrect password");
+      setLoading(false);
+      return;
+    }
 
-    // ✅ STORE SESSION
+   
     localStorage.setItem(
       "user_id",
       role === "user" ? account.user_id : account.owner_id

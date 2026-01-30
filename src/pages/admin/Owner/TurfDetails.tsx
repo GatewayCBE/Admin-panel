@@ -122,95 +122,93 @@ const TurfDetails: React.FC = () => {
     <div style={{ fontFamily: "Poppins, sans-serif", backgroundColor: "#f8f9fa" }}>
       <AdminNavbar />
 
-{/* Hero Section with Carousel for Multiple Images */}
-<div className="position-relative">
-  {/* Carousel for multiple turf images */}
-  {turf.turf_images && turf.turf_images.length > 0 ? (
-    <div id="turfImageCarousel" className="carousel slide" data-bs-ride="carousel">
-      <div className="carousel-inner">
-        {turf.turf_images.map((imgUrl: string, index: number) => (
-          <div key={index} className={`carousel-item ${index === 0 ? 'active' : ''}`}>
-            <img
-              src={imgUrl}
-              alt={`${turf.turf_name || "Turf"} image ${index + 1}`}
-              className="d-block w-100"
-              style={{
-                height: "500px",
-                objectFit: "cover",
-                filter: "brightness(0.75)",
-              }}
-            />
+      {/* Hero Section with Carousel for Multiple Images */}
+      <div className="position-relative">
+        {/* Carousel for multiple turf images */}
+        {turf.turf_images && turf.turf_images.length > 0 ? (
+          <div id="turfImageCarousel" className="carousel slide" data-bs-ride="carousel">
+            <div className="carousel-inner">
+              {turf.turf_images.map((imgUrl: string, index: number) => (
+                <div key={index} className={`carousel-item ${index === 0 ? 'active' : ''}`}>
+                  <img
+                    src={imgUrl}
+                    alt={`${turf.turf_name || "Turf"} image ${index + 1}`}
+                    className="d-block w-100"
+                    style={{
+                      height: "500px",
+                      objectFit: "cover",
+                      filter: "brightness(0.75)",
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+
+            {/* Carousel Controls - only show if more than 1 image */}
+            {turf.turf_images.length > 1 && (
+              <>
+                <button
+                  className="carousel-control-prev"
+                  type="button"
+                  data-bs-target="#turfImageCarousel"
+                  data-bs-slide="prev"
+                >
+                  <span className="carousel-control-prev-icon" aria-hidden="true"></span>
+                  <span className="visually-hidden">Previous</span>
+                </button>
+                <button
+                  className="carousel-control-next"
+                  type="button"
+                  data-bs-target="#turfImageCarousel"
+                  data-bs-slide="next"
+                >
+                  <span className="carousel-control-next-icon" aria-hidden="true"></span>
+                  <span className="visually-hidden">Next</span>
+                </button>
+              </>
+            )}
           </div>
-        ))}
-      </div>
+        ) : (
+          /* Fallback single placeholder image */
+          <img
+            src="https://via.placeholder.com/1200x500/67a521/ffffff?text=Turf"
+            alt="Turf Placeholder"
+            className="w-100"
+            style={{
+              height: "clamp(250px, 50vh, 500px)",
+              objectFit: "cover",
+              filter: "brightness(0.75)",
+            }}
+          />
+        )}
 
-      {/* Carousel Controls - only show if more than 1 image */}
-      {turf.turf_images.length > 1 && (
-        <>
-          <button
-            className="carousel-control-prev"
-            type="button"
-            data-bs-target="#turfImageCarousel"
-            data-bs-slide="prev"
-          >
-            <span className="carousel-control-prev-icon" aria-hidden="true"></span>
-            <span className="visually-hidden">Previous</span>
-          </button>
-          <button
-            className="carousel-control-next"
-            type="button"
-            data-bs-target="#turfImageCarousel"
-            data-bs-slide="next"
-          >
-            <span className="carousel-control-next-icon" aria-hidden="true"></span>
-            <span className="visually-hidden">Next</span>
-          </button>
-        </>
-      )}
-    </div>
-  ) : (
-    /* Fallback single placeholder image */
-    <img
-      src="https://via.placeholder.com/1200x500/67a521/ffffff?text=Turf"
-      alt="Turf Placeholder"
-      className="w-100"
-      style={{
-        height: "500px",
-        objectFit: "cover",
-        filter: "brightness(0.75)",
-      }}
-    />
-  )}
+        {/* Main Glass Overlay - Responsive positioning */}
+        <div
+          className="position-absolute top-50 start-50 translate-middle text-white text-center p-3 p-sm-4 p-md-5 rounded-4 shadow-lg"
+          style={{
+            zIndex: 2,
+            width: "95%",
+            maxWidth: "950px",
+            background: "rgba(255, 255, 255, 0.12)",
+            backdropFilter: "blur(20px) saturate(200%)",
+            WebkitBackdropFilter: "blur(20px) saturate(200%)",
+          }}
+        >
+          {/* Title - Responsive sizing */}
+          <h1 className="fw-bold mb-3 mb-md-4" style={{ fontSize: "clamp(1.25rem, 4vw, 3rem)", lineHeight: "1.2" }}>
+            {(turf.turf_name || "Unnamed Turf").toUpperCase()}
+          </h1>
 
-  {/* Main Glass Overlay */}
-  <div
-    className="position-absolute top-50 start-50 translate-middle text-white text-center p-5 rounded-4 shadow-lg"
-    style={{
-      zIndex: 2,
-      width: "90%",
-      maxWidth: "950px",
-      background: "rgba(255, 255, 255, 0.12)",
-      backdropFilter: "blur(20px) saturate(200%)",
-      WebkitBackdropFilter: "blur(20px) saturate(200%)",
-      border: "1px solid rgba(255, 255, 255, 0.25)",
-      boxShadow: "0 12px 40px rgba(0, 0, 0, 0.35)",
-    }}
-  >
-    {/* Title */}
-    <h1 className="display-4 fw-bold mb-5 text-shadow">
-      {(turf.turf_name || "Unnamed Turf").toUpperCase()}
-    </h1>
-
-    {/* Buttons */}
-    <div className="d-flex justify-content-center gap-4 flex-wrap">
-      <button
-        className="btn btn-outline-light btn-lg px-5 py-3 fw-semibold"
-        onClick={() => setShowOwnerModal(true)}
-      >
-        Owner Details
-      </button>
-
-      <button
+          {/* Buttons - Stack on mobile, row on larger screens */}
+          <div className="d-flex flex-column flex-sm-row justify-content-center gap-2 gap-sm-3">
+            <button 
+              className="btn btn-outline-light btn-sm btn-md-lg px-3 px-md-4"
+              onClick={() => setShowOwnerModal(true)}
+              style={{ fontSize: "clamp(0.875rem, 2vw, 1rem)" }}
+            >
+              Owner Details
+            </button>
+             <button
         className="btn btn-outline-warning btn-lg px-5 py-3 fw-semibold"
         onClick={() => navigate(`/dashboard/owners/${turf.owner_id}/turfs/${turfId}/edit`)}
       >
@@ -226,297 +224,371 @@ const TurfDetails: React.FC = () => {
       >
         {turf.turf_active_status ? "Approved" : "Approve Turf"}
       </button>
-    </div>
-  </div>
+          </div>
+        </div>
 
-  {/* Bottom Location Bar – Glass Style */}
-  <div
-    className="position-absolute bottom-0 start-50 translate-middle-x text-white text-center px-5 py-4 rounded-top-4"
-    style={{
-      zIndex: 2,
-      width: "90%",
-      maxWidth: "950px",
-      background: "rgba(255, 255, 255, 0.12)",
-      backdropFilter: "blur(20px) saturate(200%)",
-      WebkitBackdropFilter: "blur(20px) saturate(200%)",
-      border: "1px solid rgba(255, 255, 255, 0.25)",
-      borderBottom: "none",
-      boxShadow: "0 -8px 32px rgba(0, 0, 0, 0.25)",
-    }}
-  >
-    <p className="mb-0 fs-5 fw-medium">
-      <i className="bi bi-geo-alt-fill me-2"></i>
-      {turf.turf_location || "Location not specified"}
-    </p>
-  </div>
-</div>
+        {/* Bottom Location Bar – Glass Style - Responsive */}
+        <div
+          className="position-absolute bottom-0 start-50 translate-middle-x text-white text-center px-3 px-sm-4 px-md-5 py-2 py-sm-3 py-md-4 rounded-top-4"
+          style={{
+            zIndex: 2,
+            width: "95%",
+            maxWidth: "950px",
+            background: "rgba(255, 255, 255, 0.12)",
+            backdropFilter: "blur(20px) saturate(200%)",
+            WebkitBackdropFilter: "blur(20px) saturate(200%)",
+            border: "1px solid rgba(255, 255, 255, 0.25)",
+            borderBottom: "none",
+            boxShadow: "0 -8px 32px rgba(0, 0, 0, 0.25)",
+          }}
+        >
+          <p className="mb-0 fw-medium" style={{ fontSize: "clamp(0.875rem, 2.5vw, 1.25rem)" }}>
+            <i className="bi bi-geo-alt-fill me-2"></i>
+            {turf.turf_location || "Location not specified"}
+          </p>
+        </div>
+      </div>
 
       {/* Main Content */}
-      <div className="container py-5">
-        {/* Quick Info Cards */}
-        <div className="row g-4 mb-5 justify-content-center">
-          <div className="col-md-4">
-            <div className="card border-0 shadow-sm text-center p-4 h-100">
-              <h6 className="text-muted mb-2">Max Players</h6>
-              <h3 className="fw-bold text-success">
-                {`${Number(
-                    Object.values(turf.sports_specific_person_count)[0]
-                  )}+`}
-              </h3>
+      <div className="container py-4 py-md-5 px-3 px-sm-4">
+        {/* Quick Info Cards - Responsive grid */}
+        <div className="row g-3 mb-4 mb-md-5 text-center">
+          <div className="col-12 col-sm-6 col-md-4">
+            <div className="card shadow-sm p-3 h-100">
+              <h6 className="text-muted mb-1" style={{ fontSize: "clamp(0.75rem, 2vw, 0.875rem)" }}>Max Players</h6>
+              <h4 className="fw-bold text-success mb-0" style={{ fontSize: "clamp(1.25rem, 3vw, 1.75rem)" }}>10+</h4>
             </div>
           </div>
-          <div className="col-md-4">
-            <div className="card border-0 shadow-sm text-center p-4 h-100">
-              <h6 className="text-muted mb-2">Timings</h6>
-              <h5 className="fw-bold">
-                {firstTiming?.opening_time && firstTiming?.closing_time
-                  ? `${firstTiming.opening_time} – ${firstTiming.closing_time}`
-                  : "N/A"}
-              </h5>
+          <div className="col-12 col-sm-6 col-md-4">
+            <div className="card shadow-sm p-3 h-100">
+              <h6 className="text-muted mb-1" style={{ fontSize: "clamp(0.75rem, 2vw, 0.875rem)" }}>Timings</h6>
+              <h5 className="fw-bold mb-0" style={{ fontSize: "clamp(1rem, 2.5vw, 1.5rem)" }}>6 AM – 11 PM</h5>
             </div>
           </div>
-          <div className="col-md-4">
-            <div className="card border-0 shadow-sm text-center p-4 h-100">
-              <h6 className="text-muted mb-2">Price Range</h6>
-              <h5 className="fw-bold text-success">
+          <div className="col-12 col-sm-12 col-md-4">
+            <div className="card shadow-sm p-3 h-100">
+              <h6 className="text-muted mb-1" style={{ fontSize: "clamp(0.75rem, 2vw, 0.875rem)" }}>Price Range</h6>
+              <h5 className="fw-bold text-success mb-0" style={{ fontSize: "clamp(1rem, 2.5vw, 1.5rem)" }}>
                 ₹{minPrice} – ₹{maxPrice}
               </h5>
             </div>
           </div>
         </div>
 
-        {/* Quick Info Cards - Perfectly aligned & scrollable when needed */}
-{/* Quick Info Cards - Perfectly centered & equal height */}
-<div className="row g-4 mb-5 justify-content-center">
-  {/* 1. Available Sports */}
-  <div className={`col-12 col-md-6 col-lg-${hasBoxFootball ? '4' : '5'} mx-auto my-auto`}>
-    <div className="card border-0 shadow-sm h-100">
-      <div className="card-header bg-light text-center py-3">
-        <h5 className="mb-0 fw-bold">Available Sports</h5>
-      </div>
-      <div className="card-body p-4 d-flex flex-column">
-        {Object.entries(turf.sport_specific_timing || {}).length > 0 ? (
-          <div className="flex-grow-1 d-flex flex-column gap-3 overflow-auto" style={{ maxHeight: "340px" }}>
-            {Object.entries(turf.sport_specific_timing || {}).map(([sport, timing]: any) => {
-              const sportKey = sport.toLowerCase().trim();
-              const sportImage = sportImageMap[sportKey] || "/assets/default.png";
+        {/* Sports, Amenities, and Dimensions - Responsive layout */}
+        <div className="row g-3 g-md-4 mb-4 mb-md-5">
+          {/* 1. Available Sports */}
+          <div className={`col-12 col-lg-${hasBoxFootball ? '4' : '6'}`}>
+            <div className="card border-0 shadow-sm h-100">
+              <div className="card-header bg-light text-center py-3">
+                <h5 className="mb-0 fw-bold" style={{ fontSize: "clamp(1rem, 2.5vw, 1.25rem)" }}>Available Sports</h5>
+              </div>
+              <div className="card-body p-3 p-md-4 d-flex flex-column">
+                {Object.entries(turf.sport_specific_timing || {}).length > 0 ? (
+                  <div className="flex-grow-1 d-flex flex-column gap-2 gap-md-3 overflow-auto" style={{ maxHeight: "400px" }}>
+                    {Object.entries(turf.sport_specific_timing || {}).map(([sport, timing]: any) => {
+                      const sportKey = sport.toLowerCase().trim();
+                      const sportImage = sportImageMap[sportKey] || "/assets/default.png";
 
-              return (
-                <div key={sport} className="d-flex align-items-center gap-3 p-2 bg-white rounded border border-light">
-                  <img
-                    src={sportImage}
-                    alt={sport}
-                    style={{ width: "50px", height: "50px", objectFit: "contain" }}
-                  />
-                  <div className="flex-grow-1">
-                    <h6 className="fw-bold mb-1 text-capitalize">{sport}</h6>
-                    <p className="mb-1 small text-muted">
-                      {timing?.opening_time || "—"} – {timing?.closing_time || "—"}
-                    </p>
+                      return (
+                        <div key={sport} className="d-flex align-items-center gap-2 gap-md-3 p-2 bg-white rounded border border-light">
+                          <img
+                            src={sportImage}
+                            alt={sport}
+                            className="flex-shrink-0"
+                            style={{ width: "clamp(40px, 8vw, 50px)", height: "clamp(40px, 8vw, 50px)", objectFit: "contain" }}
+                          />
+                          <div className="flex-grow-1 min-width-0">
+                            <h6 className="fw-bold mb-1 text-capitalize text-truncate" style={{ fontSize: "clamp(0.875rem, 2vw, 1rem)" }}>
+                              {sport}
+                            </h6>
+                            <p className="mb-0 small text-muted" style={{ fontSize: "clamp(0.75rem, 1.5vw, 0.875rem)" }}>
+                              {timing?.opening_time || "—"} – {timing?.closing_time || "—"}
+                            </p>
+                          </div>
+                          <span
+                            className={`badge px-2 px-md-3 py-1 flex-shrink-0 ${
+                              timing.sport_available ? "bg-success" : "bg-danger"
+                            }`}
+                            style={{ fontSize: "clamp(0.75rem, 1.5vw, 0.875rem)" }}
+                          >
+                            {timing.sport_available ? "Available" : "Closed"}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
-                  <span
-                    className={`badge fs-6 px-3 py-1 ${
-                      timing.sport_available ? "bg-success" : "bg-danger"
-                    }`}
-                  >
-                    {timing.sport_available ? "Available" : "Closed"}
-                  </span>
+                ) : (
+                  <div className="text-center py-5 text-muted flex-grow-1 d-flex align-items-center justify-content-center">
+                    <div>
+                      <i className="bi bi-list-ul fs-1 mb-3 d-block opacity-50"></i>
+                      <p className="mb-0">No sports information available</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* 2. Amenities */}
+          <div className={`col-12 col-lg-${hasBoxFootball ? '4' : '6'}`}>
+            <div className="card border-0 shadow-sm h-100">
+              <div className="card-header bg-light text-center py-3">
+                <h5 className="mb-0 fw-bold" style={{ fontSize: "clamp(1rem, 2.5vw, 1.25rem)" }}>Amenities</h5>
+              </div>
+              <div className="card-body p-3 p-md-4 d-flex flex-column">
+                {turf.amenities && Array.isArray(turf.amenities) && turf.amenities.length > 0 ? (
+                  <div className="flex-grow-1 overflow-auto" style={{ maxHeight: "400px" }}>
+                    <div className="d-flex flex-wrap gap-2">
+                      {turf.amenities.map((amenity: string, index: number) => (
+                        <span
+                          key={index}
+                          className="badge bg-info text-dark px-2 px-md-3 py-2 text-capitalize shadow-sm"
+                          style={{ fontSize: "clamp(0.75rem, 1.5vw, 0.875rem)" }}
+                        >
+                          {amenity}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-5 text-muted flex-grow-1 d-flex align-items-center justify-content-center">
+                    <div>
+                      <i className="bi bi-list-check fs-1 mb-3 d-block opacity-50"></i>
+                      <p className="mb-0">No amenities listed</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* 3. Turf Dimensions – only shown when Boxcricket/Football exists */}
+          {hasBoxFootball && (
+            <div className="col-12 col-lg-4">
+              <div className="card border-0 shadow-sm h-100">
+                <div className="card-header bg-light text-center py-3">
+                  <h5 className="mb-0 fw-bold" style={{ fontSize: "clamp(1rem, 2.5vw, 1.25rem)" }}>Turf Dimensions</h5>
                 </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="text-center py-5 text-muted flex-grow-1 d-flex align-items-center justify-content-center">
-            <div>
-              <i className="bi bi-list-ul fs-1 mb-3 d-block opacity-50"></i>
-              <p className="mb-0">No sports information available</p>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  </div>
+                <div className="card-body p-3 p-md-4 text-center d-flex flex-column justify-content-center">
+                  <div className="row g-2 g-md-3">
+                    <div className="col-4">
+                      <div className="p-2 p-md-3 bg-light rounded">
+                        <h6 className="text-muted mb-1 small" style={{ fontSize: "clamp(0.75rem, 1.5vw, 0.875rem)" }}>Length</h6>
+                        <h5 className="fw-bold mb-0" style={{ fontSize: "clamp(1rem, 2.5vw, 1.25rem)" }}>{turf.turf_length || "—"}</h5>
+                      </div>
+                    </div>
+                    <div className="col-4">
+                      <div className="p-2 p-md-3 bg-light rounded">
+                        <h6 className="text-muted mb-1 small" style={{ fontSize: "clamp(0.75rem, 1.5vw, 0.875rem)" }}>Breadth</h6>
+                        <h5 className="fw-bold mb-0" style={{ fontSize: "clamp(1rem, 2.5vw, 1.25rem)" }}>{turf.turf_breadth || "—"}</h5>
+                      </div>
+                    </div>
+                    <div className="col-4">
+                      <div className="p-2 p-md-3 bg-light rounded">
+                        <h6 className="text-muted mb-1 small" style={{ fontSize: "clamp(0.75rem, 1.5vw, 0.875rem)" }}>Height</h6>
+                        <h5 className="fw-bold mb-0" style={{ fontSize: "clamp(1rem, 2.5vw, 1.25rem)" }}>{turf.turf_height || "—"}</h5>
+                      </div>
+                    </div>
+                  </div>
 
-  {/* 2. Amenities */}
-  <div className={`col-12 col-md-6 col-lg-${hasBoxFootball ? '4' : '5'} mx-auto my-auto`}>
-    <div className="card border-0 shadow-sm h-100">
-      <div className="card-header bg-light text-center py-3">
-        <h5 className="mb-0 fw-bold">Amenities</h5>
-      </div>
-      <div className="card-body p-4 d-flex flex-column">
-        {turf.amenities && Array.isArray(turf.amenities) && turf.amenities.length > 0 ? (
-          <div
-            className="flex-grow-1 overflow-auto pe-2"
-            style={{ maxHeight: "340px" }}
-          >
-            <div className="d-flex flex-wrap gap-3">
-              {turf.amenities.map((amenity: string, index: number) => (
-                <span
-                  key={index}
-                  className="badge bg-info text-dark fs-6 px-3 py-2 text-capitalize shadow-sm"
-                >
-                  {amenity}
-                </span>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="text-center py-5 text-muted flex-grow-1 d-flex align-items-center justify-content-center">
-            <div>
-              <i className="bi bi-list-check fs-1 mb-3 d-block opacity-50"></i>
-              <p className="mb-0">No amenities listed</p>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  </div>
-
-  {/* 3. Turf Dimensions – only shown when Boxcricket/Football exists */}
-  {hasBoxFootball && (
-    <div className="col-lg-4 mx-auto my-auto">
-      <div className="card border-0 shadow-sm h-100">
-        <div className="card-header bg-light text-center py-3">
-          <h5 className="mb-0 fw-bold">Turf Dimensions</h5>
-        </div>
-        <div className="card-body p-4 text-center d-flex flex-column justify-content-center">
-          <div className="row g-3">
-            <div className="col-4">
-              <div className="p-3 bg-light rounded">
-                <h6 className="text-muted mb-1 small">Length</h6>
-                <h5 className="fw-bold">{turf.turf_length || "—"}</h5>
+                  {!turf.turf_length && !turf.turf_breadth && !turf.turf_height && (
+                    <p className="text-muted mt-3 mt-md-4 mb-0 small">Dimensions not specified</p>
+                  )}
+                </div>
               </div>
             </div>
-            <div className="col-4">
-              <div className="p-3 bg-light rounded">
-                <h6 className="text-muted mb-1 small">Breadth</h6>
-                <h5 className="fw-bold">{turf.turf_breadth || "—"}</h5>
-              </div>
-            </div>
-            <div className="col-4">
-              <div className="p-3 bg-light rounded">
-                <h6 className="text-muted mb-1 small">Height</h6>
-                <h5 className="fw-bold">{turf.turf_height || "—"}</h5>
-              </div>
-            </div>
-          </div>
-
-          {!turf.turf_length && !turf.turf_breadth && !turf.turf_height && (
-            <p className="text-muted mt-4">Dimensions not specified</p>
           )}
         </div>
-      </div>
-    </div>
-  )}
-</div>
 
-        {/* Price Chart */}
-<div className="card border-0 shadow-sm mb-5">
-  <div
-    className="card-header bg-light d-flex justify-content-between align-items-center py-3"
-    data-bs-toggle="collapse"
-    data-bs-target="#priceChart"
-    style={{ cursor: "pointer" }}
-  >
-    <h5 className="mb-0 fw-bold">Day-split Timing and Price</h5>
-    <span className="text-muted">▼</span>
-  </div>
+        {/* Price Chart - Responsive table */}
+        <div className="card border-0 shadow-sm mb-4 mb-md-5">
+          <div
+            className="card-header bg-light d-flex justify-content-between align-items-center py-3"
+            data-bs-toggle="collapse"
+            data-bs-target="#priceChart"
+            style={{ cursor: "pointer" }}
+          >
+            <h5 className="mb-0 fw-bold" style={{ fontSize: "clamp(1rem, 2.5vw, 1.25rem)" }}>Day-split Timing and Price</h5>
+            <span className="text-muted">▼</span>
+          </div>
 
-  <div id="priceChart" className="collapse show">
-    <div className="card-body">
-      {Object.entries(turf.sport_specific_price || {}).map(([sport, priceObj]: [string, any]) => {
-        // Get timing object for this sport
-        const timing = turf.sport_specific_timing?.[sport] || {};
+          <div id="priceChart" className="collapse show">
+            <div className="card-body p-0">
+              {Object.entries(turf.sport_specific_price || {}).map(([sport, priceObj]: [string, any]) => {
+                const timing = turf.sport_specific_timing?.[sport] || {};
 
-        return (
-          <div key={sport} className="mb-5">
-            <h5 className="fw-bold text-success mb-3 text-capitalize">
-              {sport}{timing.court_count ? `(${timing.court_count} Courts)` : ""}
-            </h5>
+                return (
+                  <div key={sport} className="p-3 p-md-4 border-bottom">
+                    <h5 className="fw-bold text-success mb-3 text-capitalize" style={{ fontSize: "clamp(1rem, 2.5vw, 1.25rem)" }}>
+                      {sport} {timing.court_count ? `(${timing.court_count} Courts)` : ""}
+                    </h5>
 
-            <div className="table-responsive">
-              <table className="table table-bordered table-hover align-middle">
-                <thead className="table-light">
-                  <tr>
-                    <th>Day</th>
-                    <th>Day Price</th>
-                    <th>Day Timing</th>
-                    <th>Night Price</th>
-                    <th>Night Timing</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[
-                    "sunday",
-                    "monday",
-                    "tuesday",
-                    "wednesday",
-                    "thursday",
-                    "friday",
-                    "saturday",
-                  ].map((day) => {
-                    const price = priceObj?.[day] || {};
-                    const dayPrice = typeof price.day === "number" ? `₹${price.day}` : "—";
-                    const nightPrice = typeof price.night === "number" ? `₹${price.night}` : "—";
+                    {/* Mobile: Card layout */}
+                    <div className="d-md-none">
+                      {[
+                        "sunday",
+                        "monday",
+                        "tuesday",
+                        "wednesday",
+                        "thursday",
+                        "friday",
+                        "saturday",
+                      ].map((day) => {
+                        const price = priceObj?.[day] || {};
+                        const dayPrice = typeof price.day === "number" ? `₹${price.day}` : "—";
+                        const nightPrice = typeof price.night === "number" ? `₹${price.night}` : "—";
 
-                    // Timing logic - prefer day/night specific, fallback to general
-                    const dayStart = timing.day_start_time || timing.opening_time || "—";
-                    const dayEnd = timing.day_end_time || timing.closing_time || "—";
-                    const nightStart = timing.night_start_time || "—";
-                    const nightEnd = timing.night_end_time || "—";
+                        const dayStart = timing.day_start_time || timing.opening_time || "—";
+                        const dayEnd = timing.day_end_time || timing.closing_time || "—";
+                        const nightStart = timing.night_start_time || "—";
+                        const nightEnd = timing.night_end_time || "—";
 
-                    const isAvailable = timing.sport_available !== false;
+                        const isAvailable = timing.sport_available !== false;
 
-                    return (
-                      <tr key={day}>
-                        <td className={`fw-medium text-capitalize ${day === currentDay ? "bg-success-subtle" : ""}`}>{day}</td>
-                        <td>{dayPrice}</td>
-                        <td>{dayStart} – {dayEnd}</td>
-                        <td>{nightPrice}</td>
-                        <td>{nightStart} – {nightEnd}</td>
-                        <td>
-                          <span
-                            className={`badge fs-6 px-3 py-2 ${
-                              isAvailable ? "bg-success" : "bg-danger"
-                            }`}
+                        return (
+                          <div 
+                            key={day} 
+                            className={`card mb-3 ${day === currentDay ? "border-success" : ""}`}
                           >
-                            {isAvailable ? "Available" : "Closed"}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                            <div className={`card-header ${day === currentDay ? "bg-success-subtle" : "bg-light"}`}>
+                              <div className="d-flex justify-content-between align-items-center">
+                                <h6 className="mb-0 fw-bold text-capitalize">{day}</h6>
+                                <span className={`badge ${isAvailable ? "bg-success" : "bg-danger"}`}>
+                                  {isAvailable ? "Available" : "Closed"}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="card-body p-3">
+                              <div className="row g-2">
+                                <div className="col-6">
+                                  <div className="border rounded p-2">
+                                    <small className="text-muted d-block mb-1">Day Price</small>
+                                    <strong>{dayPrice}</strong>
+                                  </div>
+                                </div>
+                                <div className="col-6">
+                                  <div className="border rounded p-2">
+                                    <small className="text-muted d-block mb-1">Night Price</small>
+                                    <strong>{nightPrice}</strong>
+                                  </div>
+                                </div>
+                                <div className="col-6">
+                                  <div className="border rounded p-2">
+                                    <small className="text-muted d-block mb-1">Day Timing</small>
+                                    <small>{dayStart} – {dayEnd}</small>
+                                  </div>
+                                </div>
+                                <div className="col-6">
+                                  <div className="border rounded p-2">
+                                    <small className="text-muted d-block mb-1">Night Timing</small>
+                                    <small>{nightStart} – {nightEnd}</small>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Desktop/Tablet: Table layout */}
+                    <div className="d-none d-md-block table-responsive">
+                      <table className="table table-bordered table-hover align-middle mb-0">
+                        <thead className="table-light">
+                          <tr>
+                            <th style={{ fontSize: "clamp(0.875rem, 1.5vw, 1rem)" }}>Day</th>
+                            <th style={{ fontSize: "clamp(0.875rem, 1.5vw, 1rem)" }}>Day Price</th>
+                            <th style={{ fontSize: "clamp(0.875rem, 1.5vw, 1rem)" }}>Day Timing</th>
+                            <th style={{ fontSize: "clamp(0.875rem, 1.5vw, 1rem)" }}>Night Price</th>
+                            <th style={{ fontSize: "clamp(0.875rem, 1.5vw, 1rem)" }}>Night Timing</th>
+                            <th style={{ fontSize: "clamp(0.875rem, 1.5vw, 1rem)" }}>Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {[
+                            "sunday",
+                            "monday",
+                            "tuesday",
+                            "wednesday",
+                            "thursday",
+                            "friday",
+                            "saturday",
+                          ].map((day) => {
+                            const price = priceObj?.[day] || {};
+                            const dayPrice = typeof price.day === "number" ? `₹${price.day}` : "—";
+                            const nightPrice = typeof price.night === "number" ? `₹${price.night}` : "—";
+
+                            const dayStart = timing.day_start_time || timing.opening_time || "—";
+                            const dayEnd = timing.day_end_time || timing.closing_time || "—";
+                            const nightStart = timing.night_start_time || "—";
+                            const nightEnd = timing.night_end_time || "—";
+
+                            const isAvailable = timing.sport_available !== false;
+
+                            return (
+                              <tr key={day}>
+                                <td className={`fw-medium text-capitalize ${day === currentDay ? "bg-success-subtle" : ""}`} style={{ fontSize: "clamp(0.875rem, 1.5vw, 1rem)" }}>
+                                  {day}
+                                </td>
+                                <td style={{ fontSize: "clamp(0.875rem, 1.5vw, 1rem)" }}>{dayPrice}</td>
+                                <td style={{ fontSize: "clamp(0.875rem, 1.5vw, 1rem)" }}>{dayStart} – {dayEnd}</td>
+                                <td style={{ fontSize: "clamp(0.875rem, 1.5vw, 1rem)" }}>{nightPrice}</td>
+                                <td style={{ fontSize: "clamp(0.875rem, 1.5vw, 1rem)" }}>{nightStart} – {nightEnd}</td>
+                                <td>
+                                  <span
+                                    className={`badge px-2 px-md-3 py-2 ${
+                                      isAvailable ? "bg-success" : "bg-danger"
+                                    }`}
+                                    style={{ fontSize: "clamp(0.75rem, 1.5vw, 0.875rem)" }}
+                                  >
+                                    {isAvailable ? "Available" : "Closed"}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {Object.keys(turf.sport_specific_price || {}).length === 0 && (
+                <div className="text-center py-5 text-muted">
+                  <p className="mb-0">No pricing or timing information available for this turf.</p>
+                </div>
+              )}
             </div>
           </div>
-        );
-      })}
-
-      {Object.keys(turf.sport_specific_price || {}).length === 0 && (
-        <div className="text-center py-5 text-muted">
-          <p>No pricing or timing information available for this turf.</p>
         </div>
-      )}
-    </div>
-  </div>
-</div>
 
-        {/* Location */}
-        <div className="card border-0 shadow-sm mb-5">
-          <div className="card-body p-4">
-            <h5 className="fw-bold mb-3">📍 Location</h5>
+        {/* Location - Responsive iframe */}
+        <div className="card border-0 shadow-sm mb-4 mb-md-5">
+          <div className="card-body p-3 p-md-4">
+            <h5 className="fw-bold mb-3" style={{ fontSize: "clamp(1rem, 2.5vw, 1.25rem)" }}>📍 Location</h5>
+            <iframe
+              src={`https://www.google.com/maps?q=${encodeURIComponent(turf.turf_location || "")}&output=embed`}
+              width="100%"
+              height="300"
+              className="d-md-none"
+              style={{ border: 0, borderRadius: "12px" }}
+              allowFullScreen
+              loading="lazy"
+              title="turf-location-mobile"
+            ></iframe>
             <iframe
               src={`https://www.google.com/maps?q=${encodeURIComponent(turf.turf_location || "")}&output=embed`}
               width="100%"
               height="450"
+              className="d-none d-md-block"
               style={{ border: 0, borderRadius: "12px" }}
               allowFullScreen
               loading="lazy"
-              title="turf-location"
+              title="turf-location-desktop"
             ></iframe>
-            <p className="text-muted mt-3 small text-center">
+            <p className="text-muted mt-3 small text-center mb-0" style={{ fontSize: "clamp(0.75rem, 1.5vw, 0.875rem)" }}>
               {turf.turf_location || "Location details not available"}
             </p>
           </div>
@@ -525,9 +597,9 @@ const TurfDetails: React.FC = () => {
         {/* About Venue */}
         {turf.turf_description && (
           <div className="card border-0 shadow-sm">
-            <div className="card-body p-4">
-              <h5 className="fw-bold mb-3">📝 About Venue</h5>
-              <p className="text-muted" style={{ whiteSpace: "pre-line", lineHeight: "1.7" }}>
+            <div className="card-body p-3 p-md-4">
+              <h5 className="fw-bold mb-3" style={{ fontSize: "clamp(1rem, 2.5vw, 1.25rem)" }}>📝 About Venue</h5>
+              <p className="text-muted mb-0" style={{ whiteSpace: "pre-line", lineHeight: "1.7", fontSize: "clamp(0.875rem, 1.5vw, 1rem)" }}>
                 {turf.turf_description}
               </p>
             </div>
@@ -535,7 +607,7 @@ const TurfDetails: React.FC = () => {
         )}
       </div>
 
-      {/* React-controlled Owner Modal */}
+      {/* React-controlled Owner Modal - Responsive */}
       {showOwnerModal && (
         <>
           <div
@@ -544,38 +616,40 @@ const TurfDetails: React.FC = () => {
             onClick={() => setShowOwnerModal(false)}
           />
           <div className="modal fade show d-block" style={{ zIndex: 1050 }} tabIndex={-1}>
-            <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-dialog modal-dialog-centered mx-3 mx-sm-auto">
               <div className="modal-content border-0 shadow-lg" style={{ borderRadius: "16px" }}>
                 <div className="modal-header bg-light">
-                  <h5 className="modal-title fw-bold">Channel Partner / Owner Details</h5>
+                  <h5 className="modal-title fw-bold" style={{ fontSize: "clamp(1rem, 2.5vw, 1.25rem)" }}>
+                    Channel Partner / Owner Details
+                  </h5>
                   <button
                     type="button"
                     className="btn-close"
                     onClick={() => setShowOwnerModal(false)}
                   />
                 </div>
-                <div className="modal-body">
+                <div className="modal-body p-3 p-md-4">
                   {owner ? (
                     <div className="list-group list-group-flush">
-                      <div className="list-group-item d-flex justify-content-between">
+                      <div className="list-group-item d-flex flex-column flex-sm-row justify-content-between gap-2">
                         <strong>Name</strong>
-                        <span>{owner.owner_name || "—"}</span>
+                        <span className="text-break">{owner.owner_name || "—"}</span>
                       </div>
-                      <div className="list-group-item d-flex justify-content-between">
+                      <div className="list-group-item d-flex flex-column flex-sm-row justify-content-between gap-2">
                         <strong>Email</strong>
-                        <span>{owner.owner_email || "—"}</span>
+                        <span className="text-break">{owner.owner_email || "—"}</span>
                       </div>
-                      <div className="list-group-item d-flex justify-content-between">
+                      <div className="list-group-item d-flex flex-column flex-sm-row justify-content-between gap-2">
                         <strong>Mobile</strong>
-                        <span>{owner.owner_mobile_number || "—"}</span>
+                        <span className="text-break">{owner.owner_mobile_number || "—"}</span>
                       </div>
                     </div>
                   ) : (
-                    <p className="text-center text-muted py-3">Owner information not available.</p>
+                    <p className="text-center text-muted py-3 mb-0">Owner information not available.</p>
                   )}
                 </div>
                 <div className="modal-footer bg-light">
-                  <button className="btn btn-secondary px-4" onClick={() => setShowOwnerModal(false)}>
+                  <button className="btn btn-secondary px-3 px-md-4" onClick={() => setShowOwnerModal(false)}>
                     Close
                   </button>
                 </div>
@@ -586,11 +660,91 @@ const TurfDetails: React.FC = () => {
       )}
 
       <style>{`
-        .text-shadow { text-shadow: 0 2px 10px rgba(0,0,0,0.6); }
-        .bg-gradient-dark {
-          background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+        /* Responsive utilities */
+        .min-width-0 {
+          min-width: 0;
         }
-        .card { border-radius: 16px; overflow: hidden; }
+
+        /* Smooth transitions */
+        .card {
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+        }
+
+        /* Button responsive sizing */
+        @media (max-width: 576px) {
+          .btn-sm {
+            padding: 0.5rem 1rem;
+          }
+        }
+
+        /* Carousel responsive controls */
+        @media (max-width: 768px) {
+          .carousel-control-prev,
+          .carousel-control-next {
+            width: 10%;
+          }
+        }
+
+        /* Table responsive improvements */
+        @media (max-width: 768px) {
+          .table-responsive {
+            font-size: 0.875rem;
+          }
+        }
+
+        /* Scrollbar styling */
+        .overflow-auto::-webkit-scrollbar {
+          width: 6px;
+          height: 6px;
+        }
+
+        .overflow-auto::-webkit-scrollbar-track {
+          background: #f1f1f1;
+          border-radius: 10px;
+        }
+
+        .overflow-auto::-webkit-scrollbar-thumb {
+          background: #888;
+          border-radius: 10px;
+        }
+
+        .overflow-auto::-webkit-scrollbar-thumb:hover {
+          background: #555;
+        }
+
+        /* Prevent text overflow */
+        .text-truncate {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .text-break {
+          word-break: break-word;
+        }
+
+        /* Card styling */
+        .card {
+          border-radius: 16px;
+          overflow: hidden;
+        }
+
+        /* Badge responsive sizing */
+        .badge {
+          white-space: nowrap;
+        }
+
+        /* Modal responsive */
+        @media (max-width: 576px) {
+          .modal-dialog {
+            margin: 0.5rem;
+          }
+        }
       `}</style>
     </div>
   );
