@@ -1,8 +1,9 @@
 // src/pages/admin/TurfBookingsPage.tsx
 import React, { useEffect, useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
-import { getAllBookings } from "../../../services/firestoreService";
+import { getChannelPartnerBookings, cancelBooking } from "../../../services/firestoreService";
 import AdminNavbar from "../Analytics/AdminNavbar";
+import { Modal, Button, Table, Badge, Spinner, Toast } from "react-bootstrap"; // Add Bootstrap or use your UI lib
 
 const TurfBookingsPage: React.FC = () => {
   const { turfId } = useParams<{ turfId: string }>();
@@ -10,18 +11,35 @@ const TurfBookingsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [selectedBooking, setSelectedBooking] = useState<any | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastVariant, setToastVariant] = useState<"success" | "danger">("success");
 
   useEffect(() => {
-    (async () => {
+    const fetchBookings = async () => {
       setLoading(true);
-      const allBookings = await getAllBookings();
-      const turfBookings = allBookings.filter((b) => b.turfId === turfId);
-      setRawBookings(turfBookings);
-      setLoading(false);
-    })();
+      try {
+        const channelBookings = await getChannelPartnerBookings();
+        const filtered = turfId 
+          ? channelBookings.filter((b) => b.turfId === turfId || b.turf_id === turfId)
+          : channelBookings;
+        setRawBookings(filtered);
+      } catch (err) {
+        console.error("Failed to load channel bookings:", err);
+        setToastMessage("Failed to load bookings");
+        setToastVariant("danger");
+        setShowToast(true);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchBookings();
   }, [turfId]);
 
   const parseDate = (str: string): Date | null => {
+    if (!str) return null;
     const match = str.match(/^(\d{2})-(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)-(\d{4})$/i);
     if (!match) return null;
     const dateStr = `${match[2]} ${match[1]}, ${match[3]}`;
@@ -40,14 +58,13 @@ const TurfBookingsPage: React.FC = () => {
 
     const from = fromDate ? toMidnight(new Date(fromDate)) : null;
     const to = toDate ? toMidnight(new Date(toDate)) : null;
-    const effectiveTo = to || from; // ← crucial line
+    const effectiveTo = to || from;
 
     if (from || to) {
       list = list.filter((b) => {
-        const bd = parseDate(b.date);
+        const bd = parseDate(b.date || b.selectedDate || "");
         if (!bd) return false;
         const dateMidnight = toMidnight(bd);
-
         if (from && dateMidnight < from) return false;
         if (effectiveTo && dateMidnight > effectiveTo) return false;
         return true;
@@ -55,20 +72,45 @@ const TurfBookingsPage: React.FC = () => {
     }
 
     return [...list].sort((a, b) => {
-      const dateA = parseDate(a.date) || new Date();
-      const dateB = parseDate(b.date) || new Date();
+      const dateA = parseDate(a.date || a.selectedDate || "") || new Date(0);
+      const dateB = parseDate(b.date || b.selectedDate || "") || new Date(0);
       const diff = dateB.getTime() - dateA.getTime();
       if (diff !== 0) return diff;
-      return b.slot_start_time.localeCompare(a.slot_start_time);
+      return (a.slot_start_time || "").localeCompare(b.slot_start_time || "");
     });
   }, [rawBookings, fromDate, toDate]);
 
-  const isPaid = (status?: string) => status?.toLowerCase().includes("success");
+  const isPaid = (status?: string) => status?.toLowerCase().includes("success") || status === "PAID";
+
+  const handleCancel = async (bookingId: string) => {
+    if (!window.confirm("Are you sure you want to cancel this booking?")) return;
+
+    try {
+      await cancelBooking(bookingId, "Cancelled by admin", "admin");
+
+      // Refresh list
+      setRawBookings(prev => prev.filter(b => b.id !== bookingId));
+
+      setToastMessage("Booking cancelled successfully");
+      setToastVariant("success");
+      setShowToast(true);
+    } catch (err: any) {
+      setToastMessage("Failed to cancel: " + err.message);
+      setToastVariant("danger");
+      setShowToast(true);
+    }
+  };
+
+  const handleViewDetails = (booking: any) => {
+    setSelectedBooking(booking);
+    setShowModal(true);
+  };
 
   if (loading) {
     return (
-      <div className="d-flex justify-content-center align-items-center min-vh-70">
-        <div className="spinner-border text-primary" style={{ width: "3rem", height: "3rem" }} />
+      <div className="text-center py-5">
+        <Spinner animation="border" variant="primary" />
+        <p className="mt-3">Loading channel partner bookings...</p>
       </div>
     );
   }
@@ -76,12 +118,12 @@ const TurfBookingsPage: React.FC = () => {
   return (
     <div className="admin-page-container">
       <AdminNavbar />
-      <h2 className="fw-bold mb-2">Booked Slots - {turfId}</h2>
+      <h2 className="fw-bold mb-2">Channel Partner Bookings {turfId ? `- ${turfId}` : ""}</h2>
       <p className="text-muted mb-4">
-        Total bookings shown: <strong>{displayedBookings.length}</strong>
-        {displayedBookings.length !== rawBookings.length && ` (filtered from ${rawBookings.length})`}
+        Total shown: <strong>{displayedBookings.length}</strong>
       </p>
 
+      {/* Date filters */}
       <div className="card border-0 shadow-sm p-4 mb-4 bg-light">
         <div className="row g-3 align-items-end">
           <div className="col-md-5">
@@ -98,60 +140,92 @@ const TurfBookingsPage: React.FC = () => {
             </button>
           </div>
         </div>
-        <small className="text-muted mt-2 d-block">
-          Use the calendar picker. Leave both fields empty to see all bookings.
-        </small>
       </div>
 
       {displayedBookings.length === 0 ? (
         <div className="text-center py-5">
-          <h5 className="text-muted">
-            {fromDate || toDate ? "No bookings found in this date range" : "No bookings yet"}
-          </h5>
+          <h5 className="text-muted">No channel partner bookings found</h5>
         </div>
       ) : (
-        <div className="row g-4">
-          {displayedBookings.map((booking) => (
-            // UNIQUE KEY FIX
-            <div key={`${booking.booking_id}-${booking.slot_start_time}-${booking.date}`} className="col-md-6 col-lg-4 col-xl-3">
-              <div className="card shadow-sm border-0 h-100 hover-lift">
-                <div
-                  className="card-header text-white d-flex justify-content-between align-items-center"
-                  style={{
-                    background: isPaid(booking.payment_status)
-                      ? "linear-gradient(135deg, #16a34a, #22c55e)"
-                      : "linear-gradient(135deg, #ca8a04, #eab308)",
-                  }}
-                >
-                  <h6 className="mb-0 fw-bold">Booked On: {booking.date}</h6>
-                  <span className="badge bg-white text-dark fw-bold">
-                    {isPaid(booking.payment_status) ? "Paid" : "Pending"}
-                  </span>
-                </div>
-
-                <div className="card-body">
-                  <p className="mb-1"><strong>User:</strong> {booking.booking_username}</p>
-                  <p className="mb-1"><strong>Sport:</strong> {booking.sport}</p>
-                  <p className="mb-1"><strong>Court:</strong> {booking.court}</p>
-                  <p className="mb-3 fs-4 fw-bold text-primary">{booking.slot_start_time}</p>
-
-                  <div className="d-flex justify-content-between align-items-center">
-                    <span className="fw-bold text-success fs-5">
-                      ₹{Number(booking.paid_amount || 0).toLocaleString("en-IN")}
-                    </span>
-                    <small className="text-muted">ID: {booking.booking_id.slice(-8)}</small>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+        <Table responsive hover className="table-bordered">
+          <thead className="table-success">
+            <tr>
+              <th>Booked On</th>
+              <th>Channel Partner</th>
+              <th>Sport</th>
+              <th>Court</th>
+              <th>Date</th>
+              <th>Time</th>
+              <th>Amount</th>
+              <th>Status</th>
+              <th>ID (last 8)</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {displayedBookings.map((booking) => (
+              <tr key={booking.id}>
+                <td>{booking.date || booking.selectedDate || "—"}</td>
+                <td>{booking.booking_username || "—"}</td>
+                <td>{booking.booked_sports_name || booking.sport || "—"}</td>
+                <td>{booking.court || "—"}</td>
+                <td>{booking.date || booking.selectedDate || "—"}</td>
+                <td>{booking.slot_start_time || (Array.isArray(booking.allSlots) ? booking.allSlots.join(", ") : "—")}</td>
+                <td>₹{Number(booking.paid_amount || booking.paidAmount || 0).toLocaleString("en-IN")}</td>
+                <td>
+                  <Badge bg={isPaid(booking.payment_status || booking.paymentStatus) ? "success" : "warning"}>
+                    {isPaid(booking.payment_status || booking.paymentStatus) ? "Paid" : "Pending"}
+                  </Badge>
+                </td>
+                <td>{booking.booking_id?.slice(-8) || booking.id?.slice(-8)}</td>
+                <td>
+                  <Button variant="outline-primary" size="sm" className="me-2" onClick={() => handleViewDetails(booking)}>
+                    View
+                  </Button>
+                  {booking.payment_status !== "CANCELLED" && (
+                    <Button variant="outline-danger" size="sm" onClick={() => handleCancel(booking.id)}>
+                      Cancel
+                    </Button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
       )}
 
-      <style >{`
-        .hover-lift { transition: all 0.3s ease; }
-        .hover-lift:hover { transform: translateY(-6px); box-shadow: 0 10px 25px rgba(0,0,0,0.15) !important; }
-      `}</style>
+      {/* Details Modal */}
+      <Modal show={showModal} onHide={() => setShowModal(false)} size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>Booking Details - {selectedBooking?.id?.slice(-8)}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {selectedBooking ? (
+            <pre style={{ whiteSpace: "pre-wrap", fontSize: "0.9rem" }}>
+              {JSON.stringify(selectedBooking, null, 2)}
+            </pre>
+          ) : (
+            <p>No details available</p>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowModal(false)}>
+            Close
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Toast Notification */}
+      <Toast
+        show={showToast}
+        onClose={() => setShowToast(false)}
+        delay={5000}
+        autohide
+        bg={toastVariant}
+        className="position-fixed bottom-0 end-0 m-3"
+      >
+        <Toast.Body className="text-white">{toastMessage}</Toast.Body>
+      </Toast>
     </div>
   );
 };

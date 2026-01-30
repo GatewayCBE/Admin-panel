@@ -1,5 +1,3 @@
-// Dashboard.tsx - improved version
-
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
@@ -108,6 +106,24 @@ const Dashboard: React.FC = () => {
           <div className="card-body p-4 d-flex flex-column">
             <h4 className="card-title fw-bold mb-3">Analytics</h4>
             <p className="mb-auto opacity-90">Insights • Reports • Trends</p>
+          </div>
+        </div>
+      </Link>
+    </div>
+    {/* Bookings */}
+    <div className="col-12 col-md-6 col-lg-5">
+      <Link to="/admin/userbookings" className="text-decoration-none">
+        <div 
+          className="card border-0 shadow h-100 text-white"
+          style={{ 
+            backgroundColor: '#67a521ff',
+            borderRadius: '16px',
+            minHeight: '180px'
+          }}
+        >
+          <div className="card-body p-4 d-flex flex-column">
+            <h4 className="card-title fw-bold mb-3">User Bookings</h4>
+            <p className="mb-auto opacity-90">View user bookings and slot details</p>
           </div>
         </div>
       </Link>

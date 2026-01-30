@@ -34,6 +34,7 @@ import OwnerProfile from "../pages/admin/Owner/OwnerProfile";
 import SlotManagement from "../pages/admin/Owner/SlotManagement";
 import SlotBookingConfirmation from "../pages/admin/Owner/SlotBookingConfirmation";
 import ViewBookings from "../pages/admin/Owner/ViewBookings";
+import UserBookings from "../pages/admin/Analytics/UserBookings";
 import UserProfile from "../pages/user/UserProfile";
 import UserBookingHistory from "../pages/user/UserBookings";
 import UserBookingHistoryPage from "../pages/user/UserBookings";
@@ -91,6 +92,7 @@ const AppRoutes: React.FC = () => {
         <Route path="/dashboard/owners/:ownerId/:turfId/slots" element={<TurfBookingsPage />} />
         <Route path="/admin/reports/*" element={<AnalyticsPanel />} />
         <Route path="/admin/recentbookings" element={<RecentBookingsPage />} />
+        <Route path="/admin/userbookings" element={<UserBookings />} />
       </Route>
 
       {/* 🔐 Auth pages (no navbar/footer) */}
