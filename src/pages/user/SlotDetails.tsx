@@ -513,7 +513,7 @@ const disabled =
   isBooked
     ? "bg-danger text-black"   // 🔴 BOOKED
     : disabled
-    ? "bg-light bg-opacity-50"
+    ? "bg-secondary bg-opacity-50"
     : selected
     ? "bg-success text-white"
     : "bg-white"

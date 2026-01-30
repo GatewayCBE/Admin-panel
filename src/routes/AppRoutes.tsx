@@ -65,6 +65,7 @@ const AppRoutes: React.FC = () => {
 
       {/* 👤 Owner pages */}
       <Route element={<OwnerLayout/>}>
+      <Route path="/owner/home" element={<OwnerDashboard />} />
         <Route path="/owner/dashboard" element={<AddTurfForm />} />
         <Route path="/owner/channelpartnerdashboard" element={<ChannelPartnerDashboard/>} />
         <Route path="/owner/profile" element={<OwnerProfile />} />

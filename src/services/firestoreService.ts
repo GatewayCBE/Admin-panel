@@ -509,7 +509,7 @@ export const createTurf = async ({
   const turfDoc = {
     turf_id: turfId,
     turf_name: formData.turfName,
-    turf_mobile_number: formData.turfMobileNumber,
+    // turf_mobile_number: formData.turfMobileNumber,
     turf_location: formData.turfAddress,
     turf_description: formData.turfDescription,
     turf_length: `${formData.turfLength} ${formData.dimensionUnit}`,
