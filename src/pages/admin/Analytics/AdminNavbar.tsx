@@ -31,13 +31,16 @@ const AdminNavbar: React.FC = () => {
 
         {/* LOGO */}
         <Link to="/" className="navbar-brand d-flex align-items-center" onClick={closeMenu}>
-          <img
-            src={LogoImg}
-            alt="BookYourTurf Logo"
-            style={{
-              height: "80px",
-              objectFit: "contain",
-            }}
+           <img
+                      src={LogoImg} 
+                    alt="BookYourTurf Logo" 
+                    style={{
+                      height: "100px",
+                      width: "auto",
+                      objectFit: "contain",
+                      marginTop: "-25px",
+                      marginBottom: "-20px",
+                    }}
           />
         </Link>
 
@@ -56,18 +59,19 @@ const AdminNavbar: React.FC = () => {
           {/* CENTER LINKS */}
           <ul className="navbar-nav mx-auto text-center text-lg-start gap-lg-3">
             <li className="nav-item">
-              <Link className="nav-link text-white fs-5" to="/" onClick={closeMenu}>
-                Home
+              <Link className="nav-link text-white fs-6 fw-bold" to="/" onClick={closeMenu}>
+                HOME
               </Link>
             </li>
             <li className="nav-item">
-              <Link className="nav-link text-white fs-5" to="/dashboard" onClick={closeMenu}>
-                Dashboard
+              <Link className="nav-link text-white fs-6 fw-bold" to="/dashboard" onClick={closeMenu}>
+                
+                DASHBOARD
               </Link>
             </li>
             <li className="nav-item">
-              <Link className="nav-link text-white fs-5" to="/admin/recentbookings" onClick={closeMenu}>
-                Bookings
+              <Link className="nav-link text-white fs-6 fw-bold" to="/admin/recentbookings" onClick={closeMenu}>
+                BOOKINGS
               </Link>
             </li>
           </ul>

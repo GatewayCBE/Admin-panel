@@ -19,73 +19,83 @@ const Owner: React.FC = () => {
   return (
     <div className="admin-page-container">
       <AdminNavbar />
-      <h2 className="text-center text-success mt-5 pt-4 mb-4 fw-bold">
-        Channel Partner List
-      </h2>
 
-      <div className="mb-4"
-       style={{
-          position: "relative",
-          width: "100%",
-          maxWidth: "400px",
-          margin: "0 auto",
-        }}>
-        <input
-          type="text"
-          className="form-control shadow-sm"
-          placeholder="Search by Partners..."
-          value={searchTerm}
-                    style={{ width: "100%", paddingRight: "40px" }}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-          <span
-          style={{
-            position: "absolute",
-            right: "10px",
-            top: "50%",
-            transform: "translateY(-50%)",
-            cursor: "pointer",
-            color: "#888",
-          }}
-        >
-          🔍
-        </span>
-      </div>
+      {/* PAGE TITLE */}
+      <div className="container pt-5 mt-4">
+        <h2 className="text-center text-success mb-4 fw-bold">
+          Channel Partner List
+        </h2>
 
-      {filteredOwners.length === 0 ? (
-        <p className="text-center text-muted">No matching owners found.</p>
-      ) : (
-        <ul className="list-group shadow-sm">
-          {filteredOwners.map((owner) => (
-            <div
-              className="list-group-item list-group-item-action d-flex justify-content-between align-items-center flex-wrap rounded-3 mb-3 border-0 shadow-sm"
-              style={{
-                marginLeft: "130px",
-                width: "80%",
-                backgroundColor: "#5ad79f",
-                color: "#02613a",
-              }}
-            >
-              <div>
-                <h5 className="fw-bold mb-1">{owner.owner_name}</h5>
-                <p className="mb-1">📧 {owner.owner_email}</p>
-                <p className="mb-0">📱 {owner.owner_mobile_number}</p>
-                {/* <p className="mb-0">🆔 {owner.owner_id}</p> */}
-              </div>
-              <div className="d-flex justify-content-between align-items-center">
-                <Link
-                  className="badge bg-light text-success rounded-pill px-3 py-2 me-3" // add me-3 for margin
-                  key={owner.owner_id}
-                  to={`/dashboard/owners/${owner.owner_id}`}
-                  style={{ textDecoration: "none" }}
-                >
-                  View Turf →
-                </Link>
-              </div>
+        {/* SEARCH BAR */}
+        <div className="row justify-content-center mb-4">
+          <div className="col-12 col-sm-10 col-md-8 col-lg-6">
+            <div className="position-relative">
+              <input
+                type="text"
+                className="form-control form-control-lg shadow-sm"
+                placeholder="Search by name, email, mobile..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{ paddingRight: "45px" }}
+              />
+              <span
+                className="position-absolute top-50 end-0 translate-middle-y me-3 text-muted"
+                style={{ pointerEvents: "none" }}
+              >
+                🔍
+              </span>
             </div>
-          ))}
-        </ul>
-      )}
+          </div>
+        </div>
+
+        {/* OWNER LIST */}
+        {filteredOwners.length === 0 ? (
+          <p className="text-center text-muted">
+            No matching owners found.
+          </p>
+        ) : (
+          <div className="row g-3">
+            {filteredOwners.map((owner) => (
+              <div
+                key={owner.owner_id}
+                className="col-12 col-md-6 col-lg-4"
+              >
+                <div
+                  className="card h-100 border-0 shadow-sm rounded-4"
+                  style={{
+                    backgroundColor: "#5ad79f",
+                    color: "#02613a",
+                  }}
+                >
+                  <div className="card-body d-flex flex-column justify-content-between">
+                    <div>
+                      <h5 className="fw-bold mb-2">
+                        {owner.owner_name}
+                      </h5>
+                      <p className="mb-1 small">
+                        📧 {owner.owner_email}
+                      </p>
+                      <p className="mb-0 small">
+                        📱 {owner.owner_mobile_number}
+                      </p>
+                    </div>
+
+                    <div className="mt-3">
+                      <Link
+                        to={`/dashboard/owners/${owner.owner_id}`}
+                        className="btn btn-light btn-sm text-success fw-semibold rounded-pill w-100"
+                        style={{ textDecoration: "none" }}
+                      >
+                        View Turf →
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
