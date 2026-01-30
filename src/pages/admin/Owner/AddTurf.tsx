@@ -585,28 +585,32 @@ const AddTurfForm: React.FC = () => {
   const renderStep1 = () => (
   <>
     <button
-      className="btn-back"
-      onClick={() => {
-        if (step === 2) {
-          setStep(1);
-        } else {
-          setVenueType(null);
-        }
-      }}
-    >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="26"
-        height="26"
-        fill="black"
-        viewBox="0 0 16 16"
-      >
-        <path
-          fillRule="evenodd"
-          d="M15 8a.5.5 0 0 0-.5-.5H3.707l4.147-4.146a.5.5 0 1 0-.708-.708l-5 5a.5.5 0 0 0 0 .708l5 5a.5.5 0 0 0 .708-.708L3.707 8.5H14.5A.5.5 0 0 0 15 8z"
-        />
-      </svg>
-    </button>
+  className="btn-back"
+  onClick={() => {
+    if (step === 2) {
+      setStep(1);
+    } else {
+      setVenueType(null); // 🔥 Go back to venue type selection
+    }
+  }}
+>
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="26"
+    height="26"
+    fill="black"
+    viewBox="0 0 16 16"
+  >
+    <path
+      fillRule="evenodd"
+      d="M15 8a.5.5 0 0 0-.5-.5H3.707l4.147-4.146a.5.5 0 1 0-.708-.708l-5 5a.5.5 0 0 0 0 .708l5 5a.5.5 0 0 0 .708-.708L3.707 8.5H14.5A.5.5 0 0 0 15 8z"
+    />
+  </svg>
+  </button>
+    <h1 className="header-title fw-bold fs-3 text-success text-center">
+  {step === 1 && venueType === 'turf' && 'Add Turf Venue'}
+  {step === 1 && venueType === 'badminton' && 'Add Badminton Venue'}
+  {step === 1 && venueType === 'pickleball' && 'Add Pickleball Venue'}
 
     <h1 className="header-title fw-bold fs-3 text-success text-center">
       {step === 1 && venueType === 'turf' && 'Add Turf'}
@@ -617,10 +621,11 @@ const AddTurfForm: React.FC = () => {
     <div className="step-container mt-5">
       {/* Images */}
       <div className="mb-4">
-        <label className="form-label text-muted">
-          {venueType === 'turf' ? 'Turf Images' : 'Court Images'} (1–5 required)
-          <span className="text-danger">*</span>
-        </label>
+        
+  <label className="form-label text-muted">
+  {venueType === 'turf' ? 'Venue Images' : 'Venue Images'} (1–5 required)
+  <span className="text-danger">*</span>
+</label>
 
         <div className="d-flex justify-content-center mb-3">
           <label htmlFor="imageUpload" style={{ cursor: "pointer" }}>
@@ -719,35 +724,68 @@ const AddTurfForm: React.FC = () => {
         )}
       </div>
 
-      {/* Description */}
-      <div className="mb-4">
-        <textarea
-          className={`form-control custom-input ${errors.turfDescription ? "is-invalid" : ""}`}
-          placeholder="Description & Achievements *"
-          name="turfDescription"
-          rows={6}
-          value={formData.turfDescription}
-          onChange={(e) => {
-            const value = e.target.value;
-            handleInputChange(e);
+<div className="mb-3">
+  <div className="position-relative">
+    <input
+      type="text"
+      className="form-control custom-input"
+      placeholder="Enter City *"
+      name="turfAddress"
+      value={formData.turfAddress}
+      onChange={handleInputChange}
+    />
+            {errors.turfAddress && <small className="text-danger">{errors.turfAddress}</small>}
 
-            if (value.trim().length >= 30) {
-              setErrors(prev => ({ ...prev, turfDescription: "" }));
-            } else if (value.trim().length > 0) {
-              setErrors(prev => ({
-                ...prev,
-                turfDescription: "Minimum 30 characters required"
-              }));
-            } else {
-              setErrors(prev => ({
-                ...prev,
-                turfDescription: "Description is required"
-              }));
-            }
-          }}
-        />
-        {errors.turfDescription && <small className="text-danger d-block mt-1">{errors.turfDescription}</small>}
-      </div>
+  </div>
+
+  {formData.turfAddress.trim().length > 5 && (
+    <div className="mt-2 text-end">
+      <button
+        type="button"
+        className="btn btn-sm btn-outline-primary"
+        onClick={() => {
+          const encodedAddress = encodeURIComponent(formData.turfAddress);
+          const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
+          window.open(mapUrl, "_blank");
+        }}
+        style={{ fontSize: '12px', borderRadius: '20px' }}
+      >
+        🔍 Verify Location on Google Maps
+      </button>
+    </div>
+  )}
+</div>
+
+     <div className="mb-4">
+  <textarea
+    className={`form-control custom-input ${
+      errors.turfDescription ? "is-invalid" : ""
+    }`}
+    placeholder={
+      venueType === "turf"
+        ? "Turf Description & Achievements *"
+        : "Description & Achievements *"
+    }
+    name="turfDescription"
+    value={formData.turfDescription}
+    onChange={(e) => {
+      const value = e.target.value;
+      handleInputChange(e); 
+
+      if (value.trim().length < 30) {
+        setErrors(prev => ({
+          ...prev,
+          turfDescription: "Minimum 30 characters required"
+        }));
+      } else {
+        setErrors(prev => ({
+          ...prev,
+          turfDescription: ""
+        }));
+      }
+    }}
+    rows={6}
+  />
 
       {/* TURF DIMENSIONS – ONLY FOR TURF */}
       {venueType === 'turf' && (
@@ -902,16 +940,30 @@ const AddTurfForm: React.FC = () => {
 );
 
   const renderStep2 = () => (
-  <>
-    <button
-      className="btn-back"
-      onClick={() => setStep(1)}
-    >
-      <svg width="26" height="26" fill="black" viewBox="0 0 16 16">
-        <path fillRule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H3.707l4.147-4.146a.5.5 0 1 0-.708-.708l-5 5a.5.5 0 0 0 0 .708l5 5a.5.5 0 0 0 .708-.708L3.707 8.5H14.5A.5.5 0 0 0 15 8z"/>
-      </svg>
-    </button>
-
+    <>
+        <button
+  className="btn-back"
+  onClick={() => {
+    if (step === 2) {
+      setStep(1);
+    } else {
+      setVenueType(null); 
+    }
+  }}
+>
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="26"
+    height="26"
+    fill="black"
+    viewBox="0 0 16 16"
+  >
+    <path
+      fillRule="evenodd"
+      d="M15 8a.5.5 0 0 0-.5-.5H3.707l4.147-4.146a.5.5 0 1 0-.708-.708l-5 5a.5.5 0 0 0 0 .708l5 5a.5.5 0 0 0 .708-.708L3.707 8.5H14.5A.5.5 0 0 0 15 8z"
+    />
+  </svg>
+  </button>
     <div className="step-container">
       <div className="mb-4">
         <div className="d-flex gap-2 align-items-center mb-4">

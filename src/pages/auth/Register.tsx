@@ -69,44 +69,48 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return setError("Please sign in with Google first");
-    if (!name.trim()) return setError("Name required");
-    // if (!/^\+91[6-9]\d{9}$/.test(mobile)) return setError("Invalid mobile");
-    if (password.length < 6) return setError("Password too short");
-    if (password !== confirmPassword) return setError("Passwords don't match");
-    if (!acceptedTerms) { return setError("You must accept the Terms & Conditions"); }
+ const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
 
-    setLoading(true);
-    try {
-      if (await isMobileRegisteredForRole(role, mobile)) {
-  return setError(
-    role === "user"
-      ? "Mobile already registered as Player"
-      : "Mobile already registered as Channel Partner"
-  );
-}
+  if (!user) return setError("Please sign in with Google first");
+  if (!name.trim()) return setError("Name required");
+  if (mobile.length !== 10) return setError("Valid mobile required");
+  if (password.length < 6) return setError("Password too short");
+  if (password !== confirmPassword) return setError("Passwords don't match");
+  if (!acceptedTerms) return setError("You must accept the Terms & Conditions");
 
-      const encrypted = await encryptPasswordAES(password);
+  setLoading(true);
+  try {
+    const fullMobile = `+91${mobile}`; // ✅ ADD COUNTRY CODE
 
-      await saveUserProfile(role as "user" | "owner", {
-        name,
-        email: user.email || "",
-        mobile,
-        uid: user.uid,
-        password: encrypted,
-         acceptedTerms,
-      });
-
-      alert("Registration successful!");
-      navigate(role === "user" ? "/user/turfs" : "/owner/channelpartnerdashboard");
-    } catch (err: any) {
-      setError(err.message || "Registration failed");
-    } finally {
-      setLoading(false);
+    if (await isMobileRegisteredForRole(role, fullMobile)) {
+      return setError(
+        role === "user"
+          ? "Mobile already registered as Player"
+          : "Mobile already registered as Channel Partner"
+      );
     }
-  };
+
+    const encrypted = await encryptPasswordAES(password);
+
+    await saveUserProfile(role as "user" | "owner", {
+      name,
+      email: user.email || "",
+      mobile: fullMobile, // ✅ STORED WITH +91
+      uid: user.uid,
+      password: encrypted,
+      acceptedTerms,
+    });
+
+    alert("Registration successful!");
+    navigate(role === "user" ? "/user/turfs" : "/owner/channelpartnerdashboard");
+  } catch (err: any) {
+    setError(err.message || "Registration failed");
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
   <div className="min-vh-100 d-flex align-items-center justify-content-center bg-light">

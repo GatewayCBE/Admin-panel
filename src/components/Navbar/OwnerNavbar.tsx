@@ -32,14 +32,16 @@ const OwnerNavbar: React.FC = () => {
           className="navbar-brand d-flex align-items-center"
           onClick={closeMenu}
         >
-          <img
-            src={LogoImg}
-            alt="BookYourTurf Logo"
-            style={{
-                           height: "80px",
-
-              objectFit: "contain",
-            }}
+            <img
+                                src={LogoImg} 
+                              alt="BookYourTurf Logo" 
+                              style={{
+                                height: "100px",
+                                width: "auto",
+                                objectFit: "contain",
+                                marginTop: "-25px",
+                                marginBottom: "-20px",
+                              }}
           />
         </Link>
 
