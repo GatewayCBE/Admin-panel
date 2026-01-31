@@ -1481,6 +1481,26 @@ export async function getAllBookings(): Promise<any[]> {
   }
 }
 
+export const cancelBooking = async (bookingId: string) => {
+  const res = await fetch(
+    "https://asia-south1-play-arena-e83d8.cloudfunctions.net/cancelWebBooking",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ bookingId }),
+    }
+  );
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data.error || "Cancel failed");
+  }
+
+  return true;
+};
+
+
 export interface Booking {
   id: string;
   booking_id?: string;
@@ -1589,103 +1609,6 @@ export const getUserBookings = async (): Promise<Booking[]> => {
     console.error("[ADMIN] Fetch error:", err);
     throw err;
   }
-};
-
-/**
- * Cancel a booking and FREE the slot for others to book
- * Works for both user dashboard and admin panel
- */
-export const cancelBooking = async (
-  bookingId: string,
-  reason: string = "Cancelled via admin panel",
-  cancelledBy: "user" | "admin" = "admin"
-): Promise<boolean> => {
-  const currentUserId = getCurrentUserId();
-  if (!currentUserId) throw new Error("User not logged in");
-
-  const bookingRef = doc(db, "environments", "testing", "bookings", bookingId);
-  const bookingSnap = await getDoc(bookingRef);
-
-  if (!bookingSnap.exists()) throw new Error("Booking not found");
-
-  const data = bookingSnap.data();
-
-  // Authorization
-  const tokenResult = await auth.currentUser?.getIdTokenResult();
-  const isAdmin = tokenResult?.claims?.admin === true;
-  const isAuthorized =
-    isAdmin ||
-    data.user_id === currentUserId ||
-    data.owner_id === currentUserId ||
-    data.userId === currentUserId ||
-    data.ownerId === currentUserId;
-
-  if (!isAuthorized) throw new Error("Not authorized");
-
-  // Update booking status
-  await updateDoc(bookingRef, {
-    payment_status: "CANCELLED",
-    cancelled_at: new Date().toISOString(),
-    cancel_reason: reason,
-    cancelled_by: cancelledBy,
-    cancelled_by_uid: currentUserId,
-  });
-
-  // Best-effort slot info
-  let turfId = data.turf_id || data.turfId || data.turf || null;
-  let dateRaw = data.date || data.selectedDate || data.selecteddated || null;
-  let sport = data.booked_sports_name || data.bookedSportsName || data.sport || null;
-  let court = data.court || data.Court || "court 1";
-
-  // Guess sport from turf name if missing
-  if (!sport) {
-    const turfNameLower = (data.turfName || data.turf_name || "").toLowerCase();
-    if (turfNameLower.includes("badminton")) sport = "badminton";
-    else if (turfNameLower.includes("pickle")) sport = "pickleball";
-    else if (turfNameLower.includes("football") || turfNameLower.includes("box")) sport = "football & boxcricket";
-    else sport = "football & boxcricket"; // default
-  }
-
-  // Handle allSlots array
-  let slotStarts = 
-    data.slot_start_time || 
-    data.slotStartTime || 
-    data.slotStart || 
-    (Array.isArray(data.allSlots) && data.allSlots.length > 0 ? data.allSlots[0] : null);
-
-  // Normalize date
-  let normalizedDate = null;
-  if (dateRaw) {
-    try {
-      const d = new Date(dateRaw);
-      if (!isNaN(d.getTime())) {
-        const day = String(d.getDate()).padStart(2, "0");
-        const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-        normalizedDate = `${day}-${monthNames[d.getMonth()]}-${d.getFullYear()}`;
-      }
-    } catch {}
-  }
-
-  // Try to free the slot
-  if (turfId && normalizedDate && sport && court && slotStarts) {
-    const slotPath = `environment/testing/all_turfs_slot_booking/${turfId}/${normalizedDate}/${sport}/${court}/${slotStarts}`;
-    const slotRef = doc(db, slotPath);
-
-    console.log("[CANCEL] Deleting slot:", slotPath);
-
-    try {
-      await deleteDoc(slotRef);
-      console.log("[CANCEL] Slot freed successfully");
-    } catch (err) {
-      console.warn("[CANCEL] Slot already free or delete failed:", (err as Error).message);
-    }
-  } else {
-    console.warn("[CANCEL] Could not free slot – missing fields", {
-      turfId, normalizedDate, sport, court, slotStarts
-    });
-  }
-
-  return true;
 };
 
 /**

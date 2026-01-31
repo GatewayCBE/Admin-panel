@@ -82,24 +82,25 @@ const TurfBookingsPage: React.FC = () => {
 
   const isPaid = (status?: string) => status?.toLowerCase().includes("success") || status === "PAID";
 
-  const handleCancel = async (bookingId: string) => {
-    if (!window.confirm("Are you sure you want to cancel this booking?")) return;
+  const handleCancel = async (booking: any) => {
+  if (!window.confirm("Are you sure you want to cancel this booking?")) return;
 
-    try {
-      await cancelBooking(bookingId, "Cancelled by admin", "admin");
+  try {
+    await cancelBooking(booking.id);
 
-      // Refresh list
-      setRawBookings(prev => prev.filter(b => b.id !== bookingId));
+    // Remove row OR mark cancelled
+    setRawBookings(prev => prev.filter(b => b.id !== booking.id));
 
-      setToastMessage("Booking cancelled successfully");
-      setToastVariant("success");
-      setShowToast(true);
-    } catch (err: any) {
-      setToastMessage("Failed to cancel: " + err.message);
-      setToastVariant("danger");
-      setShowToast(true);
-    }
-  };
+    setToastMessage("Booking cancelled successfully");
+    setToastVariant("success");
+    setShowToast(true);
+  } catch (err: any) {
+    console.error(err);
+    setToastMessage(err.message || "Failed to cancel booking");
+    setToastVariant("danger");
+    setShowToast(true);
+  }
+};
 
   const handleViewDetails = (booking: any) => {
     setSelectedBooking(booking);
@@ -183,9 +184,13 @@ const TurfBookingsPage: React.FC = () => {
                     View
                   </Button>
                   {booking.payment_status !== "CANCELLED" && (
-                    <Button variant="outline-danger" size="sm" onClick={() => handleCancel(booking.id)}>
-                      Cancel
-                    </Button>
+                    <Button
+  variant="outline-danger"
+  size="sm"
+  onClick={() => handleCancel(booking)}
+>
+  Cancel
+</Button>
                   )}
                 </td>
               </tr>

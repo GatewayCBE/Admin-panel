@@ -480,9 +480,11 @@ const AddTurfForm: React.FC = () => {
       setFormData(createInitialForm());
       setSports([]);
       setSelectedImages([]);
+      setImagePreviews([]);
       setImagePreview("");
       setExpandedSections({});
       setErrors({});
+      setCurrentSport('');
       setStep(1);          // go back to step 1
       setVenueType(null);
     } catch (err) {
@@ -608,7 +610,7 @@ const AddTurfForm: React.FC = () => {
   </svg>
   </button>
     <h1 className="header-title fw-bold fs-3 text-success text-center">
-      {step === 1 && venueType === 'turf' && 'Add Turf'}
+      {step === 1 && venueType === 'turf' && 'Add Turf Venue'}
       {step === 1 && venueType === 'badminton' && 'Add Badminton Venue'}
       {step === 1 && venueType === 'pickleball' && 'Add Pickleball Venue'}
     </h1>
@@ -680,12 +682,13 @@ const AddTurfForm: React.FC = () => {
           onChange={(e) => {
             setFormData(prev => ({ ...prev, turfName: e.target.value }));
             if (e.target.value.trim()) setErrors(prev => ({ ...prev, turfName: "" }));
+              else setErrors(prev => ({ ...prev, turfName: "Venue name is required" }));
           }}
         />
         {errors.turfName && <small className="text-danger d-block mt-1">{errors.turfName}</small>}
       </div>
 
-      {/* Venue Address */}
+      {/* Venue Address
       <div className="mb-3 position-relative">
         <input
           type="text"
@@ -698,10 +701,10 @@ const AddTurfForm: React.FC = () => {
             if (e.target.value.trim()) setErrors(prev => ({ ...prev, turfAddress: "" }));
           }}
         />
-        {errors.turfAddress && <small className="text-danger d-block mt-1">{errors.turfAddress}</small>}
+        {errors.turfAddress && <small className="text-danger d-block mt-1">{errors.turfAddress}</small>} */}
 
         {/* Verify Location Button */}
-        {formData.turfAddress.trim().length > 5 && (
+        {/* {formData.turfAddress.trim().length > 5 && (
           <div className="mt-2 text-end">
             <button
               type="button"
@@ -717,7 +720,7 @@ const AddTurfForm: React.FC = () => {
             </button>
           </div>
         )}
-      </div>
+      </div> */}
 
 <div className="mb-3">
   <div className="position-relative">

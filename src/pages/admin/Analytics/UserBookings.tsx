@@ -47,21 +47,14 @@ const UserBookings: React.FC = () => {
   }, [authLoading, isAdmin]);
 
   const handleCancel = async (bookingId: string) => {
-  if (!window.confirm("Are you sure you want to cancel this booking?")) return;
+  if (!window.confirm("Are you sure?")) return;
 
   try {
     setCancellingId(bookingId);
-    // Call the updated function
-    await cancelBooking(bookingId, "Cancelled via admin panel", "admin");
-
-    // Refresh list
-    setBookings((prev) =>
-      prev.filter((b) => b.id !== bookingId) // or mark as cancelled
-    );
-
-    alert("Booking cancelled and slot freed successfully");
+    await cancelBooking(bookingId);
+    setBookings(prev => prev.filter(b => b.id !== bookingId));
   } catch (err: any) {
-    alert("Failed to cancel: " + (err.message || "Unknown error"));
+    alert(err.message || "Failed to cancel booking");
   } finally {
     setCancellingId(null);
   }
@@ -251,7 +244,7 @@ const UserBookings: React.FC = () => {
                   {canCancel && (
                     <button
                       className="btn btn-outline-danger btn-sm w-100"
-                      onClick={() => handleCancel(booking.id)}
+                      onClick={() => handleCancel(booking)}
                       disabled={cancellingId === booking.id}
                     >
                       {cancellingId === booking.id ? (
