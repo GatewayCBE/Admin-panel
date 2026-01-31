@@ -288,4 +288,5 @@ export const onSlotCreated = onDocumentCreated(
 export { getRecentBookings } from "./getRecentBookings";
 export { deleteTurfByAdmin } from "./deleteTurf";
 export { createWebRazorpayOrder, verifyWebRazorpayPayment } from "./razorpayWeb";
+export { cancelWebBooking } from "./cancelWebBooking";
 export { saveFcmToken } from "./saveFcmToken";

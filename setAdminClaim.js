@@ -13,15 +13,28 @@ async function setAdmin(uid) {
       admin: true,
     });
 
-    console.log(`✅ Admin claim set successfully for UID: ${uid}`);
-    process.exit(0);
+    console.log(`Admin claim set successfully for UID: ${uid}`);
   } catch (err) {
-    console.error("❌ Error setting admin claim:", err);
-    process.exit(1);
+    console.error(`Failed for ${uid}:`, err.message);
   }
 }
 
-// 🔁 REPLACE THIS
-const ADMIN_UID = "zx1mlwMcTtNJVyQwTMCpzxjHCiq2";
+const ADMIN_UID = [
+  "zx1mlwMcTtNJVyQwTMCpzxjHCiq2",
+  "E1jKyyKbnjakUKlrUggTKfTdYrk1",
+  "bVvLILbnsSPJBQEhUiztgMQ5Cre2",
+  "zGWf5MR0k6bCgFE7zWoK8Gtu0lI3",
+];
 
-setAdmin(ADMIN_UID);
+async function makeAllAdmins() {
+  for (const uid of ADMIN_UID) {
+    await setAdmin(uid);
+  }
+  console.log("All done.");
+  process.exit(0);
+}
+
+makeAllAdmins().catch(err => {
+  console.error("Fatal error:", err);
+  process.exit(1);
+});
