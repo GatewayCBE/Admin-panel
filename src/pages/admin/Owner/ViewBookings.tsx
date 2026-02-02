@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { getTurfsByOwner, groupBookings } from "../../../services/firestoreService";
+import { getTurfsByOwner, groupBookings, SlotBooking } from "../../../services/firestoreService";
 import { getBookingsByTurfAndDate, markBookingFullyPaid } from "../../../services/firestoreService";
 import badmintonImg from "../../../assets/badminton.png";
 import cricketImg from "../../../assets/boxcricket_football.png";
@@ -827,6 +827,7 @@ const ViewBookings: React.FC = () => {
                       }`}
                     >
                       {booking.payment_status === "paid" ? "PAID" : "ADVANCE"}
+                      {booking.createdBy && ` (${booking.createdBy})`}
                     </span>
                   </div>
 
@@ -869,17 +870,17 @@ const ViewBookings: React.FC = () => {
                   <div className="payment-summary">
                     <div className="payment-grid">
                       <div className="payment-item">
-                        <span className="payment-label">Total</span>
-                        <span className="payment-value total">₹{totalAmount}</span>
-                      </div>
-                      <div className="payment-item">
-                        <span className="payment-label">Paid</span>
-                        <span className="payment-value paid">₹{paidAmount}</span>
-                      </div>
-                      <div className="payment-item">
-                        <span className="payment-label">Balance</span>
-                        <span className="payment-value balance">₹{balanceAmount}</span>
-                      </div>
+  <span className="payment-label">Total</span>
+  <span className="payment-value total">₹{totalAmount}</span>
+</div>
+<div className="payment-item">
+  <span className="payment-label">Paid</span>
+  <span className="payment-value paid">₹{paidAmount}</span>
+</div>
+<div className="payment-item">
+  <span className="payment-label">Balance</span>
+  <span className="payment-value balance">₹{balanceAmount}</span>
+</div>
                     </div>
                   </div>
 

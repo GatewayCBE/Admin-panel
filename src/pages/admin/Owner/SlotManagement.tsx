@@ -1,8 +1,11 @@
-import React, { useEffect, useState } from 'react';
-import { getAllBookedSlots, getTurfsByOwner, onSlotUpdate } from '../../../services/firestoreService';
+import React, { useEffect, useState } from "react";
+import {
+  createBooking,
+  getAllBookedSlots,
+  getTurfsByOwner,
+} from "../../../services/firestoreService";
 import pickleballImg from "../../../assets/PickleImg.png";
 import badmintonImg from "../../../assets/badminton.png";
-import footballImg from "../../../assets/football.png";
 import boxcricketImg from "../../../assets/boxcricket_football.png";
 import { useNavigate } from "react-router-dom";
 
@@ -25,13 +28,13 @@ const SlotManagement: React.FC = () => {
   const [courts, setCourts] = useState<string[]>([]);
   const [selectedCourt, setSelectedCourt] = useState<string>("");
 
-  const [operatingHours, setOperatingHours] = useState({ 
-    open: "", 
-    close: "", 
-    dayStart: "", 
-    dayEnd: "", 
-    nightStart: "", 
-    nightEnd: "" 
+  const [operatingHours, setOperatingHours] = useState({
+    open: "",
+    close: "",
+    dayStart: "",
+    dayEnd: "",
+    nightStart: "",
+    nightEnd: "",
   });
   const [slots, setSlots] = useState<TimeSlot[]>([]);
   const [blockedSlots, setBlockedSlots] = useState<Record<string, string[]>>({});
@@ -39,7 +42,7 @@ const SlotManagement: React.FC = () => {
   const [bookingName, setBookingName] = useState<string>("");
   const [bookingMobile, setBookingMobile] = useState<string>("");
   const [bookingDate, setBookingDate] = useState<string>(
-    new Date().toISOString().split('T')[0]
+    new Date().toISOString().split("T")[0]
   );
   
   // ✅ Changed to array for multiple slot selection
@@ -53,7 +56,7 @@ const SlotManagement: React.FC = () => {
       if (data.length > 0) setSelectedTurf(data[0]);
     };
     loadTurfs();
-  }, []);
+  }, [ownerId]);
 
   // Load sports when turf changes
   useEffect(() => {
@@ -69,7 +72,7 @@ const SlotManagement: React.FC = () => {
 
     const sportKey = selectedSport.toLowerCase();
     const timing = selectedTurf.sport_specific_timing?.[sportKey];
-    
+
     if (!timing) {
       console.warn(`No timing found for sport: ${sportKey}`);
       return;
@@ -81,7 +84,7 @@ const SlotManagement: React.FC = () => {
       dayStart: timing.day_start_time || "",
       dayEnd: timing.day_end_time || "",
       nightStart: timing.night_start_time || "",
-      nightEnd: timing.night_end_time || ""
+      nightEnd: timing.night_end_time || "",
     });
 
     const personCount = selectedTurf.sports_specific_person_count?.[selectedSport] || 4;
@@ -98,7 +101,6 @@ const SlotManagement: React.FC = () => {
 
     const clean = time12h.trim().toUpperCase().replace(/\s+/g, " ");
     const parts = clean.split(" ");
-
     let time = parts[0];
     let modifier = parts[1] || null;
 
@@ -128,15 +130,15 @@ const SlotManagement: React.FC = () => {
     while (start < end) {
       const next = new Date(start.getTime() + 60 * 60 * 1000);
 
-      const startLabel = start.toLocaleTimeString([], { 
-        hour: "2-digit", 
-        minute: "2-digit", 
-        hour12: true 
+      const startLabel = start.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
       });
-      const endLabel = next.toLocaleTimeString([], { 
-        hour: "2-digit", 
-        minute: "2-digit", 
-        hour12: true 
+      const endLabel = next.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
       });
 
       tempSlots.push({
@@ -144,7 +146,7 @@ const SlotManagement: React.FC = () => {
         startTime: startLabel,
         endTime: endLabel,
         label: `${startLabel} - ${endLabel}`,
-        isBooked: false
+        isBooked: false,
       });
 
       start.setHours(start.getHours() + 1);
@@ -153,30 +155,74 @@ const SlotManagement: React.FC = () => {
     setSlots(tempSlots);
   };
 
-  // Fetch booked slots
+  // Fetch booked slots – improved version with better logging
   useEffect(() => {
-    const loadBooked = async () => {
-      if (!selectedTurf || !selectedSport || !selectedCourt || !bookingDate) return;
+  // Early return – prevent unnecessary runs
+  if (!selectedTurf?.turf_id || !selectedSport || !selectedCourt || !bookingDate) {
+    console.log("[BOOKED] Skipping – incomplete selection", {
+      turf: !!selectedTurf?.turf_id,
+      sport: !!selectedSport,
+      court: !!selectedCourt,
+      date: !!bookingDate,
+    });
+    // Optional: reset slots to all available when selection incomplete
+    setSlots(prev => prev.map(s => ({ ...s, isBooked: false })));
+    return;
+  }
 
+  const loadBooked = async () => {
+    console.log("[BOOKED] Starting fetch with CURRENT values:", {
+      turfId: selectedTurf.turf_id,
+      date: bookingDate,
+      sport: selectedSport,
+      court: selectedCourt,                // ← must show correct court here
+    });
+
+    try {
       const booked = await getAllBookedSlots(
         selectedTurf.turf_id,
         bookingDate,
         selectedSport,
-        selectedCourt
+        selectedCourt                        // ← pass the current value
       );
 
-      const bookedTimes = booked.map(b => b.slot_start_time);
+      console.log(`[BOOKED] Received ${booked.length} docs for ${selectedCourt}`);
+
+      const activeBookings = booked.filter((b: any) => {
+        const status = (b.paymentStatus || b.payment_status || "").toUpperCase();
+        return status !== "CANCELLED" && !b.cancelledAt;
+      });
+
+      console.log(`[BOOKED] ${activeBookings.length} active after filter`);
+
+      const bookedStartTimes = activeBookings
+        .map((b: any) => (b.slotStartTime || b.slot_start_time || "").trim())
+        .filter(Boolean);
+
+      console.log("[BOOKED] Blocked start times:", bookedStartTimes);
 
       setSlots(prev =>
         prev.map(slot => ({
           ...slot,
-          isBooked: bookedTimes.includes(slot.startTime)
+          isBooked: bookedStartTimes.includes(slot.startTime.trim()),
         }))
       );
-    };
+    } catch (err) {
+      console.error("[BOOKED] Fetch failed:", err);
+    }
+  };
 
-    loadBooked();
-  }, [selectedSport, selectedCourt, selectedTurf, bookingDate]);
+  loadBooked();
+
+  // Cleanup (optional) – reset when unmount or deps change
+  return () => {
+    console.log("[BOOKED] Cleaning up previous fetch");
+  };
+}, [selectedTurf?.turf_id, bookingDate, selectedSport, selectedCourt]);
+
+  // ────────────────────────────────────────────────
+  // The rest of the file remains unchanged
+  // ────────────────────────────────────────────────
 
   const isPastSlot = (slotStart: string) => {
     const today = new Date();
@@ -200,21 +246,20 @@ const SlotManagement: React.FC = () => {
 
     if (isNextDaySlot) {
       if (currentHour < openHour) {
-        if (currentHour > slotHour || (currentHour === slotHour && currentMinute > slotMinute)) {
-          return true;
-        }
+        return (
+          currentHour > slotHour ||
+          (currentHour === slotHour && currentMinute > slotMinute)
+        );
       }
       return false;
     }
 
-    if (currentHour > slotHour || (currentHour === slotHour && currentMinute > slotMinute)) {
-      return true;
-    }
-
-    return false;
+    return (
+      currentHour > slotHour ||
+      (currentHour === slotHour && currentMinute > slotMinute)
+    );
   };
 
-  // ✅ Modified to handle multiple slot selection
   const handleSlotClick = (slot: TimeSlot) => {
     if (!selectedTurf || !selectedSport || !selectedCourt) return;
 
@@ -244,7 +289,7 @@ const SlotManagement: React.FC = () => {
 
     const key = `${selectedTurf.turf_id}_${selectedSport}_${selectedCourt}_${bookingDate}`;
 
-    setBlockedSlots(prev => ({
+    setBlockedSlots((prev) => ({
       ...prev,
       [key]: [...(prev[key] || []), ...selectedTimeSlots]
     }));
@@ -337,7 +382,7 @@ useEffect(() => {
     if (name.includes("pickle")) return pickleballImg;
     if (name.includes("badminton")) return badmintonImg;
     if (name.includes("boxcricket") || name.includes("football")) return boxcricketImg;
-    return '';
+    return "";
   };
 
   const getSlotPrice = (slotStart: string) => {
@@ -378,7 +423,7 @@ useEffect(() => {
   };
 
   return (
-    <div style={{ backgroundColor: '#f8f9fa', minHeight: '100vh' }} className='mt-5 pt-5'>
+    <div style={{ backgroundColor: "#f8f9fa", minHeight: "100vh" }} className="mt-5 pt-5">
       <div className="">
         <h3 className="mb-0 text-center text-success fw-bold">Slot Management</h3>
       </div>
@@ -389,11 +434,9 @@ useEffect(() => {
           <select
             className="form-select mb-3"
             value={selectedTurf?.turf_id || ""}
-            onChange={(e) =>
-              setSelectedTurf(turfs.find(t => t.turf_id === e.target.value))
-            }
+            onChange={(e) => setSelectedTurf(turfs.find((t) => t.turf_id === e.target.value))}
           >
-            {turfs.map(turf => (
+            {turfs.map((turf) => (
               <option key={turf.turf_id} value={turf.turf_id}>
                 {turf.turf_name}
               </option>
@@ -402,20 +445,24 @@ useEffect(() => {
         </div>
 
         {/* Operating Hours */}
-        <div 
-          className="mb-4 p-3 rounded" 
-          style={{ backgroundColor: '#f5f5dc', border: '2px solid #9adf07' }}
+        <div
+          className="mb-4 p-3 rounded"
+          style={{ backgroundColor: "#f5f5dc", border: "2px solid #9adf07" }}
         >
           <div className="d-flex align-items-center mb-2">
-            <span style={{ color: '#9adf07', fontSize: '20px', marginRight: '10px' }}>🕐</span>
-            <h6 className="mb-0" style={{ color: '#9adf07' }}>Operating Hours</h6>
+            <span style={{ color: "#9adf07", fontSize: "20px", marginRight: "10px" }}>🕐</span>
+            <h6 className="mb-0" style={{ color: "#9adf07" }}>
+              Operating Hours
+            </h6>
           </div>
-          <h4 className="mb-1" style={{ fontWeight: 'bold' }}>
-            {operatingHours.open && operatingHours.close 
+          <h4 className="mb-1" style={{ fontWeight: "bold" }}>
+            {operatingHours.open && operatingHours.close
               ? `${operatingHours.open} - ${operatingHours.close}`
-              : ''}
+              : ""}
           </h4>
-          <small className="text-muted d-block mt-1">Users can book any slot within these hours</small>
+          <small className="text-muted d-block mt-1">
+            Users can book any slot within these hours
+          </small>
         </div>
 
         {/* Sport Selection */}
@@ -425,16 +472,12 @@ useEffect(() => {
             <img
               src={getSportImage(selectedSport)}
               alt={selectedSport}
-              style={{
-                width: "90px",
-                height: "90px",
-                objectFit: "contain"
-              }}
+              style={{ width: "90px", height: "90px", objectFit: "contain" }}
             />
           </div>
         </div>
 
-        {/* Booking User Name */}
+        {/* Booking User Name & Mobile */}
         <div className="mb-3">
           <input
             type="text"
@@ -442,11 +485,10 @@ useEffect(() => {
             placeholder="Booking User Name *"
             value={bookingName}
             onChange={(e) => setBookingName(e.target.value)}
-            style={{ padding: '15px' }}
+            style={{ padding: "15px" }}
           />
         </div>
 
-        {/* Booking User Mobile Number */}
         <div className="mb-4">
           <input
             type="tel"
@@ -454,7 +496,7 @@ useEffect(() => {
             placeholder="Booking User Mobile Number *"
             value={bookingMobile}
             onChange={(e) => setBookingMobile(e.target.value)}
-            style={{ padding: '15px' }}
+            style={{ padding: "15px" }}
           />
         </div>
 
@@ -486,13 +528,13 @@ useEffect(() => {
             className="form-control"
             value={bookingDate}
             onChange={(e) => setBookingDate(e.target.value)}
-            min={new Date().toISOString().split('T')[0]}
-            style={{ 
-              padding: '12px',
-              backgroundColor: '#f5f5dc', 
-              border: '2px solid #9adf07',
-              color: '#9adf07',
-              fontWeight: '500'
+            min={new Date().toISOString().split("T")[0]}
+            style={{
+              padding: "12px",
+              backgroundColor: "#f5f5dc",
+              border: "2px solid #9adf07",
+              color: "#9adf07",
+              fontWeight: "500",
             }}
           />
         </div>
@@ -503,7 +545,7 @@ useEffect(() => {
           <small className="text-muted d-block mb-3">
             🔴 Booked | ⚫ Unavailable | ⏳ Past Time | ✅ Available | 🟢 Selected ({selectedTimeSlots.length})
           </small>
-          
+
           <div className="row g-2">
             {slots.map((slot) => {
               const key = `${selectedTurf?.turf_id}_${selectedSport}_${selectedCourt}_${bookingDate}`;
@@ -514,13 +556,13 @@ useEffect(() => {
               const isPast = isPastSlot(slot.startTime);
 
               let buttonStyle = {
-                fontSize: '12px',
-                fontWeight: '500',
-                border: 'none',
-                backgroundColor: '',
-                color: 'white',
-                cursor: 'pointer',
-                opacity: 1
+                fontSize: "12px",
+                fontWeight: "500",
+                border: "none",
+                backgroundColor: "",
+                color: "white",
+                cursor: "pointer",
+                opacity: 1,
               };
 
               if (slot.isBooked) {
@@ -582,7 +624,7 @@ useEffect(() => {
         {/* Action Buttons */}
         <div className="row g-2">
           <div className="col-6">
-            <button 
+            <button
               className="btn w-100 py-3"
               onClick={handleSlotUnavailable}
               disabled={selectedTimeSlots.length === 0}
@@ -598,7 +640,7 @@ useEffect(() => {
             </button>
           </div>
           <div className="col-6">
-            <button 
+            <button
               className="btn w-100 py-3"
               onClick={handleBookSlot}
               disabled={selectedTimeSlots.length === 0 || !bookingName || !bookingMobile}

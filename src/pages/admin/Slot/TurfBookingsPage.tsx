@@ -82,26 +82,21 @@ const TurfBookingsPage: React.FC = () => {
 
   const isPaid = (status?: string) => status?.toLowerCase().includes("success") || status === "PAID";
 
- const handleCancel = async (bookingId: string) => {
+  const handleCancel = async (booking: any) => {
   if (!window.confirm("Are you sure you want to cancel this booking?")) return;
 
   try {
-    await cancelBooking(bookingId, "Cancelled by admin", "admin");
+    await cancelBooking(booking.id);
 
-    // Update local state to show cancelled
-    setRawBookings(prev => 
-      prev.map(b => 
-        b.id === bookingId 
-          ? { ...b, payment_status: "CANCELLED" } 
-          : b
-      )
-    );
+    // Remove row OR mark cancelled
+    setRawBookings(prev => prev.filter(b => b.id !== booking.id));
 
-    setToastMessage("Booking cancelled successfully. Slots are now available.");
+    setToastMessage("Booking cancelled successfully");
     setToastVariant("success");
     setShowToast(true);
   } catch (err: any) {
-    setToastMessage("Failed to cancel: " + err.message);
+    console.error(err);
+    setToastMessage(err.message || "Failed to cancel booking");
     setToastVariant("danger");
     setShowToast(true);
   }
@@ -189,9 +184,13 @@ const TurfBookingsPage: React.FC = () => {
                     View
                   </Button>
                   {booking.payment_status !== "CANCELLED" && (
-                    <Button variant="outline-danger" size="sm" onClick={() => handleCancel(booking.id)}>
-                      Cancel
-                    </Button>
+                    <Button
+  variant="outline-danger"
+  size="sm"
+  onClick={() => handleCancel(booking)}
+>
+  Cancel
+</Button>
                   )}
                 </td>
               </tr>

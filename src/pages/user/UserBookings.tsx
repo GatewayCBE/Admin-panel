@@ -3,6 +3,8 @@ import {
   getBookingsByUserMobile,
   UserBookingHistory,
 } from "../../services/firestoreService";
+import { parseDate } from "../../utils/dateUtils";
+import { format } from "date-fns";
 
 const UserBookingHistoryPage: React.FC = () => {
   const userMobile = localStorage.getItem("user_mobile_number") || "";
@@ -73,7 +75,13 @@ const UserBookingHistoryPage: React.FC = () => {
 
   {/* DATE + SLOT COUNT */}
   <div className="d-flex justify-content-between text-muted mb-3">
-    <span>📅 {b.selectedDate}</span>
+    <span>
+  📅{" "}
+  {(() => {
+    const d = parseDate(b.selectedDate);
+    return d ? format(d, "dd MMM yyyy") : b.selectedDate;
+  })()}
+</span>
     <span> Slots: {b.slotCount}</span>
   </div>
 

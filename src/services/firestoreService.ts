@@ -26,6 +26,7 @@ import { getApp } from "firebase/app";
 import { Owner } from "../types/Owner";
 import { Turf } from "../types/Turf";
 import { getAuth } from "firebase/auth";
+import { parseDate } from "../utils/dateUtils";
 
 /**
  * Generate Custom ID exactly like Flutter app
@@ -321,65 +322,65 @@ export const deleteTurf = async (turfId: string) => {
   }
 };
 
-export async function createTurfBookingSafe({
-  turfId,
-  dateString,
-  sportName,
-  courtName,
-  slotStart,
-  bookingData,
-}: {
-  turfId: string;
-  dateString: string;   // "02-Dec-2025"
-  sportName: string;    // "boxcricket & football"
-  courtName: string;    // "court 1"
-  slotStart: string;    // "7:00PM"
-  bookingData: any;
-}) {
-  const slotRef = doc(
-    db,
-    "environment",
-    "testing",
-    "all_turfs_slot_booking",
-    turfId,
-    dateString,
-    sportName,
-    courtName,
-    slotStart
-  );
+// export async function createTurfBookingSafe({
+//   turfId,
+//   dateString,
+//   sportName,
+//   courtName,
+//   slotStart,
+//   bookingData,
+// }: {
+//   turfId: string;
+//   dateString: string;   // "02-Dec-2025"
+//   sportName: string;    // "boxcricket & football"
+//   courtName: string;    // "court 1"
+//   slotStart: string;    // "7:00PM"
+//   bookingData: any;
+// }) {
+//   const slotRef = doc(
+//     db,
+//     "environment",
+//     "testing",
+//     "all_turfs_slot_booking",
+//     turfId,
+//     dateString,
+//     sportName,
+//     courtName,
+//     slotStart
+//   );
 
-  try {
-    await runTransaction(db, async (transaction) => {
-      const snap = await transaction.get(slotRef);
+//   try {
+//     await runTransaction(db, async (transaction) => {
+//       const snap = await transaction.get(slotRef);
 
-      // 🔒 HARD LOCK — slot already exists
-      if (snap.exists()) {
-        throw new Error("SLOT_ALREADY_BOOKED");
-      }
+//       // 🔒 HARD LOCK — slot already exists
+//       if (snap.exists()) {
+//         throw new Error("SLOT_ALREADY_BOOKED");
+//       }
 
-      // ✅ Create booking (NO merge)
-      transaction.set(slotRef, {
-        ...bookingData,
-        created_at: serverTimestamp(),
-      });
-    });
+//       // ✅ Create booking (NO merge)
+//       transaction.set(slotRef, {
+//         ...bookingData,
+//         created_at: serverTimestamp(),
+//       });
+//     });
 
-    return { success: true };
-  } catch (err: any) {
-    if (err.message === "SLOT_ALREADY_BOOKED") {
-      return {
-        success: false,
-        reason: "SLOT_ALREADY_BOOKED",
-      };
-    }
+//     return { success: true };
+//   } catch (err: any) {
+//     if (err.message === "SLOT_ALREADY_BOOKED") {
+//       return {
+//         success: false,
+//         reason: "SLOT_ALREADY_BOOKED",
+//       };
+//     }
 
-    console.error("Transaction failed:", err);
-    return {
-      success: false,
-      reason: "UNKNOWN_ERROR",
-    };
-  }
-}
+//     console.error("Transaction failed:", err);
+//     return {
+//       success: false,
+//       reason: "UNKNOWN_ERROR",
+//     };
+//   }
+// }
 
 export const updateOwnerProfile = async (ownerId: string, data: any) => {
   const ownerRef = doc(db, "environment", "testing", "owners", ownerId);
@@ -543,27 +544,27 @@ export const createTurf = async ({
   return turfId;
 };
 
-export const debugPath = async () => {
-  try {
-    const test1 = await getDocs(
-      collection(db, "environment", "testing", "all_turfs_slot_booking")
-    );
-    console.log(
-      "Test1 docs:",
-      test1.docs.map((d) => d.id)
-    );
+// export const debugPath = async () => {
+//   try {
+//     const test1 = await getDocs(
+//       collection(db, "environment", "testing", "all_turfs_slot_booking")
+//     );
+//     console.log(
+//       "Test1 docs:",
+//       test1.docs.map((d) => d.id)
+//     );
 
-    const test2 = await getDocs(
-      collection(db, "environment", "testing", "all_turfs_slot_booking")
-    );
-    console.log(
-      "Test2 docs:",
-      test2.docs.map((d) => d.id)
-    );
-  } catch (err) {
-    console.error("Debug error:", err);
-  }
-};
+//     const test2 = await getDocs(
+//       collection(db, "environment", "testing", "all_turfs_slot_booking")
+//     );
+//     console.log(
+//       "Test2 docs:",
+//       test2.docs.map((d) => d.id)
+//     );
+//   } catch (err) {
+//     console.error("Debug error:", err);
+//   }
+// };
 
 export const fetchAllBookings = async (environment: string = "testing") => {
   try {
@@ -700,23 +701,23 @@ export const getSlotsByPaymentStatus = async (
   }
 };
 
-export const getAvailableDates = async (turfId: string): Promise<string[]> => {
-  try {
-    const datesRef = collection(
-      db,
-      "environment",
-      "testing",
-      "all_turfs_slot_booking",
-      turfId
-    );
+// export const getAvailableDates = async (turfId: string): Promise<string[]> => {
+//   try {
+//     const datesRef = collection(
+//       db,
+//       "environment",
+//       "testing",
+//       "all_turfs_slot_booking",
+//       turfId
+//     );
 
-    const snapshot = await getDocs(datesRef);
-    return snapshot.docs.map((doc) => doc.id);
-  } catch (error) {
-    console.error("Error fetching available dates:", error);
-    return [];
-  }
-};
+//     const snapshot = await getDocs(datesRef);
+//     return snapshot.docs.map((doc) => doc.id);
+//   } catch (error) {
+//     console.error("Error fetching available dates:", error);
+//     return [];
+//   }
+// };
 
 // Get Owners
 export const getOwners = async () => {
@@ -734,88 +735,88 @@ export const getOwners = async () => {
   }
 };
 
-export const getTurfDates = async (turfId: string) => {
-  const snapshot = await getDocs(
-    collection(db, "environment", "testing", "all_turfs_slot_booking", turfId)
-  );
-  return snapshot.docs.map((d) => d.id);
-};
+// export const getTurfDates = async (turfId: string) => {
+//   const snapshot = await getDocs(
+//     collection(db, "environment", "testing", "all_turfs_slot_booking", turfId)
+//   );
+//   return snapshot.docs.map((d) => d.id);
+// };
 
-export const getSportsForDate = async (turfId: string, date: string) => {
-  const snapshot = await getDocs(
-    collection(
-      db,
-      "environment",
-      "testing",
-      "all_turfs_slot_booking",
-      turfId,
-      date
-    )
-  );
-  return snapshot.docs.map((d) => d.id);
-};
+// export const getSportsForDate = async (turfId: string, date: string) => {
+//   const snapshot = await getDocs(
+//     collection(
+//       db,
+//       "environment",
+//       "testing",
+//       "all_turfs_slot_booking",
+//       turfId,
+//       date
+//     )
+//   );
+//   return snapshot.docs.map((d) => d.id);
+// };
 
-export const getCourtsForSport = async (
-  turfId: string,
-  date: string,
-  sport: string
-) => {
-  const snapshot = await getDoc(
-    doc(
-      db,
-      "environment",
-      "testing",
-      "all_turfs_slot_booking",
-      turfId,
-      date,
-      sport
-    )
-  );
-  return snapshot.exists() ? snapshot.data()?.courts || [] : [];
-};
+// export const getCourtsForSport = async (
+//   turfId: string,
+//   date: string,
+//   sport: string
+// ) => {
+//   const snapshot = await getDoc(
+//     doc(
+//       db,
+//       "environment",
+//       "testing",
+//       "all_turfs_slot_booking",
+//       turfId,
+//       date,
+//       sport
+//     )
+//   );
+//   return snapshot.exists() ? snapshot.data()?.courts || [] : [];
+// };
 
-export const getBookedSlotTimes = async (
-  turfId: string,
-  date: string,
-  sport: string,
-  court: string
-) => {
-  const snapshot = await getDocs(
-    collection(
-      db,
-      "environment",
-      "testing",
-      "all_turfs_slot_booking",
-      turfId,
-      date,
-      sport,
-      court
-    )
-  );
-  return snapshot.docs.map((d) => d.id);
-};
+// export const getBookedSlotTimes = async (
+//   turfId: string,
+//   date: string,
+//   sport: string,
+//   court: string
+// ) => {
+//   const snapshot = await getDocs(
+//     collection(
+//       db,
+//       "environment",
+//       "testing",
+//       "all_turfs_slot_booking",
+//       turfId,
+//       date,
+//       sport,
+//       court
+//     )
+//   );
+//   return snapshot.docs.map((d) => d.id);
+// };
 
-export const getSlotDetails = async (
-  turfId: string,
-  date: string,
-  sport: string,
-  court: string,
-  slotTime: string
-) => {
-  const slotDoc = doc(
-    db,
-    "environment",
-    "testing",
-    "all_turfs_slot_booking",
-    turfId,
-    date,
-    sport,
-    court,
-    slotTime
-  );
-  const snapshot = await getDoc(slotDoc);
-  return snapshot.exists() ? snapshot.data() : null;
-};
+// export const getSlotDetails = async (
+//   turfId: string,
+//   date: string,
+//   sport: string,
+//   court: string,
+//   slotTime: string
+// ) => {
+//   const slotDoc = doc(
+//     db,
+//     "environment",
+//     "testing",
+//     "all_turfs_slot_booking",
+//     turfId,
+//     date,
+//     sport,
+//     court,
+//     slotTime
+//   );
+//   const snapshot = await getDoc(slotDoc);
+//   return snapshot.exists() ? snapshot.data() : null;
+// };
 
 export interface BookedSlot {
   booking_id: string;
@@ -842,17 +843,17 @@ export interface BookedSlot {
 }
 
 
-function format24ToAmPm(time24: string) {
-  const [hStr, mStr] = time24.split(":");
-  let h = parseInt(hStr, 10);
-  const m = parseInt(mStr, 10);
+// function format24ToAmPm(time24: string) {
+//   const [hStr, mStr] = time24.split(":");
+//   let h = parseInt(hStr, 10);
+//   const m = parseInt(mStr, 10);
 
-  const ampm = h >= 12 ? "PM" : "AM";
-  if (h === 0) h = 12;
-  else if (h > 12) h -= 12;
+//   const ampm = h >= 12 ? "PM" : "AM";
+//   if (h === 0) h = 12;
+//   else if (h > 12) h -= 12;
 
-  return `${h}:${m.toString().padStart(2, "0")} ${ampm}`;
-}
+//   return `${h}:${m.toString().padStart(2, "0")} ${ampm}`;
+// }
 
 const convertTo24Hour = (time12h: string): string => {
   if (!time12h) return "00:00";
@@ -1034,6 +1035,50 @@ export async function getAllBookedSlots(
   }
 }
 
+export async function createBooking(bookingData: Omit<Booking, "bookingId">): Promise<string> {
+  try {
+    // Generate ID (you can keep your existing format or adjust)
+    const bookingId = `BYT_P_${Date.now()}`;
+
+    // Format the date to "DD-MMM-YYYY" (e.g., "02-Feb-2026")
+    const formatDateToDisplay = (dateStr: string): string => {
+      if (!dateStr) return "";
+
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return dateStr; // fallback if invalid
+
+      const day = date.getDate().toString().padStart(2, "0");
+      const month = date.toLocaleString("en-GB", { month: "short" });
+      const year = date.getFullYear();
+
+      return `${day}-${month}-${year}`;
+    };
+
+    // Create formatted date
+    const formattedDate = formatDateToDisplay(bookingData.date || bookingData.selectedDate || "");
+
+    // Prepare the data to save
+    const dataToSave = {
+      ...bookingData,
+      bookingId,
+      createdAt: new Date().toISOString(),
+      // Ensure date is saved in desired format
+      date: formattedDate,
+      // Also store selectedDate in the same format (if your app uses it)
+      selectedDate: formattedDate,
+    };
+
+    const bookingRef = doc(db, "environments", "testing", "bookings", bookingId);
+
+    await setDoc(bookingRef, dataToSave);
+
+    console.log(`✅ Booking created: ${bookingId} | Formatted date: ${formattedDate}`);
+    return bookingId;
+  } catch (error) {
+    console.error("❌ Error creating booking:", error);
+    throw error;
+  }
+}
 
 export interface UserBookingHistory {
   id: string;
@@ -1251,10 +1296,15 @@ export const groupBookings = (slots: any[]) => {
         booking_username: username,
         booking_user_mobile: mobile,
         slots: [],
+        slot_start_time: "",
+        slot_end_time: "",
+        paid_amount: 0,
+        unpaid_amount: 0,
         total_paid: 0,
         total_unpaid: 0,
         total_amount: 0,
         payment_status: "advance",
+        createdBy: booking.createdBy || "OWNER"
       };
     }
 
@@ -1591,62 +1641,62 @@ const bookingSlots = Array.isArray(slots)
 };
 
 
-export async function getAllDatesAndSlots(turfId: string) {
-  try {
-    const turfRef = collection(
-      db,
-      "environment",
-      "testing",
-      "all_turfs_slot_booking",
-      turfId
-    );
+// export async function getAllDatesAndSlots(turfId: string) {
+//   try {
+//     const turfRef = collection(
+//       db,
+//       "environment",
+//       "testing",
+//       "all_turfs_slot_booking",
+//       turfId
+//     );
 
-    const dateSnapshots = await getDocs(turfRef);
+//     const dateSnapshots = await getDocs(turfRef);
 
-    if (dateSnapshots.empty) {
-      console.warn("⚠️ No dates found for turf:", turfId);
-      return [];
-    }
+//     if (dateSnapshots.empty) {
+//       console.warn("⚠️ No dates found for turf:", turfId);
+//       return [];
+//     }
 
-    const results: any[] = [];
+//     const results: any[] = [];
 
-    for (const dateDoc of dateSnapshots.docs) {
-      const date = dateDoc.id;
-      const sportsSnapshot = await getDocs(collection(turfRef, date));
+//     for (const dateDoc of dateSnapshots.docs) {
+//       const date = dateDoc.id;
+//       const sportsSnapshot = await getDocs(collection(turfRef, date));
 
-      const sportsData = [];
+//       const sportsData = [];
 
-      for (const sportDoc of sportsSnapshot.docs) {
-        const sport = sportDoc.id;
-        const courtsSnapshot = await getDocs(collection(turfRef, date, sport));
+//       for (const sportDoc of sportsSnapshot.docs) {
+//         const sport = sportDoc.id;
+//         const courtsSnapshot = await getDocs(collection(turfRef, date, sport));
 
-        const courtData = [];
+//         const courtData = [];
 
-        for (const courtDoc of courtsSnapshot.docs) {
-          const court = courtDoc.id;
-          const slotsSnapshot = await getDocs(
-            collection(turfRef, date, sport, court)
-          );
-          const slots = slotsSnapshot.docs.map((doc) => ({
-            time: doc.id,
-            ...doc.data(),
-          }));
-          courtData.push({ court, slots });
-        }
+//         for (const courtDoc of courtsSnapshot.docs) {
+//           const court = courtDoc.id;
+//           const slotsSnapshot = await getDocs(
+//             collection(turfRef, date, sport, court)
+//           );
+//           const slots = slotsSnapshot.docs.map((doc) => ({
+//             time: doc.id,
+//             ...doc.data(),
+//           }));
+//           courtData.push({ court, slots });
+//         }
 
-        sportsData.push({ sport, courts: courtData });
-      }
+//         sportsData.push({ sport, courts: courtData });
+//       }
 
-      results.push({ date, sports: sportsData });
-    }
+//       results.push({ date, sports: sportsData });
+//     }
 
-    console.log("📅 All booked slots for turf:", results);
-    return results;
-  } catch (err) {
-    console.error("❌ Error fetching all booked slots:", err);
-    return [];
-  }
-}
+//     console.log("📅 All booked slots for turf:", results);
+//     return results;
+//   } catch (err) {
+//     console.error("❌ Error fetching all booked slots:", err);
+//     return [];
+//   }
+// }
 
 // Global
 export const getGlobalAnalytics = async () => {
@@ -1758,43 +1808,43 @@ function parseStringTimestampToDate(s?: string): Date | null {
 /**
  * Fetch all booked slots for a given turf and date (across all sports)
  */
-export async function getSportsAndCourts(turfId: string, date: string) {
-  try {
-    // console.log("🔎 Fetching sports & courts for Turf:", turfId, "Date:", date);
+// export async function getSportsAndCourts(turfId: string, date: string) {
+//   try {
+//     // console.log("🔎 Fetching sports & courts for Turf:", turfId, "Date:", date);
 
-    const dateCollectionRef = collection(
-      db,
-      "environment",
-      "testing",
-      "all_turfs_slot_booking",
-      turfId,
-      date
-    );
+//     const dateCollectionRef = collection(
+//       db,
+//       "environment",
+//       "testing",
+//       "all_turfs_slot_booking",
+//       turfId,
+//       date
+//     );
 
-    const sportsSnapshot = await getDocs(dateCollectionRef);
+//     const sportsSnapshot = await getDocs(dateCollectionRef);
 
-    if (sportsSnapshot.empty) {
-      // console.warn("⚠️ No sports found for this date!");
-      return [];
-    }
+//     if (sportsSnapshot.empty) {
+//       // console.warn("⚠️ No sports found for this date!");
+//       return [];
+//     }
 
-    const result: any[] = [];
+//     const result: any[] = [];
 
-    for (const sportDoc of sportsSnapshot.docs) {
-      const data = sportDoc.data();
-      const sportName = sportDoc.id;
-      const courts = data.courts || [];
+//     for (const sportDoc of sportsSnapshot.docs) {
+//       const data = sportDoc.data();
+//       const sportName = sportDoc.id;
+//       const courts = data.courts || [];
 
-      result.push({ sport: sportName, courts });
-    }
+//       result.push({ sport: sportName, courts });
+//     }
 
-    console.log("✅ Sports & courts fetched:", result);
-    return result;
-  } catch (err) {
-    console.error("❌ Error fetching sports & courts:", err);
-    return [];
-  }
-}
+//     console.log("✅ Sports & courts fetched:", result);
+//     return result;
+//   } catch (err) {
+//     console.error("❌ Error fetching sports & courts:", err);
+//     return [];
+//   }
+// }
 
 const app = getApp();
 const functions = getFunctions(app, "asia-south1");
@@ -1820,6 +1870,26 @@ export async function getAllBookings(): Promise<any[]> {
     return [];
   }
 }
+
+export const cancelBooking = async (bookingId: string) => {
+  const res = await fetch(
+    "https://asia-south1-play-arena-e83d8.cloudfunctions.net/cancelWebBooking",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ bookingId }),
+    }
+  );
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data.error || "Cancel failed");
+  }
+
+  return true;
+};
+
 
 export interface Booking {
   id: string;

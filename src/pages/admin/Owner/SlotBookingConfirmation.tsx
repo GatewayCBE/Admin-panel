@@ -168,7 +168,9 @@ const state = location.state as {
         <h5 className="mt-3 text-danger">Remaining Amount ₹ {remaining}</h5>
 
         <div className="d-flex justify-content-between mt-4">
-          <button className="btn btn-danger px-4" onClick={() => navigate(-1)}>Cancel</button>
+          <button className="btn btn-danger px-4" onClick={() => navigate(-1)}>
+            Cancel
+          </button>
           <button className="btn btn-success px-4" onClick={handleConfirmBooking}>
             Confirm Booking
           </button>
@@ -176,7 +178,7 @@ const state = location.state as {
       </div>
 
       {showModal && (
-        <div className="modal show fade d-block">
+        <div className="modal show fade d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content text-center p-4 rounded-4">
               <h4 className="text-success fw-bold">Booking Confirmed!</h4>

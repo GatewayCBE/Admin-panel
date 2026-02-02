@@ -12,8 +12,8 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
-const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID;
-const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
+const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID!;
+const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET!;
 
 /* =========================================================
    🔧 HELPERS
@@ -32,18 +32,21 @@ const formatDate = (dateInput: string) => {
 const getWeekday = (dateStr: string) => {
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) throw new Error("INVALID_DATE");
-  return d.toLocaleDateString("en-US", {
-    weekday: "long",
-    timeZone: "Asia/Kolkata",
-  }).toLowerCase();
+  return d
+    .toLocaleDateString("en-US", {
+      weekday: "long",
+      timeZone: "Asia/Kolkata",
+    })
+    .toLowerCase();
 };
 
 const isNightSlot = (slot: string) => {
-  if (/pm$/i.test(slot)) return true;
   const hour = parseInt(slot.split(":")[0], 10);
   return hour >= 18 || hour < 6;
 };
 
+// normalizeSlotTime is no longer used after removing the nested slot path
+// You can safely delete this function in the future
 const normalizeSlotTime = (slot: string): string => {
   if (/^\d{2}:\d{2}$/.test(slot)) return slot;
 
@@ -61,27 +64,7 @@ const normalizeSlotTime = (slot: string): string => {
 };
 
 /* =========================================================
-   🔔 FCM NOTIFICATION HELPER
-========================================================= */
-async function sendNotification(
-  token: string | undefined,
-  title: string,
-  body: string,
-  data: Record<string, string> = {}
-) {
-  if (!token) return;
-
-  await admin.messaging().send({
-    token,
-    notification: { title, body },
-    data,
-    android: { priority: "high" },
-    apns: { payload: { aps: { sound: "default" } } },
-  });
-}
-
-/* =========================================================
-   1️⃣ CREATE RAZORPAY ORDER (WEB)
+   1️⃣ CREATE RAZORPAY ORDER (WEB) – unchanged
 ========================================================= */
 export const createWebRazorpayOrder = onRequest(
   { region: "asia-south1" },
@@ -94,7 +77,7 @@ export const createWebRazorpayOrder = onRequest(
 
         const { turf_id, turf_name, sport, date, slots, payment_type } = req.body;
 
-        if (!turf_id || !turf_name || !sport || !date || !Array.isArray(slots) || !slots.length) {
+        if (!turf_id || !turf_name || !sport || !date || !Array.isArray(slots)) {
           return res.status(400).json({ error: "INVALID_REQUEST" });
         }
 
@@ -110,29 +93,33 @@ export const createWebRazorpayOrder = onRequest(
         }
 
         const weekday = getWeekday(date);
-        const pricing = turfSnap.data()?.sport_specific_price?.[sport]?.[weekday];
-        if (!pricing) return res.status(400).json({ error: "PRICING_NOT_CONFIGURED" });
+        const pricing =
+          turfSnap.data()?.sport_specific_price?.[sport]?.[weekday];
 
-        let slotTotal = 0;
+        if (!pricing) {
+          return res.status(400).json({ error: "PRICING_NOT_CONFIGURED" });
+        }
+
+        let totalAmount = 0;
         for (const rawSlot of slots) {
           const slot = normalizeSlotTime(rawSlot);
-          slotTotal += isNightSlot(slot)
+          totalAmount += isNightSlot(slot)
             ? Number(pricing.night)
             : Number(pricing.day);
         }
 
-        const totalAmount = slotTotal;
-        const paidAmount = payment_type === "advance" ? slots.length : totalAmount;
+        const paidAmount =
+          payment_type === "advance" ? slots.length : totalAmount;
 
         const razorpay = new Razorpay({
-          key_id: RAZORPAY_KEY_ID!,
-          key_secret: RAZORPAY_KEY_SECRET!,
+          key_id: RAZORPAY_KEY_ID,
+          key_secret: RAZORPAY_KEY_SECRET,
         });
 
         const order = await razorpay.orders.create({
           amount: paidAmount * 100,
           currency: "INR",
-          receipt: `BS_${turf_name}_${Date.now()}`,
+          receipt: `BYT_${turf_name}_${Date.now()}`,
           payment_capture: true,
         });
 
@@ -142,14 +129,13 @@ export const createWebRazorpayOrder = onRequest(
           currency: order.currency,
           key_id: RAZORPAY_KEY_ID,
           pricing: {
-            slot_total: slotTotal,
-            total_amount: totalAmount,
-            paid_amount: paidAmount,
-            unpaid_amount: totalAmount - paidAmount,
+            totalAmount,
+            paidAmount,
+            balanceAmount: totalAmount - paidAmount,
           },
         });
       } catch (err) {
-        console.error("❌ createWebRazorpayOrder:", err);
+        console.error(err);
         return res.status(500).json({ error: "CREATE_ORDER_FAILED" });
       }
     });
@@ -157,13 +143,16 @@ export const createWebRazorpayOrder = onRequest(
 );
 
 /* =========================================================
-   2️⃣ VERIFY PAYMENT & FINALIZE BOOKING + NOTIFICATIONS
+   2️⃣ VERIFY PAYMENT & FINALIZE BOOKING – SINGLE PATH
 ========================================================= */
 export const verifyWebRazorpayPayment = onRequest(
   { region: "asia-south1" },
   async (req, res) => {
     corsHandler(req, res, async () => {
       try {
+        console.log("🔔 verifyWebRazorpayPayment called");
+        console.log("📥 Request body:", JSON.stringify(req.body, null, 2));
+
         const {
           razorpay_order_id,
           razorpay_payment_id,
@@ -174,38 +163,61 @@ export const verifyWebRazorpayPayment = onRequest(
           user_id,
           user_name,
           user_mobile_number,
+          user_email,
           sport,
-          court,
           slots,
           date,
           payment_type,
         } = req.body;
 
-        const formattedDate = formatDate(date);
-        const normalizedCourt = court?.trim() || "court 1";
-
-        if (!user_mobile_number || !turf_id || !slots?.length) {
+        if (!turf_id || !Array.isArray(slots) || !slots.length || !user_mobile_number) {
+          console.error("❌ INVALID_REQUEST", { turf_id, slots, user_mobile_number });
           return res.status(400).json({ error: "INVALID_REQUEST" });
         }
 
+        const formattedDate = formatDate(date);
+
+        console.log("📅 Raw date:", date);
+        console.log("📅 Formatted date:", formattedDate);
+        console.log("⏱ Slots:", slots);
+
+        // Verify Razorpay signature
         const generatedSignature = crypto
-          .createHmac("sha256", RAZORPAY_KEY_SECRET!)
+          .createHmac("sha256", RAZORPAY_KEY_SECRET)
           .update(`${razorpay_order_id}|${razorpay_payment_id}`)
           .digest("hex");
 
         if (generatedSignature !== razorpay_signature) {
+          console.error("❌ INVALID_SIGNATURE");
           return res.status(401).json({ error: "INVALID_SIGNATURE" });
         }
 
-        const userRef = db
-          .collection("environment").doc("testing")
-          .collection("users").doc(user_mobile_number);
+        const bookingId = `BYT_U_${Date.now()}`;
+        console.log("🆔 Generated bookingId:", bookingId);
 
-        const turfRef = db
-          .collection("environment").doc("testing")
-          .collection("turfs").doc(turf_id);
+        const baseRef = db.collection("environments").doc("testing");
+
+        const userRef = baseRef
+          .collection("users")
+          .doc(user_mobile_number);
+
+        const turfRef = baseRef
+          .collection("turfs")
+          .doc(turf_id);
+
+        const bookingRef = baseRef
+          .collection("bookings")
+          .doc(bookingId);
+
+        const userPaymentCopyRef = baseRef
+          .collection("users")
+          .doc(user_mobile_number)
+          .collection("payment_coppys")
+          .doc(bookingId);
 
         const result = await db.runTransaction(async (tx) => {
+          console.log("🔄 Transaction started");
+
           const userSnap = await tx.get(userRef);
           const turfSnap = await tx.get(turfRef);
 
@@ -213,125 +225,85 @@ export const verifyWebRazorpayPayment = onRequest(
           if (!turfSnap.exists) throw new Error("TURF_NOT_FOUND");
 
           const weekday = getWeekday(date);
-          const pricing = turfSnap.data()?.sport_specific_price?.[sport]?.[weekday];
+          const pricing =
+            turfSnap.data()?.sport_specific_price?.[sport]?.[weekday];
+
           if (!pricing) throw new Error("PRICING_NOT_CONFIGURED");
 
-          let slotTotal = 0;
-          for (const slot of slots) {
-            slotTotal += isNightSlot(slot)
+          // No more slot-level checks — availability is now handled by querying /bookings
+
+          let totalAmount = 0;
+          for (const rawSlot of slots) {
+            const slot = normalizeSlotTime(rawSlot);
+            totalAmount += isNightSlot(slot)
               ? Number(pricing.night)
               : Number(pricing.day);
           }
 
-          const totalAmount = slotTotal;
-          const paidAmount = payment_type === "advance" ? slots.length : totalAmount;
-          const unpaidAmount = totalAmount - paidAmount;
+          const paidAmount =
+            payment_type === "advance" ? slots.length : totalAmount;
 
-          const bookingId = `BS_${turf_name}_${Date.now()}`;
+          const balanceAmount = totalAmount - paidAmount;
+          const now = admin.firestore.Timestamp.now();
 
-          for (const rawSlot of slots) {
-            const slot = normalizeSlotTime(rawSlot);
-            const slotRef = db
-              .collection("environment").doc("testing")
-              .collection("all_turfs_slot_booking")
-              .doc(turf_id)
-              .collection(formattedDate)
-              .doc(sport)
-              .collection(normalizedCourt)
-              .doc(slot);
+          console.log("💰 Amounts", { totalAmount, paidAmount, balanceAmount });
 
-            if ((await tx.get(slotRef)).exists) {
-              throw new Error("SLOT_ALREADY_BOOKED");
-            }
-
-            tx.set(slotRef, {
-              booking_id: bookingId,
-              booking_username: user_name,
-              user_id,
-              booked_sports_name: sport,
-              court,
-              date: formattedDate,
-              slot_start_time: slot,
-              day_price: pricing.day,
-              night_price: pricing.night,
-              total_amount: totalAmount,
-              paid_amount: paidAmount,
-              unpaid_amount: unpaidAmount,
-              payment_status: "paymentSuccess",
-              payment_transaction_id: razorpay_payment_id,
-              payment_completed_time: new Date().toISOString(),
-              payment_initiated_time: new Date().toISOString(),
-              turf_id,
-              turf_name,
-              owner_id,
-              turf_closed: false,
-              platform: "web",
-            });
-          }
-
-          tx.update(userRef, {
-            payment_copies: admin.firestore.FieldValue.arrayUnion({
-              booking_id: bookingId,
-              turf_id,
-              turf_name,
-              court,
-              sport,
-              date,
-              slots,
-              total_amount: totalAmount,
-              paid_amount: paidAmount,
-              unpaid_amount: unpaidAmount,
-              payment_status: "paymentSuccess",
-              payment_transaction_id: razorpay_payment_id,
-              platform: "web",
-            }),
+          // Write main booking document
+          tx.set(bookingRef, {
+            bookingId,
+            bookingType: payment_type === "advance" ? "ADVANCE" : "FULL",
+            turfId: turf_id,
+            turfName: turf_name,
+            ownerId: owner_id,
+            userId: user_id,
+            userName: user_name,
+            userMobile: user_mobile_number,
+            userEmail: user_email || null,
+            selectedDate: formattedDate,
+            slots,
+            slotList: slots,
+            slotCount: slots.length,
+            slotStartTime: slots[0],
+            slotEndTime: slots[slots.length - 1],
+            totalAmount,
+            paidAmount,
+            unpaidAmount: balanceAmount,
+            paymentId: razorpay_payment_id,
+            paymentMethod: "Razorpay",
+            paymentStatus: "PAID",
+            createdAt: now,
+            updatedAt: now,
           });
 
-          return { success: true, booking_id: bookingId };
+          // Write user payment copy
+          tx.set(userPaymentCopyRef, {
+            bookingId,
+            turfId: turf_id,
+            turfName: turf_name,
+            selectedDate: formattedDate,
+            slotList: slots,
+            slotCount: slots.length,
+            totalAmount,
+            paidAmount,
+            unpaidAmount: balanceAmount,
+            paymentStatus: "PAID",
+            bookingType: payment_type === "advance" ? "ADVANCE" : "FULL",
+            userName: user_name,
+            userMobile: user_mobile_number,
+            createdAt: now,
+          });
+
+          console.log("✅ Transaction writes prepared");
+          return { success: true, bookingId };
         });
-        
 
-        /* =====================================================
-           🔔 SEND NOTIFICATIONS (OUTSIDE TRANSACTION)
-        ===================================================== */
-        try {
-          const userSnap = await userRef.get();
-          const ownerSnap = await db
-            .collection("environment").doc("testing")
-            .collection("owners").doc(owner_id)
-            .get();
-
-          const userTokens: string[] = userSnap.data()?.fcm_tokens || [];
-const ownerTokens: string[] = ownerSnap.data()?.fcm_tokens || [];
-
-// 🔔 Notify User (ALL DEVICES)
-for (const token of userTokens) {
-  await sendNotification(
-    token,
-    "🎉 Booking Confirmed",
-    `Your slot at ${turf_name} on ${formattedDate} is confirmed.`,
-    { booking_id: result.booking_id }
-  );
-}
-
-// 🔔 Notify Owner (ALL DEVICES)
-for (const token of ownerTokens) {
-  await sendNotification(
-    token,
-    "📢 New Booking",
-    `${user_name} booked ${sport} (${normalizedCourt}) on ${formattedDate}.`,
-    { booking_id: result.booking_id }
-  );
-}
-        } catch (e) {
-          console.error("⚠️ Notification failed:", e);
-        }
-
+        console.log("🎉 Booking completed:", result);
         return res.status(200).json(result);
+
       } catch (err: any) {
-        console.error("❌ verifyWebRazorpayPayment:", err.message);
+        console.error("❌ verifyWebRazorpayPayment FAILED:", err);
         return res.status(400).json({
-          error: "Payment verification failed",
+          error: "PAYMENT_VERIFICATION_FAILED",
           reason: err.message,
         });
       }
