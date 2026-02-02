@@ -82,24 +82,30 @@ const TurfBookingsPage: React.FC = () => {
 
   const isPaid = (status?: string) => status?.toLowerCase().includes("success") || status === "PAID";
 
-  const handleCancel = async (bookingId: string) => {
-    if (!window.confirm("Are you sure you want to cancel this booking?")) return;
+ const handleCancel = async (bookingId: string) => {
+  if (!window.confirm("Are you sure you want to cancel this booking?")) return;
 
-    try {
-      await cancelBooking(bookingId, "Cancelled by admin", "admin");
+  try {
+    await cancelBooking(bookingId, "Cancelled by admin", "admin");
 
-      // Refresh list
-      setRawBookings(prev => prev.filter(b => b.id !== bookingId));
+    // Update local state to show cancelled
+    setRawBookings(prev => 
+      prev.map(b => 
+        b.id === bookingId 
+          ? { ...b, payment_status: "CANCELLED" } 
+          : b
+      )
+    );
 
-      setToastMessage("Booking cancelled successfully");
-      setToastVariant("success");
-      setShowToast(true);
-    } catch (err: any) {
-      setToastMessage("Failed to cancel: " + err.message);
-      setToastVariant("danger");
-      setShowToast(true);
-    }
-  };
+    setToastMessage("Booking cancelled successfully. Slots are now available.");
+    setToastVariant("success");
+    setShowToast(true);
+  } catch (err: any) {
+    setToastMessage("Failed to cancel: " + err.message);
+    setToastVariant("danger");
+    setShowToast(true);
+  }
+};
 
   const handleViewDetails = (booking: any) => {
     setSelectedBooking(booking);
@@ -118,7 +124,7 @@ const TurfBookingsPage: React.FC = () => {
   return (
     <div className="admin-page-container">
       <AdminNavbar />
-      <h2 className="fw-bold mb-2">Channel Partner Bookings {turfId ? `- ${turfId}` : ""}</h2>
+      <h2 className="fw-bold mt-5 py-5 text-success text-center">Channel Partner Bookings</h2>
       <p className="text-muted mb-4">
         Total shown: <strong>{displayedBookings.length}</strong>
       </p>

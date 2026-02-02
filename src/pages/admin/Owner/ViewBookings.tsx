@@ -5,15 +5,15 @@ import badmintonImg from "../../../assets/badminton.png";
 import cricketImg from "../../../assets/boxcricket_football.png";
 import pickleImg from "../../../assets/PickleImg.png";
 
-interface SlotBooking {
+export interface SlotBooking {
   id: string;
   turf_id: string;
   date: string;
   booked_sports_name: string;
   court: string;
-  slots: string[];
-  slot_start_time: string;
-  slot_end_time: string;
+  slots?: string[];
+  slot_start_time?: string;
+  slot_end_time?: string;
   booking_username: string;
   booking_user_mobile: string;
   paid_amount: number;
@@ -22,6 +22,8 @@ interface SlotBooking {
   total_unpaid: number;
   total_amount: number;
   payment_status: string;
+  createdBy?: string;
+  docIds?: string[];
 }
 
 const ViewBookings: React.FC = () => {
@@ -87,7 +89,11 @@ const ViewBookings: React.FC = () => {
           bookingDate
         );
 
+        console.log("📦 Raw bookings:", raw);
+
         const grouped = groupBookings(raw);
+        console.log("📊 Grouped bookings:", grouped);
+        
         setBookings(grouped);
       } catch (err) {
         console.error(err);
@@ -100,44 +106,41 @@ const ViewBookings: React.FC = () => {
     loadBookings();
   }, [selectedTurf, bookingDate]);
 
-const handleMarkPaid = async (booking: any) => {
-  if (!window.confirm("Mark this booking as fully paid?")) return;
+  const handleMarkPaid = async (booking: SlotBooking) => {
+    if (!window.confirm("Mark this booking as fully paid?")) return;
 
-  try {
-    setLoading(true);
-    await markBookingFullyPaid(booking);
+    try {
+      setLoading(true);
+      await markBookingFullyPaid(booking);
 
-    setBookings((prev) =>
-      prev.map((b) =>
-        b.id === booking.id
-          ? {
-              ...b,
-               total_paid: b.total_paid + b.total_unpaid,
-              total_unpaid: 0,
-              payment_status: "paid",
-            }
-          : b
-      )
-    );
+      // Update local state
+      setBookings((prev) =>
+        prev.map((b) =>
+          b.id === booking.id
+            ? {
+                ...b,
+                total_paid: b.total_amount,
+                total_unpaid: 0,
+                payment_status: "paid",
+              }
+            : b
+        )
+      );
 
-    alert("Booking marked as fully paid successfully!");
-  } catch (err) {
-    alert("Failed to mark booking as paid");
-  } finally {
-    setLoading(false);
-  }
-};
-
+      alert("Booking marked as fully paid successfully!");
+    } catch (err) {
+      console.error("Error marking as paid:", err);
+      alert("Failed to mark booking as paid");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Get sport image based on sport name
   const getSportImage = (sportName: string): string => {
     const sport = sportName.toLowerCase().trim();
-    
-    if (sport.includes("cricket") && sport.includes("football")) {
-      return cricketImg;
-    } else if (sport.includes("football") && sport.includes("cricket")) {
-      return cricketImg;
-    } else if (sport.includes("cricket")) {
+
+    if (sport.includes("cricket") || sport.includes("boxcricket")) {
       return cricketImg;
     } else if (sport.includes("football")) {
       return cricketImg;
@@ -146,13 +149,9 @@ const handleMarkPaid = async (booking: any) => {
     } else if (sport.includes("pickle")) {
       return pickleImg;
     }
-    
-    // Default placeholder
+
     return "https://via.placeholder.com/60x60/67a521/ffffff?text=Sport";
   };
-
-  const maxDate = new Date();
-  maxDate.setMonth(maxDate.getMonth() + 1);
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString("en-US", {
@@ -163,8 +162,9 @@ const handleMarkPaid = async (booking: any) => {
     });
   };
 
-  const totalPaid = bookings.reduce((sum, b) => sum + (b.total_paid || b.paid_amount || 0), 0);
-  const totalUnpaid = bookings.reduce((sum, b) => sum + (b.total_unpaid || b.unpaid_amount || 0), 0);
+  // ✅ Calculate totals from grouped bookings (already calculated correctly)
+  const totalPaid = bookings.reduce((sum, b) => sum + b.total_paid, 0);
+  const totalUnpaid = bookings.reduce((sum, b) => sum + b.total_unpaid, 0);
 
   return (
     <>
@@ -193,7 +193,6 @@ const handleMarkPaid = async (booking: any) => {
           }
         }
 
-        /* Header */
         .bookings-header {
           text-align: center;
           margin-bottom: 2rem;
@@ -206,7 +205,6 @@ const handleMarkPaid = async (booking: any) => {
           margin-bottom: 0.5rem;
         }
 
-        /* Form Controls */
         .form-group-custom {
           margin-bottom: 1.5rem;
         }
@@ -250,7 +248,6 @@ const handleMarkPaid = async (booking: any) => {
           display: block;
         }
 
-        /* Loading State */
         .loading-container {
           text-align: center;
           padding: 3rem 1rem;
@@ -276,7 +273,6 @@ const handleMarkPaid = async (booking: any) => {
           font-size: 1rem;
         }
 
-        /* Alert */
         .alert-custom {
           padding: 1rem 1.25rem;
           border-radius: 0.75rem;
@@ -289,7 +285,6 @@ const handleMarkPaid = async (booking: any) => {
           color: #842029;
         }
 
-        /* Empty State */
         .empty-state {
           text-align: center;
           padding: 3rem 1rem;
@@ -317,7 +312,6 @@ const handleMarkPaid = async (booking: any) => {
           font-size: 1rem;
         }
 
-        /* Summary Cards */
         .summary-grid {
           display: grid;
           grid-template-columns: 1fr;
@@ -378,7 +372,6 @@ const handleMarkPaid = async (booking: any) => {
           color: #dc3545;
         }
 
-        /* Booking Card */
         .booking-card {
           background: white;
           border-radius: 1rem;
@@ -399,7 +392,6 @@ const handleMarkPaid = async (booking: any) => {
           }
         }
 
-        /* Booking Header */
         .booking-header {
           display: flex;
           justify-content: space-between;
@@ -475,10 +467,6 @@ const handleMarkPaid = async (booking: any) => {
           gap: 0.375rem;
         }
 
-        .mobile-icon {
-          font-size: 0.875rem;
-        }
-
         .booking-status-badge {
           padding: 0.5rem 1rem;
           border-radius: 2rem;
@@ -498,7 +486,6 @@ const handleMarkPaid = async (booking: any) => {
           color: #eb3c10;
         }
 
-        /* Sport Section with Image */
         .sport-section {
           display: flex;
           align-items: center;
@@ -554,7 +541,6 @@ const handleMarkPaid = async (booking: any) => {
           color: #6c757d;
         }
 
-        /* Booking Details Grid */
         .booking-details {
           display: grid;
           grid-template-columns: 1fr;
@@ -587,7 +573,6 @@ const handleMarkPaid = async (booking: any) => {
           color: #212529;
         }
 
-        /* Slots Section */
         .slots-section {
           margin-bottom: 1.5rem;
         }
@@ -622,7 +607,6 @@ const handleMarkPaid = async (booking: any) => {
           }
         }
 
-        /* Payment Summary */
         .payment-summary {
           background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
           border-radius: 0.75rem;
@@ -684,7 +668,6 @@ const handleMarkPaid = async (booking: any) => {
           color: #dc3545;
         }
 
-        /* Mark Paid Button */
         .mark-paid-button {
           width: 100%;
           padding: 0.875rem 1.5rem;
@@ -718,7 +701,6 @@ const handleMarkPaid = async (booking: any) => {
           transform: none;
         }
 
-        /* Responsive Utilities */
         @media (max-width: 576px) {
           .booking-card {
             border-radius: 0.75rem;
@@ -732,12 +714,10 @@ const handleMarkPaid = async (booking: any) => {
 
       <div className="view-bookings-container">
         <div className="bookings-wrapper">
-          {/* Header */}
           <div className="bookings-header">
             <h1 className="bookings-title">View Bookings</h1>
           </div>
 
-          {/* Turf Selector */}
           <div className="form-group-custom">
             <label className="form-label-custom">Select Turf</label>
             <select
@@ -759,15 +739,12 @@ const handleMarkPaid = async (booking: any) => {
             </select>
           </div>
 
-          {/* Date Picker */}
           <div className="form-group-custom">
             <label className="form-label-custom">Select Date</label>
             <input
               type="date"
               className="form-input-custom"
               value={bookingDateInput}
-              min={new Date().toISOString().split("T")[0]}
-              max={maxDate.toISOString().split("T")[0]}
               onChange={(e) => setBookingDateInput(e.target.value)}
               disabled={loading}
             />
@@ -776,7 +753,6 @@ const handleMarkPaid = async (booking: any) => {
             </small>
           </div>
 
-          {/* Loading State */}
           {loading && (
             <div className="loading-container">
               <div className="spinner"></div>
@@ -784,21 +760,15 @@ const handleMarkPaid = async (booking: any) => {
             </div>
           )}
 
-          {/* Error State */}
           {error && (
             <div className="alert-custom alert-danger">
               {error}
             </div>
           )}
 
-          {/* No Bookings State */}
           {!loading && !error && bookings.length === 0 && selectedTurf && (
             <div className="empty-state">
-              <svg
-                className="empty-state-icon"
-                fill="currentColor"
-                viewBox="0 0 16 16"
-              >
+              <svg className="empty-state-icon" fill="currentColor" viewBox="0 0 16 16">
                 <path d="M8 1a2.5 2.5 0 0 1 2.5 2.5V4h-5v-.5A2.5 2.5 0 0 1 8 1zm3.5 3v-.5a3.5 3.5 0 1 0-7 0V4H1v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4h-3.5z" />
               </svg>
               <h3 className="empty-state-title">No bookings found</h3>
@@ -808,7 +778,6 @@ const handleMarkPaid = async (booking: any) => {
             </div>
           )}
 
-          {/* Summary Cards */}
           {!loading && bookings.length > 0 && (
             <div className="summary-grid">
               <div className="summary-card">
@@ -826,26 +795,18 @@ const handleMarkPaid = async (booking: any) => {
             </div>
           )}
 
-          {/* Booking Cards */}
           {!loading &&
             bookings.map((booking, index) => {
-              // Calculate totals - Total = Paid + Balance
-              const paidAmount = booking.total_paid || booking.paid_amount || 0;
-              const balanceAmount = booking.total_unpaid || booking.unpaid_amount || 0;
-              const totalAmount = paidAmount + balanceAmount;
+              // ✅ Use values directly from grouped booking - NO CALCULATION
+              const paidAmount = booking.total_paid;
+              const balanceAmount = booking.total_unpaid;
+              const totalAmount = booking.total_amount;
 
-              // Get first letter for profile icon
               const firstLetter = booking.booking_username?.charAt(0).toUpperCase() || "U";
-
-              // Get sport image
               const sportImage = getSportImage(booking.booked_sports_name);
 
               return (
-                <div 
-                  key={`${booking.id}-${index}`} 
-                  className="booking-card"
-                >
-                  {/* Booking Header with Profile Icon */}
+                <div key={`${booking.id}-${index}`} className="booking-card">
                   <div className="booking-header">
                     <div className="booking-user-section">
                       <div className="profile-icon-wrapper">
@@ -854,7 +815,6 @@ const handleMarkPaid = async (booking: any) => {
                       <div className="booking-user-info">
                         <h6>{booking.booking_username}</h6>
                         <div className="booking-mobile">
-                          {/* <span className="mobile-icon">📱</span> */}
                           <span>{booking.booking_user_mobile}</span>
                         </div>
                       </div>
@@ -870,10 +830,9 @@ const handleMarkPaid = async (booking: any) => {
                     </span>
                   </div>
 
-                  {/* Sport Section with Image */}
                   <div className="sport-section">
-                    <img 
-                      src={sportImage} 
+                    <img
+                      src={sportImage}
                       alt={booking.booked_sports_name}
                       className="sport-image"
                     />
@@ -887,36 +846,26 @@ const handleMarkPaid = async (booking: any) => {
                     </div>
                   </div>
 
-                  {/* Booking Details */}
                   <div className="booking-details">
                     <div className="detail-item">
                       <span className="detail-label">Date</span>
                       <span className="detail-value">{booking.date}</span>
                     </div>
-                    {/* <div className="detail-item">
-                      <span className="detail-label">Time Range</span>
-                      <span className="detail-value">
-                        {booking.slot_start_time} - {booking.slot_end_time}
-                      </span>
-                    </div> */}
                   </div>
 
-                  {/* Booked Slots */}
                   {booking.slots && booking.slots.length > 0 && (
                     <div className="slots-section">
-                      <span className="slots-label">Booked Slots</span>
+                      <span className="slots-label">Booked Slots ({booking.slots.length})</span>
                       <div className="slots-container">
-  {booking.slots.map((slot: string, i: number) => (
-    <span key={i} className="slot-badge">
-      {slot}
-    </span>
-  ))}
-</div>
-
+                        {booking.slots.map((slot: string, i: number) => (
+                          <span key={i} className="slot-badge">
+                            {slot}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   )}
 
-                  {/* Payment Summary */}
                   <div className="payment-summary">
                     <div className="payment-grid">
                       <div className="payment-item">
@@ -934,7 +883,6 @@ const handleMarkPaid = async (booking: any) => {
                     </div>
                   </div>
 
-                  {/* Mark as Paid Button */}
                   {balanceAmount > 0 && (
                     <button
                       className="mark-paid-button"

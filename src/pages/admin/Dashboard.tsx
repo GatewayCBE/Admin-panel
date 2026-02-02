@@ -8,12 +8,22 @@ const Dashboard: React.FC = () => {
   const [totalTurfs, setTotalTurfs] = useState<number>(0);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    getTurfs()
-      .then(turfs => setTotalTurfs(turfs.length))
-      .catch(() => setTotalTurfs(0))
-      .finally(() => setLoading(false));
-  }, []);
+  
+useEffect(() => {
+  getTurfs()
+    .then(turfs => {
+      const validTurfs = turfs.filter((turf: any) =>
+        turf.booking_type !== "call_now" &&
+        (turf.turf_active_status === true || turf.turf_active_status === "true")
+      );
+
+      setTotalTurfs(validTurfs.length);
+    })
+    .catch(() => setTotalTurfs(0))
+    .finally(() => setLoading(false));
+}, []);
+
+
 
   return (
     <>
@@ -35,7 +45,7 @@ const Dashboard: React.FC = () => {
           }}
         >
           <div className="card-body d-flex flex-column p-4 p-md-5">
-            <h3 className="card-title fw-bold mb-3">All Turfs</h3>
+            <h3 className="card-title fw-bold mb-3 fs-2">Approved Turfs</h3>
             <div className="display-6 mb-2">
               {totalTurfs.toLocaleString()} TURFS
             </div>
@@ -61,7 +71,7 @@ const Dashboard: React.FC = () => {
           }}
         >
           <div className="card-body d-flex flex-column p-4 p-md-5">
-            <h3 className="card-title fw-bold mb-3">Manage Turfs</h3>
+            <h3 className="card-title fw-bold mb-3 fs-2">Manage Turfs</h3>
             <p className="lead mb-4">Edit • Delete • Control</p>
             <div className="mt-auto">
               <span className="btn btn-light text-dark px-4 py-2 rounded-pill">
@@ -85,7 +95,7 @@ const Dashboard: React.FC = () => {
           }}
         >
           <div className="card-body p-4 d-flex flex-column">
-            <h4 className="card-title fw-bold mb-3">Channel Partners</h4>
+            <h4 className="card-title fw-bold mb-3 fs-2">Channel Partners</h4>
             <p className="mb-auto opacity-90">View partners • details</p>
           </div>
         </div>
@@ -94,7 +104,7 @@ const Dashboard: React.FC = () => {
 
     {/* Analytics */}
     <div className="col-12 col-md-6 col-lg-5">
-      <Link to="/admin/reports/*" className="text-decoration-none">
+      <Link to="/admin/reportspanel" className="text-decoration-none">
         <div 
           className="card border-0 shadow h-100 text-white"
           style={{ 
@@ -104,7 +114,7 @@ const Dashboard: React.FC = () => {
           }}
         >
           <div className="card-body p-4 d-flex flex-column">
-            <h4 className="card-title fw-bold mb-3">Analytics</h4>
+            <h4 className="card-title fw-bold mb-3 fs-2">Reports</h4>
             <p className="mb-auto opacity-90">Insights • Reports • Trends</p>
           </div>
         </div>
@@ -122,7 +132,7 @@ const Dashboard: React.FC = () => {
           }}
         >
           <div className="card-body p-4 d-flex flex-column">
-            <h4 className="card-title fw-bold mb-3">User Bookings</h4>
+            <h4 className="card-title fw-bold mb-3 fs-2">User Bookings</h4>
             <p className="mb-auto opacity-90">View user bookings and slot details</p>
           </div>
         </div>

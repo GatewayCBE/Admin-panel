@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { getAllBookedSlots, getTurfsByOwner } from '../../../services/firestoreService';
+import { getAllBookedSlots, getTurfsByOwner, onSlotUpdate } from '../../../services/firestoreService';
 import pickleballImg from "../../../assets/PickleImg.png";
 import badmintonImg from "../../../assets/badminton.png";
 import footballImg from "../../../assets/football.png";
 import boxcricketImg from "../../../assets/boxcricket_football.png";
 import { useNavigate } from "react-router-dom";
-import { bookSlot } from "../../../services/firestoreService";
 
 interface TimeSlot {
   id: string;
@@ -15,10 +14,9 @@ interface TimeSlot {
   isBooked: boolean;
 }
 
-
 const SlotManagement: React.FC = () => {
   const ownerId = localStorage.getItem("user_id") || "";
-const navigate = useNavigate();
+  const navigate = useNavigate();
 
   const [turfs, setTurfs] = useState<any[]>([]);
   const [selectedTurf, setSelectedTurf] = useState<any>(null);
@@ -43,7 +41,9 @@ const navigate = useNavigate();
   const [bookingDate, setBookingDate] = useState<string>(
     new Date().toISOString().split('T')[0]
   );
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>("");
+  
+  // ✅ Changed to array for multiple slot selection
+  const [selectedTimeSlots, setSelectedTimeSlots] = useState<string[]>([]);
 
   // Load turfs on mount
   useEffect(() => {
@@ -75,7 +75,6 @@ const navigate = useNavigate();
       return;
     }
 
-    
     setOperatingHours({
       open: timing.opening_time || "",
       close: timing.closing_time || "",
@@ -94,29 +93,25 @@ const navigate = useNavigate();
     generateSlots(timing.opening_time, timing.closing_time);
   }, [selectedSport, selectedTurf]);
 
-const convertTo24 = (time12h: string) => {
-  if (!time12h) return "00:00";
+  const convertTo24 = (time12h: string) => {
+    if (!time12h) return "00:00";
 
-  const clean = time12h.trim().toUpperCase().replace(/\s+/g, " ");
-  const parts = clean.split(" ");
+    const clean = time12h.trim().toUpperCase().replace(/\s+/g, " ");
+    const parts = clean.split(" ");
 
-  let time = parts[0];
-  let modifier = parts[1] || null;
+    let time = parts[0];
+    let modifier = parts[1] || null;
 
-  let [hours, minutes] = time.split(":").map(Number);
+    let [hours, minutes] = time.split(":").map(Number);
 
-  // fallback safety
-  if (isNaN(hours)) hours = 0;
-  if (isNaN(minutes)) minutes = 0;
+    if (isNaN(hours)) hours = 0;
+    if (isNaN(minutes)) minutes = 0;
 
-  if (modifier === "PM" && hours !== 12) hours += 12;
-  if (modifier === "AM" && hours === 12) hours = 0;
+    if (modifier === "PM" && hours !== 12) hours += 12;
+    if (modifier === "AM" && hours === 12) hours = 0;
 
-  return `${hours.toString().padStart(2, "0")}:${minutes
-    .toString()
-    .padStart(2, "0")}`;
-};
-
+    return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
+  };
 
   const generateSlots = (open: string, close: string) => {
     if (!open || !close) return;
@@ -183,45 +178,35 @@ const convertTo24 = (time12h: string) => {
     loadBooked();
   }, [selectedSport, selectedCourt, selectedTurf, bookingDate]);
 
-  // 🔥 Check if slot is in the past (TODAY ONLY)
   const isPastSlot = (slotStart: string) => {
     const today = new Date();
     const todayStr = today.toISOString().split("T")[0];
 
-    // Only disable past time for TODAY
     if (bookingDate !== todayStr) return false;
 
     const slot24 = convertTo24(slotStart);
     const [slotHour, slotMinute] = slot24.split(":").map(Number);
 
-    // Get opening and closing hours in 24h format
     const open24 = convertTo24(operatingHours.open);
     const close24 = convertTo24(operatingHours.close);
     const [openHour] = open24.split(":").map(Number);
     const [closeHour] = close24.split(":").map(Number);
 
-    // Check if this is a next-day slot (after midnight)
     const isNextDaySlot = closeHour < openHour && slotHour < openHour;
 
     const now = new Date();
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
 
-    // If it's a next-day slot (e.g., 12 AM - 2:30 AM), don't mark as past
-    // unless current time is also in that next-day range
     if (isNextDaySlot) {
-      // If current time is also after midnight and before opening
       if (currentHour < openHour) {
-        // Compare with slot time
         if (currentHour > slotHour || (currentHour === slotHour && currentMinute > slotMinute)) {
           return true;
         }
       }
-      // If current time is in the previous day's range, next-day slots are not past
       return false;
     }
 
-    // For regular slots (same day), compare normally
     if (currentHour > slotHour || (currentHour === slotHour && currentMinute > slotMinute)) {
       return true;
     }
@@ -229,7 +214,7 @@ const convertTo24 = (time12h: string) => {
     return false;
   };
 
-
+  // ✅ Modified to handle multiple slot selection
   const handleSlotClick = (slot: TimeSlot) => {
     if (!selectedTurf || !selectedSport || !selectedCourt) return;
 
@@ -241,48 +226,111 @@ const convertTo24 = (time12h: string) => {
       !blockedForThisCourt.includes(slot.id) &&
       !isPastSlot(slot.startTime)
     ) {
-      setSelectedTimeSlot(slot.id);
+      // Toggle slot selection
+      setSelectedTimeSlots(prev => {
+        if (prev.includes(slot.id)) {
+          // Deselect
+          return prev.filter(id => id !== slot.id);
+        } else {
+          // Select
+          return [...prev, slot.id];
+        }
+      });
     }
   };
 
   const handleSlotUnavailable = () => {
-    if (!selectedTimeSlot) return alert("Select a slot first");
+    if (selectedTimeSlots.length === 0) return alert("Select at least one slot first");
 
     const key = `${selectedTurf.turf_id}_${selectedSport}_${selectedCourt}_${bookingDate}`;
 
     setBlockedSlots(prev => ({
       ...prev,
-      [key]: [...(prev[key] || []), selectedTimeSlot]
+      [key]: [...(prev[key] || []), ...selectedTimeSlots]
     }));
 
-    setSelectedTimeSlot("");
+    setSelectedTimeSlots([]);
   };
 
-const handleBookSlot = () => {
-  if (!bookingName || !bookingMobile || !selectedTimeSlot) return;
-
-  const selectedSlot = slots.find(s => s.id === selectedTimeSlot);
-  if (!selectedSlot) return;
-
-  const price = getSlotPrice(selectedSlot.startTime);
-
-  navigate("/owner/booking-confirmation", {
-    state: {
-      turfId: selectedTurf.turf_id,
-      turfName: selectedTurf.turf_name,
-      bookingName,
-      bookingMobile,
-      sport: selectedSport,
-      court: selectedCourt,
-      date: bookingDate,
-      slot: selectedSlot,
-      price,
-      ownerId
+  const handleBookSlot = () => {
+    if (!bookingName || !bookingMobile || selectedTimeSlots.length === 0) {
+      return alert("Please fill in all fields and select at least one slot");
     }
+
+    // Get all selected slot details
+    const selectedSlotDetails = slots.filter(s => selectedTimeSlots.includes(s.id));
+    
+    if (selectedSlotDetails.length === 0) return;
+
+    // Calculate total price for all selected slots
+    const totalPrice = selectedSlotDetails.reduce((sum, slot) => {
+      return sum + getSlotPrice(slot.startTime);
+    }, 0);
+
+    navigate("/owner/booking-confirmation", {
+      state: {
+        turfId: selectedTurf.turf_id,
+        turfName: selectedTurf.turf_name,
+        bookingName,
+        bookingMobile,
+        sport: selectedSport,
+        court: selectedCourt,
+        date: bookingDate,
+        slots: selectedSlotDetails, // Pass all selected slots
+        totalPrice,
+        ownerId
+      }
+    });
+  };
+
+  useEffect(() => {
+  const reload = () => {
+    console.log("🔄 Slots refresh triggered");
+    // re-fetch booked slots
+    setSelectedTimeSlots([]);
+  };
+
+  window.addEventListener("slotsUpdated", reload);
+  return () => window.removeEventListener("slotsUpdated", reload);
+}, []);
+
+
+// Add this useEffect to listen for slot updates
+useEffect(() => {
+  const unsubscribe = onSlotUpdate(() => {
+    console.log("🔄 SlotManagement: Refreshing slots after cancellation");
+    // Re-fetch booked slots
+    loadBooked();
   });
+
+  return () => unsubscribe();
+}, [selectedTurf, selectedSport, selectedCourt, bookingDate]);
+
+// Extract the loadBooked logic into a separate function
+const loadBooked = async () => {
+  if (!selectedTurf || !selectedSport || !selectedCourt || !bookingDate) return;
+
+  const booked = await getAllBookedSlots(
+    selectedTurf.turf_id,
+    bookingDate,
+    selectedSport,
+    selectedCourt
+  );
+
+  const bookedTimes = booked.map(b => b.slot_start_time);
+
+  setSlots(prev =>
+    prev.map(slot => ({
+      ...slot,
+      isBooked: bookedTimes.includes(slot.startTime)
+    }))
+  );
 };
 
-
+// Update the existing useEffect to use loadBooked
+useEffect(() => {
+  loadBooked();
+}, [selectedSport, selectedCourt, selectedTurf, bookingDate]);
 
   const getSportImage = (sport: string) => {
     const name = sport.toLowerCase();
@@ -304,10 +352,21 @@ const handleBookSlot = () => {
       .toLowerCase();
 
     const hour = parseInt(convertTo24(slotStart).split(":")[0]);
-const nightStartHour = parseInt(convertTo24(operatingHours.nightStart).split(":")[0]);
-const isNight = hour >= nightStartHour;
+    const nightStartHour = parseInt(convertTo24(operatingHours.nightStart).split(":")[0]);
+    const isNight = hour >= nightStartHour;
 
     return isNight ? prices[dayName]?.night || 0 : prices[dayName]?.day || 0;
+  };
+
+  // ✅ Calculate total price for selected slots
+  const getTotalPrice = () => {
+    return selectedTimeSlots.reduce((sum, slotId) => {
+      const slot = slots.find(s => s.id === slotId);
+      if (slot) {
+        return sum + getSlotPrice(slot.startTime);
+      }
+      return sum;
+    }, 0);
   };
 
   const formatDisplayDate = (dateStr: string) => {
@@ -318,7 +377,6 @@ const isNight = hour >= nightStartHour;
     });
   };
 
-  
   return (
     <div style={{ backgroundColor: '#f8f9fa', minHeight: '100vh' }} className='mt-5 pt-5'>
       <div className="">
@@ -443,7 +501,7 @@ const isNight = hour >= nightStartHour;
         <div className="mb-4">
           <h6 className="fw-bold mb-1">All Available Slots</h6>
           <small className="text-muted d-block mb-3">
-            🔴 Booked | ⚫ Unavailable | ⏳ Past Time |  Available
+            🔴 Booked | ⚫ Unavailable | ⏳ Past Time | ✅ Available | 🟢 Selected ({selectedTimeSlots.length})
           </small>
           
           <div className="row g-2">
@@ -452,7 +510,7 @@ const isNight = hour >= nightStartHour;
               const blockedForThisCourt = blockedSlots[key] || [];
 
               const isBlocked = blockedForThisCourt.includes(slot.id);
-              const isSelected = selectedTimeSlot === slot.id;
+              const isSelected = selectedTimeSlots.includes(slot.id);
               const isPast = isPastSlot(slot.startTime);
 
               let buttonStyle = {
@@ -465,38 +523,24 @@ const isNight = hour >= nightStartHour;
                 opacity: 1
               };
 
-              let icon = '';
-
               if (slot.isBooked) {
-                // 🔴 Already booked from database
                 buttonStyle.backgroundColor = '#dc3545';
                 buttonStyle.cursor = 'not-allowed';
-                // icon = '🔒';
               } else if (isBlocked) {
-                // ⚫ Owner marked unavailable
                 buttonStyle.backgroundColor = '#6c757d';
                 buttonStyle.cursor = 'not-allowed';
-                // icon = '⛔';
               } else if (isPast) {
-                // ⏳ Past time (only for today)
                 buttonStyle.backgroundColor = '#adb5bd';
                 buttonStyle.cursor = 'not-allowed';
                 buttonStyle.opacity = 0.6;
-                // icon = '⏳';
               } else if (isSelected) {
-                // 🟢 Selected by user
                 buttonStyle.backgroundColor = '#198754';
                 buttonStyle.border = '2px solid #146c43';
-                // icon = '✓';
               } else {
-                // ✅ Available to book
-          
-  // ✅ Available to book
-  buttonStyle.backgroundColor = '#e9fbe5';
-  buttonStyle.border = '2px solid #9adf07';
-  buttonStyle.color = '#146c43';
-}
-
+                buttonStyle.backgroundColor = '#e9fbe5';
+                buttonStyle.border = '2px solid #9adf07';
+                buttonStyle.color = '#146c43';
+              }
 
               return (
                 <div key={slot.id} className="col-4">
@@ -507,28 +551,29 @@ const isNight = hour >= nightStartHour;
                     style={buttonStyle}
                   >
                     <div style={{ fontSize: '11px' }}>{slot.label}</div>
-                    {icon && <div style={{ fontSize: '14px', marginTop: '4px' }}>{icon}</div>}
                   </button>
                 </div>
               );
             })}
           </div>
 
-          {/* Selected Slot Info */}
-          {selectedTimeSlot && (
+          {/* Selected Slots Info */}
+          {selectedTimeSlots.length > 0 && (
             <div className="mt-4 p-4 rounded-4 shadow-sm" style={{ background: "#f5f5dc" }}>
-              <h5 className="text-success fw-bold mb-3"> Selected Slot</h5>
-              {slots
-                .filter(s => s.id === selectedTimeSlot)
-                .map(s => (
-                  <div key={s.id} className="mb-2">
-                    <span className="badge bg-success fs-6 px-3 py-2 rounded-pill">
+              <h5 className="text-success fw-bold mb-3">
+                Selected Slots ({selectedTimeSlots.length})
+              </h5>
+              <div className="d-flex flex-wrap gap-2 mb-3">
+                {slots
+                  .filter(s => selectedTimeSlots.includes(s.id))
+                  .map(s => (
+                    <span key={s.id} className="badge bg-success fs-6 px-3 py-2 rounded-pill">
                       {s.label}
                     </span>
-                  </div>
-                ))}
+                  ))}
+              </div>
               <h4 className="mt-3 fw-bold">
-                Total Price: ₹ {getSlotPrice(slots.find(s => s.id === selectedTimeSlot)?.startTime || "")}
+                Total Price: ₹{getTotalPrice()}
               </h4>
             </div>
           )}
@@ -540,32 +585,32 @@ const isNight = hour >= nightStartHour;
             <button 
               className="btn w-100 py-3"
               onClick={handleSlotUnavailable}
-              disabled={!selectedTimeSlot}
+              disabled={selectedTimeSlots.length === 0}
               style={{ 
                 backgroundColor: '#198754', 
                 color: 'white',
                 border: 'none',
                 fontWeight: '500',
-                opacity: selectedTimeSlot ? 1 : 0.6
+                opacity: selectedTimeSlots.length > 0 ? 1 : 0.6
               }}
             >
-              Slot Unavailable
+              Mark Unavailable ({selectedTimeSlots.length})
             </button>
           </div>
           <div className="col-6">
             <button 
               className="btn w-100 py-3"
               onClick={handleBookSlot}
-              disabled={!selectedTimeSlot || !bookingName || !bookingMobile}
+              disabled={selectedTimeSlots.length === 0 || !bookingName || !bookingMobile}
               style={{ 
                 backgroundColor: '#198754', 
                 color: 'white',
                 border: 'none',
                 fontWeight: '500',
-                opacity: (selectedTimeSlot && bookingName && bookingMobile) ? 1 : 0.6
+                opacity: (selectedTimeSlots.length > 0 && bookingName && bookingMobile) ? 1 : 0.6
               }}
             >
-              Book Slot
+              Book Slots ({selectedTimeSlots.length})
             </button>
           </div>
         </div>
