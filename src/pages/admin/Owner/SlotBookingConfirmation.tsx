@@ -8,16 +8,13 @@ import {
   sendBookingEmail
 } from "../../../services/firestoreService";
 
-
 const SlotBookingConfirmation = () => {
   const { state } = useLocation();
   const navigate = useNavigate();
 
   const [paidAmount, setPaidAmount] = useState(0);
-  const [markPaid, setMarkPaid] = useState(false);
   const [showModal, setShowModal] = useState(false);
- const channelPartnerEmail = localStorage.getItem("user_email") || "";
-console.log('channelPartnerEmail',channelPartnerEmail);
+  const channelPartnerEmail = localStorage.getItem("user_email") || "";
 
   if (!state) return <div className="text-center mt-5">No booking data</div>;
 
@@ -36,86 +33,86 @@ console.log('channelPartnerEmail',channelPartnerEmail);
 
   const remaining = Math.max(price - paidAmount, 0);
 
-const handleConfirmBooking = async () => {
-  
-  try {
-     console.log("🚀 Starting booking process...");
-    const bookedOn = new Date().toLocaleString();
+  const handleConfirmBooking = async () => {
+    try {
+      console.log("🚀 Starting booking process...");
 
-    // 1️⃣ Save slot booking to Firestore
-    await bookSlot({
-      turfId,
-      date,
-      sport,
-      court,
-      slot,
-      bookingName,
-      bookingMobile,
-      price,
-      paidAmount,
-      unpaidAmount: remaining,
-      ownerId
-    });
- console.log("✅ Slot booking saved to Firestore");
-    // 2️⃣ Build Email Message
-    const emailMessage = buildBookingEmailMessage({
+      const bookedOn = new Date().toLocaleString();
+
+      // 1️⃣ Save booking to Firestore (only to /bookings/{bookingId})
+      const bookingId = await bookSlot({
+        turfId,
+        date,
+        sport,
+        court,
+        slot,
+        bookingName,
+        bookingMobile,
+        price,
+        paidAmount,
+        unpaidAmount: remaining,
+        ownerId
+      });
+
+      console.log("✅ Booking saved with ID:", bookingId);
+
+      // 2️⃣ Build Email Message
+      const emailMessage = buildBookingEmailMessage({
+        bookingUserName: bookingName,
+        turfName,
+        turfMobile: "N/A",
+        sport,
+        court,
+        bookedOn,
+        bookingDate: new Date(date).toDateString(),
+        slots: [slot.label],
+        totalAmount: price,
+        paidAmount,
+        remainingAmount: remaining
+      });
+
+      console.log("📝 Email message prepared");
+
+      // 3️⃣ Send Email to Channel Partner
+      if (channelPartnerEmail) {
+        await sendBookingEmail(
+          channelPartnerEmail,
+          "New Turf Booking Confirmation",
+          emailMessage
+        );
+      }
+
+      // 4️⃣ Show Success Modal
+      setShowModal(true);
+      console.log("🎉 Booking flow completed");
+
+    } catch (err) {
+      console.error("Booking failed:", err);
+      alert("Booking failed. Please try again.");
+    }
+  };
+
+  const handleShareWhatsApp = () => {
+    const message = buildWhatsAppBookingMessage({
       bookingUserName: bookingName,
       turfName,
       turfMobile: "N/A",
       sport,
       court,
-      bookedOn,
+      bookedOn: new Date().toLocaleString(),
       bookingDate: new Date(date).toDateString(),
       slots: [slot.label],
       totalAmount: price,
       paidAmount,
       remainingAmount: remaining
     });
- console.log("📝 Email message prepared");
-    // 3️⃣ Send Email to Channel Partner
-    if (channelPartnerEmail) {
-      await sendBookingEmail(
-        channelPartnerEmail,
-        "New Turf Booking Confirmation",
-        emailMessage
-      );
-    }
 
-    // 4️⃣ Show Success Modal
-    setShowModal(true);
-console.log("🎉 Booking flow completed");
-  } catch (err) {
-    console.error(err);
-    alert("Booking failed");
-  }
-};
-
-
-const handleShareWhatsApp = () => {
-  const message = buildWhatsAppBookingMessage({
-    bookingUserName: bookingName,
-    turfName,
-    turfMobile: "N/A",
-    sport,
-    court,
-    bookedOn: new Date().toLocaleString(),
-    bookingDate: new Date(date).toDateString(),
-    slots: [slot.label],
-    totalAmount: price,
-    paidAmount,
-    remainingAmount: remaining
-  });
-
-  shareBookingViaWhatsApp(bookingMobile, message);
-};
-
-
-
+    shareBookingViaWhatsApp(bookingMobile, message);
+  };
 
   return (
     <div className="container mt-5 pt-5">
       <div className="card shadow-lg p-4 rounded-4">
-
         <h3 className="text-success fw-bold text-center mb-4">Booking Confirmation</h3>
 
         <div className="mb-3"><strong>Booking Date:</strong> {date}</div>
@@ -154,24 +151,10 @@ const handleShareWhatsApp = () => {
           Remaining Amount ₹ {remaining}
         </h5>
 
-        {/* Mark as Paid */}
-        {/* {remaining > 0 && (
-          <div className="form-check mt-2">
-            <input
-              className="form-check-input"
-              type="checkbox"
-              checked={markPaid}
-              onChange={(e) => setMarkPaid(e.target.checked)}
-              id="markPaid"
-            />
-            <label className="form-check-label" htmlFor="markPaid">
-              Mark as Fully Paid
-            </label>
-          </div>
-        )} */}
-
         <div className="d-flex justify-content-between mt-4">
-          <button className="btn btn-danger px-4" onClick={() => navigate(-1)}>Cancel</button>
+          <button className="btn btn-danger px-4" onClick={() => navigate(-1)}>
+            Cancel
+          </button>
           <button className="btn btn-success px-4" onClick={handleConfirmBooking}>
             Confirm Booking
           </button>
@@ -180,19 +163,21 @@ const handleShareWhatsApp = () => {
 
       {/* SUCCESS MODAL */}
       {showModal && (
-        <div className="modal show fade d-block">
+        <div className="modal show fade d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content text-center p-4 rounded-4">
               <h4 className="text-success fw-bold">Booking Confirmed!</h4>
-              <p>Booking successfully </p>
+              <p>Booking successfully completed.</p>
+
               <button
-                className="btn btn-success w-100 me-2"
-                // onClick={() => navigate("/owner/slotmanagement")}
-  onClick={handleShareWhatsApp}              >
+                className="btn btn-success w-100 mb-2"
+                onClick={handleShareWhatsApp}
+              >
                 SHARE VIA WHATSAPP
               </button>
-               <button
-                className="btn rounded-fill w-100"
+
+              <button
+                className="btn btn-outline-secondary w-100"
                 onClick={() => navigate("/owner/channelpartnerdashboard")}
               >
                 No, Thanks
@@ -201,7 +186,6 @@ const handleShareWhatsApp = () => {
           </div>
         </div>
       )}
-
     </div>
   );
 };
