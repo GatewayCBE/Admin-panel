@@ -9,11 +9,14 @@ import {
   setDoc,
   QuerySnapshot,
   DocumentData,
+   Timestamp,
   updateDoc,
   deleteDoc,
   runTransaction,
   serverTimestamp,
+  addDoc,
 } from "firebase/firestore";
+
 import {
   getFunctions,
   httpsCallable,
@@ -563,6 +566,88 @@ export const createTurf = async ({
 //   }
 // };
 
+export const fetchAllBookings = async (environment: string = "testing") => {
+  try {
+    const bookingsRef = collection(db, `environments/${environment}/bookings`);
+    const snapshot = await getDocs(bookingsRef);
+    
+    const bookings: any[] = [];
+    snapshot.forEach((doc) => {
+      bookings.push({
+        id: doc.id,
+        ...doc.data()
+      });
+    });
+    
+    console.log(`Fetched ${bookings.length} bookings from ${environment} environment`);
+    return bookings;
+  } catch (error) {
+    console.error("Error fetching bookings:", error);
+    throw error;
+  }
+};
+
+/**
+ * Fetch bookings with filters
+ * @param environment - The environment to fetch from
+ * @param filters - Optional filters (turfId, userId, ownerId, status)
+ * @returns Promise with filtered array of booking objects
+ */
+export const fetchBookingsWithFilters = async (
+  environment: string = "testing",
+  filters?: {
+    turfId?: string;
+    userId?: string;
+    ownerId?: string;
+    bookingStatus?: string;
+    paymentStatus?: string;
+  }
+) => {
+  try {
+    let bookingsQuery = collection(db, `environments/${environment}/bookings`);
+    
+    if (filters) {
+      const constraints = [];
+      
+      if (filters.turfId) {
+        constraints.push(where("turfId", "==", filters.turfId));
+      }
+      if (filters.userId) {
+        constraints.push(where("userId", "==", filters.userId));
+      }
+      if (filters.ownerId) {
+        constraints.push(where("ownerId", "==", filters.ownerId));
+      }
+      if (filters.bookingStatus) {
+        constraints.push(where("bookingStatus", "==", filters.bookingStatus));
+      }
+      if (filters.paymentStatus) {
+        constraints.push(where("paymentStatus", "==", filters.paymentStatus));
+      }
+      
+      if (constraints.length > 0) {
+        bookingsQuery = query(bookingsQuery as any, ...constraints) as any;
+      }
+    }
+    
+    const snapshot = await getDocs(bookingsQuery);
+    
+    const bookings: any[] = [];
+    snapshot.forEach((doc) => {
+      bookings.push({
+        id: doc.id,
+        ...doc.data()
+      });
+    });
+    
+    console.log(`Fetched ${bookings.length} filtered bookings`);
+    return bookings;
+  } catch (error) {
+    console.error("Error fetching filtered bookings:", error);
+    throw error;
+  }
+};
+
 export interface SlotData {
   id: string;
   amount: number;
@@ -770,23 +855,104 @@ export interface BookedSlot {
 //   return `${h}:${m.toString().padStart(2, "0")} ${ampm}`;
 // }
 
-// const formatTo12Hour = (time: string) => {
-//   if (!time) return "";
+const convertTo24Hour = (time12h: string): string => {
+  if (!time12h) return "00:00";
+  
+  // If already in 24-hour format, return as is
+  if (!time12h.includes("AM") && !time12h.includes("PM")) {
+    return time12h;
+  }
+  
+  const clean = time12h.trim().toUpperCase().replace(/\s+/g, " ");
+  const parts = clean.split(" ");
+  
+  let time = parts[0];
+  let modifier = parts[1] || null;
+  
+  let [hours, minutes] = time.split(":").map(Number);
+  
+  if (isNaN(hours)) hours = 0;
+  if (isNaN(minutes)) minutes = 0;
+  
+  if (modifier === "PM" && hours !== 12) hours += 12;
+  if (modifier === "AM" && hours === 12) hours = 0;
+  
+  return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
+};
 
-//   const [hourStr, minStr = "00"] = time.split(":").length > 1
-//     ? time.split(":")
-//     : time.split("."); // handles "19.00" format
+/**
+ * Convert 24-hour time to 12-hour format
+ */
+const formatTo12Hour = (time: string): string => {
+  if (!time) return "";
 
-//   let hour = parseInt(hourStr, 10);
-//   const minutes = minStr.padStart(2, "0");
+  const clean = time.trim().toUpperCase();
 
-//   const ampm = hour >= 12 ? "PM" : "AM";
-//   hour = hour % 12;
-//   hour = hour === 0 ? 12 : hour;
+  // Already 12h format → return safely
+  if (clean.includes("AM") || clean.includes("PM")) {
+    return clean;
+  }
 
-//   return `${hour}:${minutes} ${ampm}`;
-// };
+  const parts = clean.split(":");
+  if (parts.length < 2) return "";
 
+  const hoursNum = Number(parts[0]);
+  const minsNum = Number(parts[1]);
+
+  if (isNaN(hoursNum) || isNaN(minsNum)) return "";
+
+  const period = hoursNum >= 12 ? "PM" : "AM";
+  const hours12 = hoursNum % 12 || 12;
+
+  return `${hours12}:${minsNum.toString().padStart(2, "0")} ${period}`;
+};
+
+
+/**
+ * Generate unique booking ID
+ */
+const generateBookingId = (): string => {
+  const timestamp = Date.now();
+  const random = Math.floor(Math.random() * 1000);
+  return `BYT_P_${timestamp}${random}`;
+};
+
+const formatFirestoreDate = (dateStr: string): string => {
+  const date = new Date(dateStr);
+  return date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).replace(/ /g, "-");
+};
+
+export const parseDate = (value: string): Date | null => {
+  if (!value || typeof value !== "string") return null;
+
+  value = value.trim();
+
+  // DD-MMM-YYYY (01-Feb-2026)
+  if (/^\d{1,2}-[A-Za-z]{3}-\d{4}$/.test(value)) {
+    const [day, mon, year] = value.split("-");
+    const map: Record<string, number> = {
+      Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
+      Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11,
+    };
+    const month = map[mon];
+    if (month === undefined) return null;
+    return new Date(Number(year), month, Number(day));
+  }
+
+  // YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [y, m, d] = value.split("-").map(Number);
+    return new Date(y, m - 1, d);
+  }
+
+  // Fallback (ISO / native)
+  const native = new Date(value);
+  return isNaN(native.getTime()) ? null : native;
+};
 
 export async function getAllBookedSlots(
   turfId: string,
@@ -1013,9 +1179,9 @@ export interface SlotBooking {
   date: string;
   booked_sports_name: string;
   court: string;
-  slots?: string[];                    // always present after grouping
-  slot_start_time?: string;           // optional in raw data
-  slot_end_time?: string;             // optional
+  slots?: string[];
+  slot_start_time?: string;
+  slot_end_time?: string;
   booking_username: string;
   booking_user_mobile: string;
   paid_amount: number;
@@ -1024,16 +1190,19 @@ export interface SlotBooking {
   total_unpaid: number;
   total_amount: number;
   payment_status: string;
-  createdBy?: string;                 // optional
+  createdBy?: string;
+  docIds?: string[];
+  slotPaidAmounts?: number[];
+  slotUnpaidAmounts?: number[];
+  bookingId?: string; // ✅ Preserve original booking ID
 }
-
 
 export const getBookingsByTurfAndDate = async (
   turfId: string,
   date: string
 ): Promise<SlotBooking[]> => {
   try {
-    console.log("Fetching bookings for:", { turfId, date });
+    console.log("🔍 Fetching bookings for:", { turfId, date });
 
     const bookingsRef = collection(db, "environments", "testing", "bookings");
 
@@ -1046,70 +1215,86 @@ export const getBookingsByTurfAndDate = async (
     const snapshot = await getDocs(q);
 
     if (snapshot.empty) {
-      console.log("No bookings found");
+      console.log("⚠️ No bookings found");
       return [];
     }
 
     const allBookings: SlotBooking[] = [];
 
-snapshot.forEach((doc) => {
-  const d = doc.data();
+    snapshot.forEach((doc) => {
+      const d = doc.data();
 
-  allBookings.push({
-    id: doc.id,
-    turf_id: d.turfId || d.turf_id || "",
-    date: d.date || d.selectedDate || "",
-    booked_sports_name: d.bookedSportsName || d.booked_sports_name || "",
-    court: d.court || "",
-    slots: [],  // ← Add this! Raw bookings have no slots array — grouping will fill it
-    slot_start_time: d.slotStartTime || d.slot_start_time || "",
-    slot_end_time: d.slotEndTime || d.slot_end_time || "",
-    booking_username: d.bookingUsername || d.booking_username || "",
-    booking_user_mobile: d.bookingUserMobile || d.booking_user_mobile || "",
-    paid_amount: Number(d.paidAmount ?? d.paid_amount ?? 0),
-    unpaid_amount: Number(d.unpaidAmount ?? d.unpaid_amount ?? 0),
-    total_paid: Number(d.total_paid ?? d.paidAmount ?? d.paid_amount ?? 0),
-    total_unpaid: Number(d.total_unpaid ?? d.unpaidAmount ?? d.unpaid_amount ?? 0),
-    total_amount: 
-  d.total_amount != null 
-    ? Number(d.total_amount)
-    : Number(d.paid_amount ?? 0) + Number(d.unpaid_amount ?? 0),
-    payment_status: d.paymentStatus ?? d.payment_status ?? "advance",
-    createdBy: d.createdBy || "OWNER",
-  });
-});
+      // ✅ Extract amounts EXACTLY as stored
+      const paidAmount = Number(d.paidAmount ?? 0);
+      const unpaidAmount = Number(d.unpaidAmount ?? d.balanceAmount ?? 0);
+      const totalAmount = Number(d.totalAmount ?? 0);
 
-    console.log("Total bookings fetched:", allBookings.length);
+      // ✅ Build slots array from allSlots
+      const allSlots: string[] = d.allSlots || [];
+      const formattedSlots = allSlots.map((slot: string) => formatTo12Hour(slot));
+
+      allBookings.push({
+        id: doc.id,
+        turf_id: d.turfId || "",
+        date: d.date || d.selectedDate || "",
+        booked_sports_name: d.bookedSportsName || "",
+        court: d.court || "",
+        slots: formattedSlots,
+        slot_start_time: d.slotStartTime ? formatTo12Hour(d.slotStartTime) : "",
+        slot_end_time: d.slotEndTime ? formatTo12Hour(d.slotEndTime) : "",
+        booking_username: d.bookingUsername || d.userName || "",
+        booking_user_mobile: d.bookingUserMobile || d.userMobile || "",
+        
+        // ✅ Use EXACT values from Firestore
+        paid_amount: paidAmount,
+        unpaid_amount: unpaidAmount,
+        total_paid: paidAmount,
+        total_unpaid: unpaidAmount,
+        total_amount: totalAmount,
+        
+        payment_status: (d.paymentStatus || "advance").toLowerCase(),
+        createdBy: d.createdBy || "USER",
+        
+        // ✅ CRITICAL: Preserve the original bookingId
+        bookingId: d.bookingId || doc.id,
+      });
+    });
+
+    console.log(`✅ Total bookings fetched: ${allBookings.length}`);
     return allBookings;
   } catch (error) {
-    console.error("Error fetching turf bookings:", error);
+    console.error("❌ Error fetching turf bookings:", error);
     return [];
   }
 };
 
+export const groupBookings = (slots: any[]) => {
+  const grouped: Record<string, any> = {};
 
-// ✅ Group bookings by user + court
-export const groupBookings = (rawBookings: any[]): SlotBooking[] => {
-  const grouped: Record<string, SlotBooking> = {};
+  slots.forEach((s) => {
+    // Normalize values
+    const username = (s.booking_username || s.bookingUsername || "").trim();
+    const mobile = (s.booking_user_mobile || s.bookingUserMobile || "").trim();
+    const court = (s.court || "").trim();
+    const sport = (s.booked_sports_name || s.bookedSportsName || "").trim();
+    const date = (s.date || s.selectedDate || "").trim();
 
-  rawBookings.forEach((booking) => {
-    const key = [
-      booking.booking_username || "Unknown",
-      booking.booking_user_mobile || "Unknown",
-      booking.date || "",
-      booking.booked_sports_name || "",
-      booking.court || ""
-    ].join("_").toLowerCase();
+    // 🔑 KEY decides merging behavior
+    const key = `${username}_${mobile}_${court}_${sport}_${date}`;
+
+    const paid = Number(s.paid_amount ?? s.paidAmount ?? 0);
+    const unpaid = Number(s.unpaid_amount ?? s.unpaidAmount ?? 0);
 
     if (!grouped[key]) {
       grouped[key] = {
         id: key,
-        turf_id: booking.turf_id,
-        date: booking.date,
-        booked_sports_name: booking.booked_sports_name,
-        court: booking.court,
-        booking_username: booking.booking_username || "Unknown",
-        booking_user_mobile: booking.booking_user_mobile || "Unknown",
+        docIds: [],
+        turf_id: s.turf_id || s.turfId,
+        date,
+        booked_sports_name: sport,
+        court,
+        booking_username: username,
+        booking_user_mobile: mobile,
         slots: [],
         slot_start_time: "",
         slot_end_time: "",
@@ -1123,31 +1308,40 @@ export const groupBookings = (rawBookings: any[]): SlotBooking[] => {
       };
     }
 
-    const g = grouped[key];
+    // Keep doc ids for updates later
+    grouped[key].docIds.push(s.id);
 
-    // Add slot time range
-    const slotTime = `${booking.slot_start_time || "?"} - ${booking.slot_end_time || "?"}`;
-    if (slotTime !== "? - ?") {
-  if (!g.slots!.includes(slotTime)) {
-    g.slots!.push(slotTime);
-  }
+    // Add slot time
+const start = formatTo12Hour(s.slot_start_time || s.slotStartTime || "");
+const end = formatTo12Hour(s.slot_end_time || s.slotEndTime || "");
+
+if (start && end) {
+  grouped[key].slots.push(`${start} - ${end}`);
 }
 
-    // Aggregate money
-    g.paid_amount += booking.paid_amount || 0;
-    g.unpaid_amount += booking.unpaid_amount || 0;
-    g.total_paid += booking.total_paid || booking.paid_amount || 0;
-    g.total_unpaid += booking.total_unpaid || booking.unpaid_amount || 0;
-    g.total_amount += booking.total_amount || (booking.paid_amount + booking.unpaid_amount) || 0;
+    // Add amounts
+    grouped[key].total_paid += paid;
+    grouped[key].total_unpaid += unpaid;
+  });
 
-    // Update status
-    if (g.total_unpaid === 0 && g.total_amount > 0) {
+  // Final calculations
+  Object.values(grouped).forEach((g: any) => {
+    g.total_amount = g.total_paid + g.total_unpaid;
+
+    if (g.total_unpaid === 0 && g.total_paid > 0) {
       g.payment_status = "paid";
+    } else if (g.total_paid === 0 && g.total_unpaid > 0) {
+      g.payment_status = "unpaid";
+    } else {
+      g.payment_status = "advance";
     }
   });
 
   return Object.values(grouped);
 };
+
+
+
 
 
 export const markBookingFullyPaid = async (booking: any) => {
@@ -1297,52 +1491,153 @@ export const sendBookingEmail = async (
 
 
 
-export const bookSlot = async ({
-  turfId,
-  date,
-  sport,
-  court,
-  slot,
-  bookingName,
-  bookingMobile,
-  price,
-  paidAmount,
-  unpaidAmount,
-  ownerId
-}: any) => {
-  const bookingId = `BYT_P_${Date.now()}`;
+export const bookSlot = async (bookingData: {
+  turfId: string;
+  turfName?: string;
+  date: string;
+  sport: string;
+  court: string;
+  slot?: any;        // Single slot (old format)
+  slots?: any[];     // Multiple slots (new format)
+  bookingName: string;
+  bookingMobile: string;
+  price: number;
+  paidAmount: number;
+  unpaidAmount: number;
+  ownerId: string;
+}) => {
+  try {
+    const {
+      turfId,
+      turfName,
+      date,
+      sport,
+      court,
+      slot,
+      slots,
+      bookingName,
+      bookingMobile,
+      price,
+      paidAmount,
+      unpaidAmount,
+      ownerId
+    } = bookingData;
 
-  const bookingRef = doc(
-    db,
-    "environments",
-    "testing",
-    "bookings",
-    bookingId
-  );
+    // ✅ Handle both single and multiple slot formats
+const bookingSlots = Array.isArray(slots)
+  ? slots.filter(Boolean) // removes undefined/null
+  : slot
+  ? [slot]
+  : [];
+      
+    if (bookingSlots.length === 0) {
+      throw new Error("No slots provided for booking");
+    }
 
-  await setDoc(bookingRef, {
-    bookingId,                        // store the ID for reference
-    booking_username: bookingName,
-    booking_mobile: bookingMobile,
-    slot_start_time: slot.startTime,
-    slot_end_time: slot.endTime,
-    time: slot.label,
-    date,
-    court,
-    sport,
-    turf_id: turfId,
-    total_amount: price,
-    paid_amount: paidAmount,
-    unpaid_amount: unpaidAmount,
-    payment_status: unpaidAmount === 0 ? "paid" : "partial",
-    owner_id: ownerId,
-    created_at: new Date(),
-    createdBy: "OWNER",               // optional – helps in ViewBookings
-    // Add more fields if needed (e.g. turfName, ownerName, etc.)
-  });
+    // ✅ Generate unique booking ID for this transaction
+    const bookingId = generateBookingId();
+    
+    // ✅ Extract slot times and convert to 24-hour format
+    const allSlots24 = bookingSlots.map(s => {
+      // Extract start time from label "6:00 PM - 7:00 PM"
+      const startTime = s.startTime || s.label.split(" - ")[0];
+      return convertTo24Hour(startTime.trim());
+    });
+    
+    // ✅ Get first and last slot for time range
+    const firstSlot = bookingSlots[0];
+    const lastSlot = bookingSlots[bookingSlots.length - 1];
+    
+    const slotStartTime24 = convertTo24Hour(firstSlot.startTime || firstSlot.label.split(" - ")[0]);
+    const slotEndTime24 = convertTo24Hour(lastSlot.endTime || lastSlot.label.split(" - ")[1]);
+    
+    // ✅ Format all slots as 12-hour strings for display
+    const allSlotsString = bookingSlots.map(s => s.label).join(", ");
+    
+    // ✅ Format date to Firestore format
+    const formattedDate = formatFirestoreDate(date);
+    
+    // ✅ Calculate payment status
+    let paymentStatus = "ADVANCE";
+    if (unpaidAmount === 0 && paidAmount > 0) {
+      paymentStatus = "PAID";
+    } else if (paidAmount === 0) {
+      paymentStatus = "UNPAID";
+    }
 
-  // Return the bookingId so the caller can use it if needed
-  return bookingId;
+    // ✅ Create booking document
+    const bookingsRef = collection(db, "environments", "testing", "bookings");
+    
+    const bookingDoc = {
+      // IDs
+      bookingId: bookingId,
+      turfId: turfId,
+      ownerId: ownerId,
+      userId: `owner_${ownerId}`,
+      
+      // User Info
+      bookingUsername: bookingName,
+      bookingUserMobile: bookingMobile,
+      userName: bookingName,
+      userMobile: bookingMobile,
+      
+      // Turf Info
+      turfName: turfName || "",
+      turfLocation: "",
+      
+      // Booking Details
+      bookedSportsName: sport,
+      court: court,
+      date: formattedDate,
+      selectedDate: formattedDate,
+      
+      // ✅ Slots - IMPORTANT!
+      allSlots: allSlots24,              // ["19:00", "20:00", "21:00"]
+      allSlotsString: allSlotsString,    // "7:00 PM - 8:00 PM, 8:00 PM - 9:00 PM"
+      numberOfSlots: bookingSlots.length,
+      slotStartTime: slotStartTime24,    // "19:00"
+      slotEndTime: slotEndTime24,        // "22:00"
+      
+      // Payment
+      totalAmount: price,
+      paidAmount: paidAmount,
+      unpaidAmount: unpaidAmount,
+      balanceAmount: unpaidAmount,
+      paymentStatus: paymentStatus,
+      
+      // Payment Details
+      paymentMethod: "Offline payment to owner",
+      paymentId: `OFFLINE_${Date.now()}`,
+      paymentTransactionId: `OFFLINE_${Date.now()}`,
+      paymentInitiatedTime: new Date().toISOString(),
+      paidBy: "Offline payment to owner",
+      
+      // Other Fields
+      bookingType: "OFFLINE",
+      createdBy: "OWNER",
+      turfClosed: false,
+      dayPrice: 0,
+      nightPrice: 0,
+      
+      // Timestamps
+      createdAt: Timestamp.now(),
+      updated_at: Timestamp.now(),
+    };
+
+    console.log("📝 Creating booking document:", bookingDoc);
+    
+    const docRef = await addDoc(bookingsRef, bookingDoc);
+    
+    console.log(`✅ Booking created successfully: ${docRef.id}`);
+    console.log(`   Booking ID: ${bookingId}`);
+    console.log(`   Slots: ${allSlotsString}`);
+    console.log(`   Total: ₹${price}, Paid: ₹${paidAmount}, Balance: ₹${unpaidAmount}`);
+    
+    return docRef.id;
+  } catch (error) {
+    console.error("❌ Error creating booking:", error);
+    throw error;
+  }
 };
 
 
@@ -1707,71 +2002,10 @@ export const getUserBookings = async (): Promise<Booking[]> => {
 };
 
 /**
- * Helper: Normalize date to "DD-MMM-YYYY" format used in slot collection
+ * Cancel a booking and FREE the slot for others to book
+ * Works for both user dashboard and admin panel
  */
-function formatDateForSlot(dateInput: string | Date): string {
-  const d = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
-  if (isNaN(d.getTime())) return "";
 
-  const day = String(d.getDate()).padStart(2, "0");
-  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  const month = monthNames[d.getMonth()];
-  const year = d.getFullYear();
-
-  return `${day}-${month}-${year}`;
-}
-
-export const canCancelBooking = (booking: any): boolean => {
-  if (booking.payment_status === "CANCELLED" || booking.paymentStatus === "CANCELLED") {
-    return false;
-  }
-
-  const dateStr = booking.date || booking.selectedDate || booking.selecteddated || "";
-  if (!dateStr) return false;
-
-  const timeStr =
-    booking.slot_start_time ||
-    booking.slotStartTime ||
-    booking.slotStart ||
-    "";
-
-  try {
-    // Parse date (handles "01-Feb-2026", "2026-02-01", "30-01-2026")
-    let bookingDate: Date;
-    if (dateStr.match(/^\d{1,2}-[A-Za-z]{3}-\d{4}$/)) {
-      const [day, monthStr, year] = dateStr.split("-");
-      const monthMap = {
-        Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
-        Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
-      };
-      const month = monthMap[monthStr as keyof typeof monthMap];
-      if (month === undefined) return false;
-      bookingDate = new Date(Number(year), month, Number(day));
-    } else {
-      bookingDate = new Date(dateStr);
-    }
-
-    if (isNaN(bookingDate.getTime())) return false;
-
-    // Add time if available
-    if (timeStr) {
-      const [h, m] = timeStr.split(":").map(Number);
-      if (!isNaN(h) && !isNaN(m)) {
-        bookingDate.setHours(h, m, 0, 0);
-      }
-    }
-
-    // Can cancel if current time is before booking start
-    return new Date() < bookingDate;
-  } catch (err) {
-    console.warn("canCancelBooking parse error:", err);
-    return false;
-  }
-};
-
-/**
- * ADMIN ONLY: Fetch ALL channel partner bookings (IDs starting with BYT_P_)
- */
 export const getChannelPartnerBookings = async (): Promise<Booking[]> => {
   const bookingsRef = collection(db, "environments", "testing", "bookings");
 
@@ -1851,5 +2085,191 @@ export const getChannelPartnerBookings = async (): Promise<Booking[]> => {
   } catch (err) {
     console.error("[getChannelPartnerBookings] Fetch error:", err);
     throw err;
+  }
+};
+
+// Add these helper functions to emit and listen for slot updates
+type SlotUpdateListener = () => void;
+const slotUpdateListeners: SlotUpdateListener[] = [];
+
+export const notifySlotUpdate = () => {
+  console.log("🔔 Notifying all slot listeners to refresh");
+  slotUpdateListeners.forEach(listener => listener());
+};
+
+export const onSlotUpdate = (listener: SlotUpdateListener) => {
+  slotUpdateListeners.push(listener);
+  return () => {
+    const index = slotUpdateListeners.indexOf(listener);
+    if (index > -1) slotUpdateListeners.splice(index, 1);
+  };
+};
+
+export const cancelBooking = async (
+  bookingId: string,
+  reason: string = "Cancelled via admin panel",
+  cancelledBy: "user" | "admin" = "admin"
+): Promise<boolean> => {
+  const currentUserId = getCurrentUserId();
+  if (!currentUserId) throw new Error("User not logged in");
+
+  const bookingRef = doc(db, "environments", "testing", "bookings", bookingId);
+  const bookingSnap = await getDoc(bookingRef);
+
+  if (!bookingSnap.exists()) throw new Error("Booking not found");
+
+  const data = bookingSnap.data();
+
+  // Authorization
+  const tokenResult = await auth.currentUser?.getIdTokenResult();
+  const isAdmin = tokenResult?.claims?.admin === true;
+  const isAuthorized =
+    isAdmin ||
+    data.user_id === currentUserId ||
+    data.owner_id === currentUserId ||
+    data.userId === currentUserId ||
+    data.ownerId === currentUserId;
+
+  if (!isAuthorized) throw new Error("Not authorized");
+
+  // Update booking status
+  await updateDoc(bookingRef, {
+    payment_status: "CANCELLED",
+    cancelled_at: new Date().toISOString(),
+    cancel_reason: reason,
+    cancelled_by: cancelledBy,
+    cancelled_by_uid: currentUserId,
+  });
+
+  // Best-effort slot info
+  let turfId = data.turf_id || data.turfId || data.turf || null;
+  let dateRaw = data.date || data.selectedDate || data.selecteddated || null;
+  let sport = data.booked_sports_name || data.bookedSportsName || data.sport || null;
+  let court = data.court || data.Court || "court 1";
+
+  // Guess sport from turf name if missing
+  if (!sport) {
+    const turfNameLower = (data.turfName || data.turf_name || "").toLowerCase();
+    if (turfNameLower.includes("badminton")) sport = "badminton";
+    else if (turfNameLower.includes("pickle")) sport = "pickleball";
+    else if (turfNameLower.includes("football") || turfNameLower.includes("box")) sport = "football & boxcricket";
+    else sport = "football & boxcricket"; // default
+  }
+
+  // Handle allSlots array - collect ALL slot times
+  let slotStarts: string[] = [];
+
+  if (Array.isArray(data.allSlots) && data.allSlots.length > 0) {
+    slotStarts = data.allSlots;
+  } else if (data.slot_start_time) {
+    slotStarts = [data.slot_start_time];
+  } else if (data.slotStartTime) {
+    slotStarts = [data.slotStartTime];
+  } else if (data.slotStart) {
+    slotStarts = [data.slotStart];
+  }
+
+  // Convert "6:00 PM" → "18:00" (24-hour format)
+  const to24Hour = (time: string) => {
+    if (!time) return null;
+
+    const match = time.trim().toUpperCase().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/);
+    if (!match) return time; // already 24h format
+
+    let hour = parseInt(match[1], 10);
+    const minute = match[2];
+    const ampm = match[3];
+
+    if (ampm === "PM" && hour !== 12) hour += 12;
+    if (ampm === "AM" && hour === 12) hour = 0;
+
+    return `${hour.toString().padStart(2, "0")}:${minute}`;
+  };
+
+  slotStarts = slotStarts.map(to24Hour).filter(Boolean) as string[];
+
+  // Normalize date
+  let normalizedDate = null;
+  if (dateRaw) {
+    try {
+      const d = new Date(dateRaw);
+      if (!isNaN(d.getTime())) {
+        const day = String(d.getDate()).padStart(2, "0");
+        const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+        normalizedDate = `${day}-${monthNames[d.getMonth()]}-${d.getFullYear()}`;
+      }
+    } catch {}
+  }
+
+  // Try to free ALL slots
+  if (turfId && normalizedDate && sport && court && slotStarts.length > 0) {
+    for (const slotStart of slotStarts) {
+      const slotPath = `environment/testing/all_turfs_slot_booking/${turfId}/${normalizedDate}/${sport}/${court}/${slotStart}`;
+      const slotRef = doc(db, slotPath);
+
+      console.log("[CANCEL] Deleting slot:", slotPath);
+
+      try {
+        await deleteDoc(slotRef);
+        console.log("[CANCEL] Slot freed successfully:", slotStart);
+      } catch (err) {
+        console.warn("[CANCEL] Slot already free or delete failed:", slotStart, (err as Error).message);
+      }
+    }
+  } else {
+    console.warn("[CANCEL] Could not free slot – missing fields", {
+      turfId, normalizedDate, sport, court, slotStarts
+    });
+  }
+
+  return true;
+};
+
+
+export const canCancelBooking = (booking: any): boolean => {
+  if (booking.payment_status === "CANCELLED" || booking.paymentStatus === "CANCELLED") {
+    return false;
+  }
+
+  const dateStr = booking.date || booking.selectedDate || booking.selecteddated || "";
+  if (!dateStr) return false;
+
+  const timeStr =
+    booking.slot_start_time ||
+    booking.slotStartTime ||
+    booking.slotStart ||
+    "";
+
+  try {
+    // Parse date (handles "01-Feb-2026", "2026-02-01", "30-01-2026")
+    let bookingDate: Date;
+    if (dateStr.match(/^\d{1,2}-[A-Za-z]{3}-\d{4}$/)) {
+      const [day, monthStr, year] = dateStr.split("-");
+      const monthMap = {
+        Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
+        Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
+      };
+      const month = monthMap[monthStr as keyof typeof monthMap];
+      if (month === undefined) return false;
+      bookingDate = new Date(Number(year), month, Number(day));
+    } else {
+      bookingDate = new Date(dateStr);
+    }
+
+    if (isNaN(bookingDate.getTime())) return false;
+
+    // Add time if available
+    if (timeStr) {
+      const [h, m] = timeStr.split(":").map(Number);
+      if (!isNaN(h) && !isNaN(m)) {
+        bookingDate.setHours(h, m, 0, 0);
+      }
+    }
+
+    // Can cancel if current time is before booking start
+    return new Date() < bookingDate;
+  } catch (err) {
+    console.warn("canCancelBooking parse error:", err);
+    return false;
   }
 };

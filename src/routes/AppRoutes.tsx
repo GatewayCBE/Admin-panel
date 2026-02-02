@@ -38,6 +38,7 @@ import UserBookings from "../pages/admin/Analytics/UserBookings";
 import UserProfile from "../pages/user/UserProfile";
 import UserBookingHistory from "../pages/user/UserBookings";
 import UserBookingHistoryPage from "../pages/user/UserBookings";
+import ReportsPanel from "../pages/admin/All Reports/ReportsPanel";
 
 const AppRoutes: React.FC = () => {
   return (
@@ -90,7 +91,8 @@ const AppRoutes: React.FC = () => {
         <Route path="/dashboard/owners/:ownerId/turfs/:turfId" element={<TurfDetails />} />
         <Route path="/dashboard/owners/:ownerId/turfs/:turfId/edit" element={<EditTurf />} />
         <Route path="/dashboard/owners/:ownerId/:turfId/slots" element={<TurfBookingsPage />} />
-        <Route path="/admin/reports/*" element={<AnalyticsPanel />} />
+        {/* <Route path="/admin/reports/*" element={<AnalyticsPanel />} /> */}
+        <Route path="/admin/reportspanel" element={<ReportsPanel />} />
         <Route path="/admin/recentbookings" element={<RecentBookingsPage />} />
         <Route path="/admin/userbookings" element={<UserBookings />} />
       </Route>

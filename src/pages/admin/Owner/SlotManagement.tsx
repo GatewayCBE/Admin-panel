@@ -44,7 +44,9 @@ const SlotManagement: React.FC = () => {
   const [bookingDate, setBookingDate] = useState<string>(
     new Date().toISOString().split("T")[0]
   );
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>("");
+  
+  // ✅ Changed to array for multiple slot selection
+  const [selectedTimeSlots, setSelectedTimeSlots] = useState<string[]>([]);
 
   // Load turfs on mount
   useEffect(() => {
@@ -269,74 +271,111 @@ const SlotManagement: React.FC = () => {
       !blockedForThisCourt.includes(slot.id) &&
       !isPastSlot(slot.startTime)
     ) {
-      setSelectedTimeSlot(slot.id);
+      // Toggle slot selection
+      setSelectedTimeSlots(prev => {
+        if (prev.includes(slot.id)) {
+          // Deselect
+          return prev.filter(id => id !== slot.id);
+        } else {
+          // Select
+          return [...prev, slot.id];
+        }
+      });
     }
   };
 
   const handleSlotUnavailable = () => {
-    if (!selectedTimeSlot) return alert("Select a slot first");
+    if (selectedTimeSlots.length === 0) return alert("Select at least one slot first");
 
     const key = `${selectedTurf.turf_id}_${selectedSport}_${selectedCourt}_${bookingDate}`;
 
     setBlockedSlots((prev) => ({
       ...prev,
-      [key]: [...(prev[key] || []), selectedTimeSlot],
+      [key]: [...(prev[key] || []), ...selectedTimeSlots]
     }));
 
-    setSelectedTimeSlot("");
+    setSelectedTimeSlots([]);
   };
 
-  const handleBookSlot = async () => {
-    if (!bookingName || !bookingMobile || !selectedTimeSlot) {
-      alert("Please fill all required fields");
-      return;
+  const handleBookSlot = () => {
+    if (!bookingName || !bookingMobile || selectedTimeSlots.length === 0) {
+      return alert("Please fill in all fields and select at least one slot");
     }
 
-    const selectedSlot = slots.find((s) => s.id === selectedTimeSlot);
-    if (!selectedSlot) return;
+    // Get all selected slot details
+    const selectedSlotDetails = slots.filter(s => selectedTimeSlots.includes(s.id));
+    
+    if (selectedSlotDetails.length === 0) return;
 
-    const price = getSlotPrice(selectedSlot.startTime);
+    // Calculate total price for all selected slots
+    const totalPrice = selectedSlotDetails.reduce((sum, slot) => {
+      return sum + getSlotPrice(slot.startTime);
+    }, 0);
 
-    try {
-      await createBooking({
-        createdBy: "OWNER",
-        selectedDate: bookingDate,
-        date: bookingDate,
+    navigate("/owner/booking-confirmation", {
+      state: {
         turfId: selectedTurf.turf_id,
         turfName: selectedTurf.turf_name,
-        bookingUsername: bookingName,
-        bookingUserMobile: bookingMobile,
-        paidBy: "OWNER",
-        paymentStatus: "PAID_BY_OWNER",
-        totalAmount: price,
-        paidAmount: price,
-        unpaidAmount: 0,
-        slotStartTime: selectedSlot.startTime,
-        slotEndTime: selectedSlot.endTime || "",
-        bookedSportsName: selectedSport,
+        bookingName,
+        bookingMobile,
+        sport: selectedSport,
         court: selectedCourt,
-        ownerId: ownerId,
-      });
-
-      navigate("/owner/booking-confirmation", {
-        state: {
-          turfId: selectedTurf.turf_id,
-          turfName: selectedTurf.turf_name,
-          bookingName,
-          bookingMobile,
-          sport: selectedSport,
-          court: selectedCourt,
-          date: bookingDate,
-          slot: selectedSlot,
-          price,
-          ownerId,
-        },
-      });
-    } catch (err) {
-      console.error("Booking failed:", err);
-      alert("Failed to create booking. Please try again.");
-    }
+        date: bookingDate,
+        slots: selectedSlotDetails, // Pass all selected slots
+        totalPrice,
+        ownerId
+      }
+    });
   };
+
+  useEffect(() => {
+  const reload = () => {
+    console.log("🔄 Slots refresh triggered");
+    // re-fetch booked slots
+    setSelectedTimeSlots([]);
+  };
+
+  window.addEventListener("slotsUpdated", reload);
+  return () => window.removeEventListener("slotsUpdated", reload);
+}, []);
+
+
+// Add this useEffect to listen for slot updates
+useEffect(() => {
+  const unsubscribe = onSlotUpdate(() => {
+    console.log("🔄 SlotManagement: Refreshing slots after cancellation");
+    // Re-fetch booked slots
+    loadBooked();
+  });
+
+  return () => unsubscribe();
+}, [selectedTurf, selectedSport, selectedCourt, bookingDate]);
+
+// Extract the loadBooked logic into a separate function
+const loadBooked = async () => {
+  if (!selectedTurf || !selectedSport || !selectedCourt || !bookingDate) return;
+
+  const booked = await getAllBookedSlots(
+    selectedTurf.turf_id,
+    bookingDate,
+    selectedSport,
+    selectedCourt
+  );
+
+  const bookedTimes = booked.map(b => b.slot_start_time);
+
+  setSlots(prev =>
+    prev.map(slot => ({
+      ...slot,
+      isBooked: bookedTimes.includes(slot.startTime)
+    }))
+  );
+};
+
+// Update the existing useEffect to use loadBooked
+useEffect(() => {
+  loadBooked();
+}, [selectedSport, selectedCourt, selectedTurf, bookingDate]);
 
   const getSportImage = (sport: string) => {
     const name = sport.toLowerCase();
@@ -362,6 +401,25 @@ const SlotManagement: React.FC = () => {
     const isNight = hour >= nightStartHour;
 
     return isNight ? prices[dayName]?.night || 0 : prices[dayName]?.day || 0;
+  };
+
+  // ✅ Calculate total price for selected slots
+  const getTotalPrice = () => {
+    return selectedTimeSlots.reduce((sum, slotId) => {
+      const slot = slots.find(s => s.id === slotId);
+      if (slot) {
+        return sum + getSlotPrice(slot.startTime);
+      }
+      return sum;
+    }, 0);
+  };
+
+  const formatDisplayDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric' 
+    });
   };
 
   return (
@@ -485,7 +543,7 @@ const SlotManagement: React.FC = () => {
         <div className="mb-4">
           <h6 className="fw-bold mb-1">All Available Slots</h6>
           <small className="text-muted d-block mb-3">
-            🔴 Booked | ⚫ Unavailable | ⏳ Past Time | Available
+            🔴 Booked | ⚫ Unavailable | ⏳ Past Time | ✅ Available | 🟢 Selected ({selectedTimeSlots.length})
           </small>
 
           <div className="row g-2">
@@ -494,7 +552,7 @@ const SlotManagement: React.FC = () => {
               const blockedForThisCourt = blockedSlots[key] || [];
 
               const isBlocked = blockedForThisCourt.includes(slot.id);
-              const isSelected = selectedTimeSlot === slot.id;
+              const isSelected = selectedTimeSlots.includes(slot.id);
               const isPast = isPastSlot(slot.startTime);
 
               let buttonStyle = {
@@ -507,25 +565,23 @@ const SlotManagement: React.FC = () => {
                 opacity: 1,
               };
 
-              let icon = "";
-
               if (slot.isBooked) {
-                buttonStyle.backgroundColor = "#dc3545";
-                buttonStyle.cursor = "not-allowed";
+                buttonStyle.backgroundColor = '#dc3545';
+                buttonStyle.cursor = 'not-allowed';
               } else if (isBlocked) {
-                buttonStyle.backgroundColor = "#6c757d";
-                buttonStyle.cursor = "not-allowed";
+                buttonStyle.backgroundColor = '#6c757d';
+                buttonStyle.cursor = 'not-allowed';
               } else if (isPast) {
-                buttonStyle.backgroundColor = "#adb5bd";
-                buttonStyle.cursor = "not-allowed";
+                buttonStyle.backgroundColor = '#adb5bd';
+                buttonStyle.cursor = 'not-allowed';
                 buttonStyle.opacity = 0.6;
               } else if (isSelected) {
-                buttonStyle.backgroundColor = "#198754";
-                buttonStyle.border = "2px solid #146c43";
+                buttonStyle.backgroundColor = '#198754';
+                buttonStyle.border = '2px solid #146c43';
               } else {
-                buttonStyle.backgroundColor = "#e9fbe5";
-                buttonStyle.border = "2px solid #9adf07";
-                buttonStyle.color = "#146c43";
+                buttonStyle.backgroundColor = '#e9fbe5';
+                buttonStyle.border = '2px solid #9adf07';
+                buttonStyle.color = '#146c43';
               }
 
               return (
@@ -536,34 +592,30 @@ const SlotManagement: React.FC = () => {
                     disabled={slot.isBooked || isBlocked || isPast}
                     style={buttonStyle}
                   >
-                    <div style={{ fontSize: "11px" }}>{slot.label}</div>
-                    {icon && (
-                      <div style={{ fontSize: "14px", marginTop: "4px" }}>{icon}</div>
-                    )}
+                    <div style={{ fontSize: '11px' }}>{slot.label}</div>
                   </button>
                 </div>
               );
             })}
           </div>
 
-          {/* Selected Slot Info */}
-          {selectedTimeSlot && (
+          {/* Selected Slots Info */}
+          {selectedTimeSlots.length > 0 && (
             <div className="mt-4 p-4 rounded-4 shadow-sm" style={{ background: "#f5f5dc" }}>
-              <h5 className="text-success fw-bold mb-3">Selected Slot</h5>
-              {slots
-                .filter((s) => s.id === selectedTimeSlot)
-                .map((s) => (
-                  <div key={s.id} className="mb-2">
-                    <span className="badge bg-success fs-6 px-3 py-2 rounded-pill">
+              <h5 className="text-success fw-bold mb-3">
+                Selected Slots ({selectedTimeSlots.length})
+              </h5>
+              <div className="d-flex flex-wrap gap-2 mb-3">
+                {slots
+                  .filter(s => selectedTimeSlots.includes(s.id))
+                  .map(s => (
+                    <span key={s.id} className="badge bg-success fs-6 px-3 py-2 rounded-pill">
                       {s.label}
                     </span>
-                  </div>
-                ))}
+                  ))}
+              </div>
               <h4 className="mt-3 fw-bold">
-                Total Price: ₹
-                {getSlotPrice(
-                  slots.find((s) => s.id === selectedTimeSlot)?.startTime || ""
-                )}
+                Total Price: ₹{getTotalPrice()}
               </h4>
             </div>
           )}
@@ -575,32 +627,32 @@ const SlotManagement: React.FC = () => {
             <button
               className="btn w-100 py-3"
               onClick={handleSlotUnavailable}
-              disabled={!selectedTimeSlot}
-              style={{
-                backgroundColor: "#198754",
-                color: "white",
-                border: "none",
-                fontWeight: "500",
-                opacity: selectedTimeSlot ? 1 : 0.6,
+              disabled={selectedTimeSlots.length === 0}
+              style={{ 
+                backgroundColor: '#198754', 
+                color: 'white',
+                border: 'none',
+                fontWeight: '500',
+                opacity: selectedTimeSlots.length > 0 ? 1 : 0.6
               }}
             >
-              Slot Unavailable
+              Mark Unavailable ({selectedTimeSlots.length})
             </button>
           </div>
           <div className="col-6">
             <button
               className="btn w-100 py-3"
               onClick={handleBookSlot}
-              disabled={!selectedTimeSlot || !bookingName || !bookingMobile}
-              style={{
-                backgroundColor: "#198754",
-                color: "white",
-                border: "none",
-                fontWeight: "500",
-                opacity: selectedTimeSlot && bookingName && bookingMobile ? 1 : 0.6,
+              disabled={selectedTimeSlots.length === 0 || !bookingName || !bookingMobile}
+              style={{ 
+                backgroundColor: '#198754', 
+                color: 'white',
+                border: 'none',
+                fontWeight: '500',
+                opacity: (selectedTimeSlots.length > 0 && bookingName && bookingMobile) ? 1 : 0.6
               }}
             >
-              Book Slot
+              Book Slots ({selectedTimeSlots.length})
             </button>
           </div>
         </div>

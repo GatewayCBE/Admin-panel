@@ -8,6 +8,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import badmintonImg from "../../../assets/badminton.png";
 import cricketImg from "../../../assets/boxcricket_football.png";
 import pickleImg from "../../../assets/PickleImg.png"
+import { useAuth } from "../Turf/useAuth";
 
 interface TurfData {
   turf_id: string;
@@ -47,6 +48,8 @@ const isCurrentlyOpen = (openStr: string, closeStr: string): boolean => {
 
 const TurfDetails: React.FC = () => {
   const { turfId } = useParams<{ turfId: string }>();
+    const { user } = useAuth();
+
   const [turf, setTurf] = useState<any>(null);
   const [owner, setOwner] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -103,6 +106,54 @@ const TurfDetails: React.FC = () => {
       console.error("Error approving turf:", error);
       alert("Failed to approve turf");
     }
+  };
+
+
+    // --- DELETE LOGIC ---
+  const handleDelete = async (turfId: string, name: string) => {
+    if (!window.confirm(`Delete "${name}"?`)) return;
+
+    if (loading) {
+      alert("Auth loading, please wait");
+      return;
+    }
+
+    if (!user) {
+      alert("Session expired. Please login again.");
+      return;
+    }
+
+    const tokenResult = await user.getIdTokenResult(true);
+    console.log("Admin claim:", tokenResult.claims.admin);
+
+    if (!tokenResult.claims.admin) {
+      alert("❌ You are not an admin");
+      return;
+    }
+
+    const token = await user.getIdToken(true);
+
+    const res = await fetch(
+      "https://asia-south1-play-arena-e83d8.cloudfunctions.net/deleteTurfByAdmin",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ turfId }),
+      }
+    );
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.error || "Delete failed");
+      return;
+    }
+
+    alert("✅ Turf deleted successfully");
+    window.location.reload();
   };
 
   if (loading) {
@@ -238,6 +289,11 @@ const TurfDetails: React.FC = () => {
         onClick={() => navigate(`/dashboard/owners/${turf.owner_id}/turfs/${turfId}/edit`)}
       >
         Edit Turf
+      </button>
+         <button
+        className="btn btn-outline-danger btn-lg px-5 py-3 fw-semibold"
+                        onClick={() => handleDelete(turf.id, turf.turf_name)}>
+        Delete Turf
       </button>
 
       <button

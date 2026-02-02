@@ -6,6 +6,7 @@ import FooterInfo from "../components/FooterInfo/FooterInfo";
 import Footer from "../components/Footer/Footer";
 import UserNavbar from "../components/Navbar/UserNavbar";
 import OwnerNavbar from "../components/Navbar/OwnerNavbar";
+import AdminNavbar from "../pages/admin/Analytics/AdminNavbar";
 // import AdminSidebar from "../components/Admin/AdminSidebar"; // optional
 
 
@@ -67,7 +68,7 @@ export const OwnerLayout: React.FC = () => {
 export const AdminLayout: React.FC = () => {
   return (
     <div className="d-flex">
-      {/* <AdminSidebar /> */}
+<AdminNavbar />
       <main className="flex-grow-1">
         <Outlet />
       </main>

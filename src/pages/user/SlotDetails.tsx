@@ -1,7 +1,7 @@
 // src/pages/user/SlotDetails.tsx
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getAllBookedSlots, getTurfById } from "../../services/firestoreService";
+import { getAllBookedSlots, getTurfById, onSlotUpdate } from "../../services/firestoreService";
 
 // ---------- Types ----------
 type TurfDoc = {
@@ -110,6 +110,8 @@ const SlotDetails: React.FC = () => {
 
   const [turf, setTurf] = useState<TurfDoc | null>(null);
   const [loading, setLoading] = useState(true);
+const [refreshKey, setRefreshKey] = useState(0);
+
 
   const [selectedSport, setSelectedSport] = useState<string | null>(null);
   const [selectedCourt, setSelectedCourt] = useState<number>(1);
@@ -124,7 +126,11 @@ const SlotDetails: React.FC = () => {
 
   const [bookedSlotSet, setBookedSlotSet] = useState<Set<string>>(new Set());
 
-  
+  useEffect(() => {
+  const reload = () => setRefreshKey(k => k + 1);
+  window.addEventListener("slotsUpdated", reload);
+  return () => window.removeEventListener("slotsUpdated", reload);
+}, [turf, selectedSport, selectedCourt, refreshKey]);
 
   // -------- Fetch turf --------
   useEffect(() => {
@@ -206,6 +212,50 @@ setBookedSlotSet(set);
   loadBookedSlots();
 }, [turf, selectedSport, selectedCourt, selectedDate]);
 
+// Add this useEffect near the other useEffects
+useEffect(() => {
+  const unsubscribe = onSlotUpdate(() => {
+    console.log("🔄 SlotDetails: Refreshing slots after cancellation");
+    loadBookedSlots();
+  });
+
+  return () => unsubscribe();
+}, [turf, selectedSport, selectedCourt, selectedDate]);
+
+// Extract loadBookedSlots into a separate function
+const loadBookedSlots = async () => {
+  if (!turf || !selectedSport || !selectedDate) return;
+
+  const dateString = selectedDate
+    .toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    })
+    .replace(/ /g, "-");
+
+  const bookedSlots = await getAllBookedSlots(
+    turf.turf_id,
+    dateString,
+    selectedSport,
+    `court ${selectedCourt}`
+  );
+
+  const set = new Set(
+    bookedSlots.map((s) => {
+      const raw = s.slot_start_time || "";
+      return convertTo24Hour(raw) || raw;
+    })
+  );
+
+  console.log("🔴 Booked Slots (24h):", set);
+  setBookedSlotSet(set);
+};
+
+// Update the existing useEffect
+useEffect(() => {
+  loadBookedSlots();
+}, [turf, selectedSport, selectedCourt, selectedDate]);
 
   // -------- Timing info for chosen sport --------
   const timing = useMemo(() => {

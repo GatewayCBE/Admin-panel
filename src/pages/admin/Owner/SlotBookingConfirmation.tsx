@@ -1,19 +1,40 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { 
-  bookSlot, 
-  buildWhatsAppBookingMessage, 
+import {
+  bookSlot,
+  buildWhatsAppBookingMessage,
   shareBookingViaWhatsApp,
   buildBookingEmailMessage,
   sendBookingEmail
 } from "../../../services/firestoreService";
 
+interface BookingSlot {
+  id: string;
+  startTime: string;
+  endTime: string;
+  label: string;
+}
+
 const SlotBookingConfirmation = () => {
-  const { state } = useLocation();
+const location = useLocation();
+const state = location.state as {
+  turfId: string;
+  turfName: string;
+  bookingName: string;
+  bookingMobile: string;
+  sport: string;
+  court: string;
+  date: string;
+  slots: BookingSlot[];
+  totalPrice: number;
+  ownerId: string;
+};
+
   const navigate = useNavigate();
 
   const [paidAmount, setPaidAmount] = useState(0);
   const [showModal, setShowModal] = useState(false);
+
   const channelPartnerEmail = localStorage.getItem("user_email") || "";
 
   if (!state) return <div className="text-center mt-5">No booking data</div>;
@@ -26,37 +47,35 @@ const SlotBookingConfirmation = () => {
     sport,
     court,
     date,
-    slot,
-    price,
+    slots = [],
+    totalPrice = 0,
     ownerId
   } = state;
 
-  const remaining = Math.max(price - paidAmount, 0);
+  const remaining = Math.max(totalPrice - paidAmount, 0);
 
   const handleConfirmBooking = async () => {
     try {
-      console.log("🚀 Starting booking process...");
-
       const bookedOn = new Date().toLocaleString();
 
-      // 1️⃣ Save booking to Firestore (only to /bookings/{bookingId})
-      const bookingId = await bookSlot({
-        turfId,
-        date,
-        sport,
-        court,
-        slot,
-        bookingName,
-        bookingMobile,
-        price,
-        paidAmount,
-        unpaidAmount: remaining,
-        ownerId
-      });
+      // ✅ Save each slot separately
+      for (const slotItem of slots) {
+        await bookSlot({
+          turfId,
+          date,
+          sport,
+          court,
+          slot: slotItem,
+          bookingName,
+          bookingMobile,
+          price: totalPrice / slots.length,
+          paidAmount: paidAmount / slots.length,
+          unpaidAmount: remaining / slots.length,
+          ownerId
+        });
+      }
 
-      console.log("✅ Booking saved with ID:", bookingId);
-
-      // 2️⃣ Build Email Message
+      // ✅ EMAIL MESSAGE
       const emailMessage = buildBookingEmailMessage({
         bookingUserName: bookingName,
         turfName,
@@ -65,15 +84,12 @@ const SlotBookingConfirmation = () => {
         court,
         bookedOn,
         bookingDate: new Date(date).toDateString(),
-        slots: [slot.label],
-        totalAmount: price,
+        slots: slots.map(s => s.label),
+        totalAmount: totalPrice,
         paidAmount,
         remainingAmount: remaining
       });
 
-      console.log("📝 Email message prepared");
-
-      // 3️⃣ Send Email to Channel Partner
       if (channelPartnerEmail) {
         await sendBookingEmail(
           channelPartnerEmail,
@@ -82,13 +98,10 @@ const SlotBookingConfirmation = () => {
         );
       }
 
-      // 4️⃣ Show Success Modal
       setShowModal(true);
-      console.log("🎉 Booking flow completed");
-
     } catch (err) {
-      console.error("Booking failed:", err);
-      alert("Booking failed. Please try again.");
+      console.error(err);
+      alert("Booking failed");
     }
   };
 
@@ -101,8 +114,8 @@ const SlotBookingConfirmation = () => {
       court,
       bookedOn: new Date().toLocaleString(),
       bookingDate: new Date(date).toDateString(),
-      slots: [slot.label],
-      totalAmount: price,
+      slots: slots.map(s => s.label), // ✅ FIXED
+      totalAmount: totalPrice,
       paidAmount,
       remainingAmount: remaining
     });
@@ -115,23 +128,29 @@ const SlotBookingConfirmation = () => {
       <div className="card shadow-lg p-4 rounded-4">
         <h3 className="text-success fw-bold text-center mb-4">Booking Confirmation</h3>
 
-        <div className="mb-3"><strong>Booking Date:</strong> {date}</div>
+        <div><strong>Booking Date:</strong> {date}</div>
         <div><strong>Turf Name:</strong> {turfName}</div>
         <div><strong>Booking User:</strong> {bookingName}</div>
         <div><strong>Mobile Number:</strong> {bookingMobile}</div>
         <div><strong>Sport:</strong> {sport}</div>
         <div><strong>Court:</strong> {court}</div>
 
+        {/* ✅ MULTIPLE SLOTS DISPLAY */}
         <div className="card mt-3 p-3 rounded-4 bg-light">
-          <h5 className="fw-bold">Selected Date & Time</h5>
-          <div>{slot.label}</div>
+          <h5 className="fw-bold">Selected Time Slots ({slots.length})</h5>
+          <div className="d-flex flex-wrap gap-2 mt-2">
+            {slots.map((s, i) => (
+              <span key={i} className="badge bg-success fs-6 px-3 py-2 rounded-pill">
+                {s.label}
+              </span>
+            ))}
+          </div>
         </div>
 
         <hr />
 
-        <h4 className="text-end text-success fw-bold">Total Amount ₹ {price}</h4>
+        <h4 className="text-end text-success fw-bold">Total Amount ₹ {totalPrice}</h4>
 
-        {/* Paid Amount */}
         <div className="mt-3">
           <label className="fw-semibold">Paid Amount</label>
           <div className="input-group">
@@ -140,16 +159,13 @@ const SlotBookingConfirmation = () => {
               type="number"
               className="form-control"
               value={paidAmount}
-              max={price}
+              max={totalPrice}
               onChange={(e) => setPaidAmount(Number(e.target.value))}
             />
           </div>
         </div>
 
-        {/* Remaining */}
-        <h5 className="mt-3 text-danger">
-          Remaining Amount ₹ {remaining}
-        </h5>
+        <h5 className="mt-3 text-danger">Remaining Amount ₹ {remaining}</h5>
 
         <div className="d-flex justify-content-between mt-4">
           <button className="btn btn-danger px-4" onClick={() => navigate(-1)}>
@@ -161,19 +177,15 @@ const SlotBookingConfirmation = () => {
         </div>
       </div>
 
-      {/* SUCCESS MODAL */}
       {showModal && (
         <div className="modal show fade d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content text-center p-4 rounded-4">
               <h4 className="text-success fw-bold">Booking Confirmed!</h4>
-              <p>Booking successfully completed.</p>
+              <p>{slots.length} slot(s) booked successfully</p>
 
-              <button
-                className="btn btn-success w-100 mb-2"
-                onClick={handleShareWhatsApp}
-              >
-                SHARE VIA WHATSAPP
+              <button className="btn btn-success w-100 mb-2" onClick={handleShareWhatsApp}>
+                📱 SHARE VIA WHATSAPP
               </button>
 
               <button

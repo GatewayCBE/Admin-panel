@@ -20,6 +20,7 @@ const chartOptions = {
 
 const TurfReport: React.FC<TurfReportProps> = ({ turfs }) => {
   const [selectedTurfId, setSelectedTurfId] = useState<string>("");
+console.log('turfs data',turfs);
 
   const selectedTurf = turfs.find((t) => t.turf_id === selectedTurfId);
 

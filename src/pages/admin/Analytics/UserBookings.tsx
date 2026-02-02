@@ -182,8 +182,8 @@ const UserBookings: React.FC = () => {
   };
 
   return (
-    <div className="container py-4">
-      <h2 className="mb-4 fw-bold text-success">My Bookings</h2>
+    <div className="container py-5 mt-5">
+      <h2 className="mb-4 fw-bold text-success">User Bookings</h2>
 
       <div className="row g-4">
         {bookings.map((booking) => {

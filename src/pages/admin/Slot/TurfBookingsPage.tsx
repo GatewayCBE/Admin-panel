@@ -119,7 +119,7 @@ const TurfBookingsPage: React.FC = () => {
   return (
     <div className="admin-page-container">
       <AdminNavbar />
-      <h2 className="fw-bold mb-2">Channel Partner Bookings {turfId ? `- ${turfId}` : ""}</h2>
+      <h2 className="fw-bold mt-5 py-5 text-success text-center">Channel Partner Bookings</h2>
       <p className="text-muted mb-4">
         Total shown: <strong>{displayedBookings.length}</strong>
       </p>
