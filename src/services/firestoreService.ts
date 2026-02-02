@@ -926,33 +926,6 @@ const formatFirestoreDate = (dateStr: string): string => {
   }).replace(/ /g, "-");
 };
 
-export const parseDate = (value: string): Date | null => {
-  if (!value || typeof value !== "string") return null;
-
-  value = value.trim();
-
-  // DD-MMM-YYYY (01-Feb-2026)
-  if (/^\d{1,2}-[A-Za-z]{3}-\d{4}$/.test(value)) {
-    const [day, mon, year] = value.split("-");
-    const map: Record<string, number> = {
-      Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
-      Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11,
-    };
-    const month = map[mon];
-    if (month === undefined) return null;
-    return new Date(Number(year), month, Number(day));
-  }
-
-  // YYYY-MM-DD
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    const [y, m, d] = value.split("-").map(Number);
-    return new Date(y, m - 1, d);
-  }
-
-  // Fallback (ISO / native)
-  const native = new Date(value);
-  return isNaN(native.getTime()) ? null : native;
-};
 
 export async function getAllBookedSlots(
   turfId: string,
@@ -1304,7 +1277,7 @@ export const groupBookings = (slots: any[]) => {
         total_unpaid: 0,
         total_amount: 0,
         payment_status: "advance",
-        createdBy: booking.createdBy || "OWNER"
+        createdBy: s.createdBy || "OWNER"
       };
     }
 
@@ -2104,127 +2077,6 @@ export const onSlotUpdate = (listener: SlotUpdateListener) => {
     if (index > -1) slotUpdateListeners.splice(index, 1);
   };
 };
-
-export const cancelBooking = async (
-  bookingId: string,
-  reason: string = "Cancelled via admin panel",
-  cancelledBy: "user" | "admin" = "admin"
-): Promise<boolean> => {
-  const currentUserId = getCurrentUserId();
-  if (!currentUserId) throw new Error("User not logged in");
-
-  const bookingRef = doc(db, "environments", "testing", "bookings", bookingId);
-  const bookingSnap = await getDoc(bookingRef);
-
-  if (!bookingSnap.exists()) throw new Error("Booking not found");
-
-  const data = bookingSnap.data();
-
-  // Authorization
-  const tokenResult = await auth.currentUser?.getIdTokenResult();
-  const isAdmin = tokenResult?.claims?.admin === true;
-  const isAuthorized =
-    isAdmin ||
-    data.user_id === currentUserId ||
-    data.owner_id === currentUserId ||
-    data.userId === currentUserId ||
-    data.ownerId === currentUserId;
-
-  if (!isAuthorized) throw new Error("Not authorized");
-
-  // Update booking status
-  await updateDoc(bookingRef, {
-    payment_status: "CANCELLED",
-    cancelled_at: new Date().toISOString(),
-    cancel_reason: reason,
-    cancelled_by: cancelledBy,
-    cancelled_by_uid: currentUserId,
-  });
-
-  // Best-effort slot info
-  let turfId = data.turf_id || data.turfId || data.turf || null;
-  let dateRaw = data.date || data.selectedDate || data.selecteddated || null;
-  let sport = data.booked_sports_name || data.bookedSportsName || data.sport || null;
-  let court = data.court || data.Court || "court 1";
-
-  // Guess sport from turf name if missing
-  if (!sport) {
-    const turfNameLower = (data.turfName || data.turf_name || "").toLowerCase();
-    if (turfNameLower.includes("badminton")) sport = "badminton";
-    else if (turfNameLower.includes("pickle")) sport = "pickleball";
-    else if (turfNameLower.includes("football") || turfNameLower.includes("box")) sport = "football & boxcricket";
-    else sport = "football & boxcricket"; // default
-  }
-
-  // Handle allSlots array - collect ALL slot times
-  let slotStarts: string[] = [];
-
-  if (Array.isArray(data.allSlots) && data.allSlots.length > 0) {
-    slotStarts = data.allSlots;
-  } else if (data.slot_start_time) {
-    slotStarts = [data.slot_start_time];
-  } else if (data.slotStartTime) {
-    slotStarts = [data.slotStartTime];
-  } else if (data.slotStart) {
-    slotStarts = [data.slotStart];
-  }
-
-  // Convert "6:00 PM" → "18:00" (24-hour format)
-  const to24Hour = (time: string) => {
-    if (!time) return null;
-
-    const match = time.trim().toUpperCase().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/);
-    if (!match) return time; // already 24h format
-
-    let hour = parseInt(match[1], 10);
-    const minute = match[2];
-    const ampm = match[3];
-
-    if (ampm === "PM" && hour !== 12) hour += 12;
-    if (ampm === "AM" && hour === 12) hour = 0;
-
-    return `${hour.toString().padStart(2, "0")}:${minute}`;
-  };
-
-  slotStarts = slotStarts.map(to24Hour).filter(Boolean) as string[];
-
-  // Normalize date
-  let normalizedDate = null;
-  if (dateRaw) {
-    try {
-      const d = new Date(dateRaw);
-      if (!isNaN(d.getTime())) {
-        const day = String(d.getDate()).padStart(2, "0");
-        const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-        normalizedDate = `${day}-${monthNames[d.getMonth()]}-${d.getFullYear()}`;
-      }
-    } catch {}
-  }
-
-  // Try to free ALL slots
-  if (turfId && normalizedDate && sport && court && slotStarts.length > 0) {
-    for (const slotStart of slotStarts) {
-      const slotPath = `environment/testing/all_turfs_slot_booking/${turfId}/${normalizedDate}/${sport}/${court}/${slotStart}`;
-      const slotRef = doc(db, slotPath);
-
-      console.log("[CANCEL] Deleting slot:", slotPath);
-
-      try {
-        await deleteDoc(slotRef);
-        console.log("[CANCEL] Slot freed successfully:", slotStart);
-      } catch (err) {
-        console.warn("[CANCEL] Slot already free or delete failed:", slotStart, (err as Error).message);
-      }
-    }
-  } else {
-    console.warn("[CANCEL] Could not free slot – missing fields", {
-      turfId, normalizedDate, sport, court, slotStarts
-    });
-  }
-
-  return true;
-};
-
 
 export const canCancelBooking = (booking: any): boolean => {
   if (booking.payment_status === "CANCELLED" || booking.paymentStatus === "CANCELLED") {

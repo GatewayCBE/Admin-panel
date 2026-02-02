@@ -3,6 +3,7 @@ import {
   createBooking,
   getAllBookedSlots,
   getTurfsByOwner,
+  onSlotUpdate,
 } from "../../../services/firestoreService";
 import pickleballImg from "../../../assets/PickleImg.png";
 import badmintonImg from "../../../assets/badminton.png";

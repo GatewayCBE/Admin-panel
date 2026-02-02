@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { getTurfsByOwner, groupBookings, SlotBooking } from "../../../services/firestoreService";
+import { getTurfsByOwner, groupBookings } from "../../../services/firestoreService";
 import { getBookingsByTurfAndDate, markBookingFullyPaid } from "../../../services/firestoreService";
 import badmintonImg from "../../../assets/badminton.png";
 import cricketImg from "../../../assets/boxcricket_football.png";
