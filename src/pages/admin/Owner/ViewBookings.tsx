@@ -1,28 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { getTurfsByOwner, groupBookings } from "../../../services/firestoreService";
+import { getTurfsByOwner, groupBookings, SlotBooking } from "../../../services/firestoreService";
 import { getBookingsByTurfAndDate, markBookingFullyPaid } from "../../../services/firestoreService";
 import badmintonImg from "../../../assets/badminton.png";
 import cricketImg from "../../../assets/boxcricket_football.png";
 import pickleImg from "../../../assets/PickleImg.png";
-
-interface SlotBooking {
-  id: string;
-  turf_id: string;
-  date: string;
-  booked_sports_name: string;
-  court: string;
-  slots: string[];
-  slot_start_time: string;
-  slot_end_time: string;
-  booking_username: string;
-  booking_user_mobile: string;
-  paid_amount: number;
-  unpaid_amount: number;
-  total_paid: number;
-  total_unpaid: number;
-  total_amount: number;
-  payment_status: string;
-}
 
 const ViewBookings: React.FC = () => {
   const ownerId = localStorage.getItem("user_id") || "";
@@ -87,8 +68,7 @@ const ViewBookings: React.FC = () => {
           bookingDate
         );
 
-        const grouped = groupBookings(raw);
-        setBookings(grouped);
+        setBookings(raw);
       } catch (err) {
         console.error(err);
         setError("Failed to load bookings");
@@ -131,21 +111,10 @@ const handleMarkPaid = async (booking: any) => {
 
   // Get sport image based on sport name
   const getSportImage = (sportName: string): string => {
-    const sport = sportName.toLowerCase().trim();
-    
-    if (sport.includes("cricket") && sport.includes("football")) {
-      return cricketImg;
-    } else if (sport.includes("football") && sport.includes("cricket")) {
-      return cricketImg;
-    } else if (sport.includes("cricket")) {
-      return cricketImg;
-    } else if (sport.includes("football")) {
-      return cricketImg;
-    } else if (sport.includes("badminton")) {
-      return badmintonImg;
-    } else if (sport.includes("pickle")) {
-      return pickleImg;
-    }
+    const sport = (sportName || "").toLowerCase().trim();
+  if (sport.includes("cricket") || sport.includes("football") || sport.includes("boxcricket")) return cricketImg;
+  if (sport.includes("badminton")) return badmintonImg;
+  if (sport.includes("pickle")) return pickleImg;
     
     // Default placeholder
     return "https://via.placeholder.com/60x60/67a521/ffffff?text=Sport";
@@ -164,7 +133,8 @@ const handleMarkPaid = async (booking: any) => {
   };
 
   const totalPaid = bookings.reduce((sum, b) => sum + (b.total_paid || b.paid_amount || 0), 0);
-  const totalUnpaid = bookings.reduce((sum, b) => sum + (b.total_unpaid || b.unpaid_amount || 0), 0);
+const totalUnpaid = bookings.reduce((sum, b) => sum + (b.total_unpaid || b.unpaid_amount || 0), 0);
+const totalBookings = bookings.length;
 
   return (
     <>
@@ -830,9 +800,9 @@ const handleMarkPaid = async (booking: any) => {
           {!loading &&
             bookings.map((booking, index) => {
               // Calculate totals - Total = Paid + Balance
-              const paidAmount = booking.total_paid || booking.paid_amount || 0;
-              const balanceAmount = booking.total_unpaid || booking.unpaid_amount || 0;
-              const totalAmount = paidAmount + balanceAmount;
+              const paidAmount = booking.paid_amount || 0;
+const balanceAmount = booking.unpaid_amount;
+const totalAmount = booking.total_amount || (paidAmount + balanceAmount);
 
               // Get first letter for profile icon
               const firstLetter = booking.booking_username?.charAt(0).toUpperCase() || "U";
@@ -867,6 +837,7 @@ const handleMarkPaid = async (booking: any) => {
                       }`}
                     >
                       {booking.payment_status === "paid" ? "PAID" : "ADVANCE"}
+                      {booking.createdBy && ` (${booking.createdBy})`}
                     </span>
                   </div>
 
@@ -893,12 +864,12 @@ const handleMarkPaid = async (booking: any) => {
                       <span className="detail-label">Date</span>
                       <span className="detail-value">{booking.date}</span>
                     </div>
-                    {/* <div className="detail-item">
+                    <div className="detail-item">
                       <span className="detail-label">Time Range</span>
                       <span className="detail-value">
                         {booking.slot_start_time} - {booking.slot_end_time}
                       </span>
-                    </div> */}
+                    </div>
                   </div>
 
                   {/* Booked Slots */}
@@ -920,17 +891,17 @@ const handleMarkPaid = async (booking: any) => {
                   <div className="payment-summary">
                     <div className="payment-grid">
                       <div className="payment-item">
-                        <span className="payment-label">Total</span>
-                        <span className="payment-value total">₹{totalAmount}</span>
-                      </div>
-                      <div className="payment-item">
-                        <span className="payment-label">Paid</span>
-                        <span className="payment-value paid">₹{paidAmount}</span>
-                      </div>
-                      <div className="payment-item">
-                        <span className="payment-label">Balance</span>
-                        <span className="payment-value balance">₹{balanceAmount}</span>
-                      </div>
+  <span className="payment-label">Total</span>
+  <span className="payment-value total">₹{totalAmount}</span>
+</div>
+<div className="payment-item">
+  <span className="payment-label">Paid</span>
+  <span className="payment-value paid">₹{paidAmount}</span>
+</div>
+<div className="payment-item">
+  <span className="payment-label">Balance</span>
+  <span className="payment-value balance">₹{balanceAmount}</span>
+</div>
                     </div>
                   </div>
 

@@ -11,33 +11,14 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 
 /* =========================================================
-   🔧 HELPERS
-========================================================= */
-const normalizeSlotTime = (slot: string): string => {
-  if (/^\d{2}:\d{2}$/.test(slot)) return slot;
-
-  const match = slot.match(/(\d+):(\d+)\s?(AM|PM)/i);
-  if (!match) throw new Error(`INVALID_SLOT_FORMAT: ${slot}`);
-
-  let hour = parseInt(match[1], 10);
-  const minute = match[2];
-  const meridian = match[3].toUpperCase();
-
-  if (meridian === "PM" && hour !== 12) hour += 12;
-  if (meridian === "AM" && hour === 12) hour = 0;
-
-  return `${hour.toString().padStart(2, "0")}:${minute}`;
-};
-
-/* =========================================================
-   ❌ CANCEL BOOKING (WEB / ADMIN) – FINAL
+   ❌ CANCEL BOOKING (WEB / ADMIN) – SINGLE PATH, CLEANED
 ========================================================= */
 export const cancelWebBooking = onRequest(
   { region: "asia-south1" },
   async (req, res) => {
     corsHandler(req, res, async () => {
       try {
-        const { bookingId } = req.body;
+        const { bookingId, reason } = req.body;
 
         if (!bookingId) {
           return res.status(400).json({ error: "BOOKING_ID_REQUIRED" });
@@ -57,84 +38,32 @@ export const cancelWebBooking = onRequest(
         const booking = snap.data()!;
         const now = admin.firestore.Timestamp.now();
 
-        console.log("🛑 Cancel request for booking:", booking);
+        console.log("🛑 Cancelling booking:", bookingId, booking);
 
-        const batch = db.batch();
+        // Optional: prevent double-cancellation
+        if (booking.paymentStatus === "CANCELLED") {
+          return res.status(400).json({ error: "ALREADY_CANCELLED" });
+        }
 
-        /* 1️⃣ Cancel main booking */
-        batch.update(bookingRef, {
+        // Update the only document we care about
+        await bookingRef.update({
           paymentStatus: "CANCELLED",
           cancelledAt: now,
+          cancelledBy: "OWNER",           // change to dynamic value if you pass UID
+          cancelledReason: reason || null,
+          // Optional: preserve original payment info for audit/refund
+          originalPaidAmount: booking.paidAmount ?? booking.paid_amount ?? 0,
+          originalUnpaidAmount: booking.unpaidAmount ?? booking.unpaid_amount ?? 0,
         });
-
-        /* 2️⃣ Cancel user copy (safe) */
-        if (typeof booking.userMobile === "string" && booking.userMobile.trim()) {
-          const userCopyRef = db
-            .collection("environments")
-            .doc("testing")
-            .collection("users")
-            .doc(booking.userMobile)
-            .collection("payment_coppys")
-            .doc(bookingId);
-
-          batch.update(userCopyRef, {
-            paymentStatus: "CANCELLED",
-            cancelledAt: now,
-          });
-        } else {
-          console.warn("⚠️ userMobile missing, user copy not updated");
-        }
-
-        /* 3️⃣ Free slots ONLY if ALL required fields exist */
-        const turfId = booking.turfId;
-        const date = booking.selectedDate;
-        const sport = booking.sport; // ❗ missing in your data
-        const court = booking.court || "court 1";
-        const slots: string[] = booking.slotList || [];
-
-        const canFreeSlots =
-          typeof turfId === "string" &&
-          typeof date === "string" &&
-          typeof sport === "string" &&
-          sport.trim() !== "" &&
-          Array.isArray(slots) &&
-          slots.length > 0;
-
-        if (!canFreeSlots) {
-          console.warn("⚠️ Slot release skipped due to missing data", {
-            turfId,
-            date,
-            sport,
-            court,
-            slots,
-          });
-        } else {
-          for (const rawSlot of slots) {
-            const slot = normalizeSlotTime(rawSlot);
-
-            const slotRef = db
-              .collection("environment")
-              .doc("testing")
-              .collection("all_turfs_slot_booking")
-              .doc(turfId)
-              .collection(date)
-              .doc(sport)
-              .collection(court)
-              .doc(slot);
-
-            batch.delete(slotRef);
-          }
-        }
-
-        await batch.commit();
 
         return res.json({
           success: true,
-          slotFreed: canFreeSlots,
+          message: "Booking cancelled successfully. Slot is now available again."
         });
+
       } catch (err: any) {
         console.error("❌ cancelWebBooking FAILED:", err);
-        return res.status(500).json({ error: err.message });
+        return res.status(500).json({ error: err.message || "Internal server error" });
       }
     });
   }

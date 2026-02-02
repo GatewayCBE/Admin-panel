@@ -45,6 +45,8 @@ const isNightSlot = (slot: string) => {
   return hour >= 18 || hour < 6;
 };
 
+// normalizeSlotTime is no longer used after removing the nested slot path
+// You can safely delete this function in the future
 const normalizeSlotTime = (slot: string): string => {
   if (/^\d{2}:\d{2}$/.test(slot)) return slot;
 
@@ -62,7 +64,7 @@ const normalizeSlotTime = (slot: string): string => {
 };
 
 /* =========================================================
-   1️⃣ CREATE RAZORPAY ORDER (WEB)
+   1️⃣ CREATE RAZORPAY ORDER (WEB) – unchanged
 ========================================================= */
 export const createWebRazorpayOrder = onRequest(
   { region: "asia-south1" },
@@ -141,7 +143,7 @@ export const createWebRazorpayOrder = onRequest(
 );
 
 /* =========================================================
-   2️⃣ VERIFY PAYMENT & FINALIZE BOOKING (FIXED)
+   2️⃣ VERIFY PAYMENT & FINALIZE BOOKING – SINGLE PATH
 ========================================================= */
 export const verifyWebRazorpayPayment = onRequest(
   { region: "asia-south1" },
@@ -163,7 +165,6 @@ export const verifyWebRazorpayPayment = onRequest(
           user_mobile_number,
           user_email,
           sport,
-          court,
           slots,
           date,
           payment_type,
@@ -175,12 +176,12 @@ export const verifyWebRazorpayPayment = onRequest(
         }
 
         const formattedDate = formatDate(date);
-        const normalizedCourt = court?.trim() || "court 1";
 
         console.log("📅 Raw date:", date);
         console.log("📅 Formatted date:", formattedDate);
         console.log("⏱ Slots:", slots);
 
+        // Verify Razorpay signature
         const generatedSignature = crypto
           .createHmac("sha256", RAZORPAY_KEY_SECRET)
           .update(`${razorpay_order_id}|${razorpay_payment_id}`)
@@ -229,25 +230,7 @@ export const verifyWebRazorpayPayment = onRequest(
 
           if (!pricing) throw new Error("PRICING_NOT_CONFIGURED");
 
-          const slotRefs = slots.map((rawSlot: string) => {
-            const slot = normalizeSlotTime(rawSlot);
-
-            const ref = baseRef
-              .collection("all_turfs_slot_booking")
-              .doc(turf_id)
-              .collection(formattedDate)
-              .doc(sport)
-              .collection(normalizedCourt)
-              .doc(slot);
-
-            console.log("🧩 Slot ref:", ref.path);
-            return ref;
-          });
-
-          const slotSnaps = await Promise.all(slotRefs.map(ref => tx.get(ref)));
-          slotSnaps.forEach((snap) => {
-            if (snap.exists) throw new Error("SLOT_ALREADY_BOOKED");
-          });
+          // No more slot-level checks — availability is now handled by querying /bookings
 
           let totalAmount = 0;
           for (const rawSlot of slots) {
@@ -265,6 +248,7 @@ export const verifyWebRazorpayPayment = onRequest(
 
           console.log("💰 Amounts", { totalAmount, paidAmount, balanceAmount });
 
+          // Write main booking document
           tx.set(bookingRef, {
             bookingId,
             bookingType: payment_type === "advance" ? "ADVANCE" : "FULL",
@@ -283,7 +267,7 @@ export const verifyWebRazorpayPayment = onRequest(
             slotEndTime: slots[slots.length - 1],
             totalAmount,
             paidAmount,
-            balanceAmount,
+            unpaidAmount: balanceAmount,
             paymentId: razorpay_payment_id,
             paymentMethod: "Razorpay",
             paymentStatus: "PAID",
@@ -291,20 +275,7 @@ export const verifyWebRazorpayPayment = onRequest(
             updatedAt: now,
           });
 
-          slotRefs.forEach((ref, i) => {
-            tx.set(ref, {
-              bookingId,
-              turfId: turf_id,
-              court: normalizedCourt,
-              sport: sport,
-              slot: normalizeSlotTime(slots[i]),
-              date: formattedDate,
-              ownerId: owner_id,
-              userId: user_id,
-              createdAt: now,
-            });
-          });
-
+          // Write user payment copy
           tx.set(userPaymentCopyRef, {
             bookingId,
             turfId: turf_id,
