@@ -121,7 +121,7 @@ useEffect(() => {
       </Link>
     </div>
     {/* Bookings */}
-    <div className="col-12 col-md-6 col-lg-5">
+    {/* <div className="col-12 col-md-6 col-lg-5">
       <Link to="/admin/userbookings" className="text-decoration-none">
         <div 
           className="card border-0 shadow h-100 text-white"
@@ -137,7 +137,7 @@ useEffect(() => {
           </div>
         </div>
       </Link>
-    </div>
+    </div> */}
   </div>
 </div>
     </>
