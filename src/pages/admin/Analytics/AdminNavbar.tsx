@@ -14,6 +14,8 @@ const AdminNavbar: React.FC = () => {
     localStorage.removeItem("user_email");
     localStorage.removeItem("user_role");
     localStorage.removeItem("is_logged_in");
+    localStorage.clear();
+  sessionStorage.clear();
     setIsOpen(false);
     navigate("/");
   };

@@ -528,7 +528,7 @@ export const createTurf = async ({
     sport_specific_price: mapPrices(sports),
     sport_specific_timing: mapTimings(sports),
     sports_specific_person_count: mapPersons(sports),
-    turf_active_status: true,
+    turf_active_status: false,
     turf_opened: true,
     booking_type: "call_now",
     added_source: {

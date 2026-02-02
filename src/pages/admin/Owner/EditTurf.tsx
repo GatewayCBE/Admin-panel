@@ -349,7 +349,6 @@ const EditTurf: React.FC = () => {
         sport_specific_timing: timings,
         sport_specific_price: prices,
         turf_images: finalImages.length > 0 ? finalImages : null,
-        turf_active_status: true,
       };
 
       if (venueType === 'turf') {

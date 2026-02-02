@@ -4,7 +4,7 @@ import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
 import BgImg from "../../assets/BgImg.jpeg";
 
 const AdminLogin: React.FC = () => {
-  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const navigate = useNavigate();
@@ -17,7 +17,7 @@ const AdminLogin: React.FC = () => {
     const auth = getAuth();
     await signInWithEmailAndPassword(
       auth,
-      "admin@bookyourturf.com",
+      email,
       password
     );
 
@@ -44,13 +44,13 @@ const AdminLogin: React.FC = () => {
 
         <form onSubmit={handleLogin}>
           <div className="mb-3">
-            <label className="form-label text-white">Name</label>
+            <label className="form-label text-white">Email</label>
             <input
-              type="text"
+              type="email"
               className="form-control"
-              placeholder="Enter admin name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              placeholder="Enter admin email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
             />
           </div>
