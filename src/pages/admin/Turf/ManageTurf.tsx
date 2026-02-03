@@ -1,54 +1,30 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { getTurfs } from "../../../services/firestoreService";
-import {
-  Card,
-  Row,
-  Col,
-  Badge,
-  Spinner,
-  Form,
-  InputGroup,
-} from "react-bootstrap";
-import { debounce } from "lodash";
-import { useNavigate } from "react-router-dom";
+import React, { useState } from "react";
+import { useTurf } from "./useTurf";
+import { deleteTurf, updateTurf } from "../../../services/firestoreService";
+import AdminNavbar from "../Analytics/AdminNavbar";
+import { uploadTurfImages } from "../../../services/storageService";
+import { getAuth } from "firebase/auth"; 
+import { useAuth } from "./useAuth";
 
-export default function ManageTurf() {
-  const [turfs, setTurfs] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-    const [selectedSport, setSelectedSport] = useState<string>("all");
-  const [isSportOpen, setIsSportOpen] = useState(false);
+const ManageTurf: React.FC = () => {
+  const { turfs } = useTurf();
+  const { user, loading } = useAuth();
+  const [search, setSearch] = useState("");
+  
+  // State for Modal and Editing
+  const [selectedTurf, setSelectedTurf] = useState<any>(null);
+  const [selectedSport, setSelectedSport] = useState<string>("all");
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
 
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    getTurfs()
-      .then((data) => setTurfs(data))
-      .catch((err) => {
-        console.error("Failed to load turfs:", err);
-        setTurfs([]);
-      })
-      .finally(() => setLoading(false));
-  }, []);
-
-  const debouncedSetSearch = useMemo(
-    () =>
-      debounce((value: string) => {
-        setSearchTerm(value.trim().toLowerCase());
-      }, 350),
-    []
-  );
-
-    const sportIcon = (sport: string) => {
-    sport = sport.toLowerCase();
-    if (sport.includes("football")) return "⚽";
-    if (sport.includes("cricket")) return "🏏";
-    if (sport.includes("badminton")) return "🏸";
-    return "🎯";
+  // Helper to clear images when closing modal
+  const clearImageStates = () => {
+    setSelectedFiles([]);
+    setPreviews([]);
   };
 
-    const extractSports = (raw: string): string[] => {
+  const extractSports = (raw: string): string[] => {
     if (!raw) return [];
 
     return raw
@@ -85,58 +61,19 @@ export default function ManageTurf() {
       });
   };
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    debouncedSetSearch(e.target.value);
-  };
+  const filteredTurfs = turfs.filter(turf => {
+    const matchesSearch =
+      turf.turf_name.toLowerCase().includes(search.toLowerCase()) ||
+      turf.turf_location.toLowerCase().includes(search.toLowerCase());
 
-const filteredTurfs = useMemo(() => {
-  let result = [...turfs];
-
-  // ✅ Status filter
-  if (statusFilter === "approved") {
-    result = result.filter((t) => !!t.turf_active_status);
-  } else if (statusFilter === "pending") {
-    result = result.filter((t) => !t.turf_active_status);
-  }
-
-  // ✅ Search filter
-  if (searchTerm) {
-    result = result.filter((t) => {
-      const name = (t.turf_name || "").toLowerCase();
-      const location = (t.turf_location || t.city || "").toLowerCase();
-      const owner = (t.owner_id || "").toLowerCase();
-
-      return (
-        name.includes(searchTerm) ||
-        location.includes(searchTerm) ||
-        owner.includes(searchTerm)
-      );
-    });
-  }
-
-  // ✅ Sports filter (FIXED)
-  if (selectedSport !== "all") {
-    result = result.filter((turf) =>
+    const matchesSport =
+      selectedSport === "all" ||
       turf.available_sports_list?.some((sport: string) =>
         extractSports(sport).includes(selectedSport)
-      )
-    );
-  }
+      );
 
-  // ✅ Sort pending first
-  result.sort((a, b) => {
-    const aApproved = !!a.turf_active_status;
-    const bApproved = !!b.turf_active_status;
-    if (!aApproved && bApproved) return -1;
-    if (aApproved && !bApproved) return 1;
-    return 0;
+    return matchesSearch && matchesSport;
   });
-
-  return result;
-}, [turfs, searchTerm, statusFilter, selectedSport]);
-
-
-
 
   const availableSports = Array.from(
     new Set(
@@ -148,18 +85,492 @@ const filteredTurfs = useMemo(() => {
     )
   ).sort();
 
-  if (loading) {
-    return (
-      <div className="text-center mt-5 py-5">
-        <Spinner animation="border" variant="success" />
-        <p className="mt-3 text-muted">Loading turfs...</p>
-      </div>
+  // --- DELETE LOGIC ---
+  const handleDelete = async (turfId: string, name: string) => {
+    if (!window.confirm(`Delete "${name}"?`)) return;
+
+    if (loading) {
+      alert("Auth loading, please wait");
+      return;
+    }
+
+    if (!user) {
+      alert("Session expired. Please login again.");
+      return;
+    }
+
+    const tokenResult = await user.getIdTokenResult(true);
+    console.log("Admin claim:", tokenResult.claims.admin);
+
+    if (!tokenResult.claims.admin) {
+      alert("❌ You are not an admin");
+      return;
+    }
+
+    const token = await user.getIdToken(true);
+
+    const res = await fetch(
+      "https://asia-south1-play-arena-e83d8.cloudfunctions.net/deleteTurfByAdmin",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ turfId }),
+      }
     );
-  }
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.error || "Delete failed");
+      return;
+    }
+
+    alert("✅ Turf deleted successfully");
+    window.location.reload();
+  };
+
+  // --- MODIFY LOGIC ---
+  const handleModify = (turf: any) => {
+    console.log("Setting selected turf for modification:", turf);
+    setSelectedTurf({ ...turf });
+  };
+
+  const handleUpdateSubmit = async () => {
+    if (!selectedTurf?.id) return;
+    setIsUpdating(true);
+
+    try {
+      let finalImageUrls = selectedTurf.turf_images || [];
+
+      // 1. If new files are selected, upload them to Storage
+      if (selectedFiles.length > 0) {
+        const uploadedUrls = await uploadTurfImages(
+          selectedTurf.id, 
+          selectedTurf.owner_id, 
+          selectedFiles
+        );
+        finalImageUrls = uploadedUrls; 
+      }
+
+      const updatedData = {
+        turf_name: selectedTurf.turf_name,
+        turf_location: selectedTurf.turf_location,
+        turf_mobile_number: selectedTurf.turf_mobile_number,
+        available_sports_list: selectedTurf.available_sports_list,
+        turf_images: finalImageUrls,
+      };
+
+      await updateTurf(selectedTurf.id, updatedData);
+      alert("Updated successfully!");
+      
+      setSelectedTurf(null);
+      clearImageStates();
+      window.location.reload();
+    } catch (error) {
+      console.error("Update failed:", error);
+      alert("Update failed. Please check permissions.");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const sportIcon = (sport: string) => {
+    sport = sport.toLowerCase();
+    if (sport.includes("football")) return "⚽";
+    if (sport.includes("cricket")) return "🏏";
+    if (sport.includes("badminton")) return "🏸";
+    return "🎯";
+  };
+
+  const openInGoogleMaps = (address: string) => {
+    if (!address) return;
+    window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`, "_blank");
+  };
 
   return (
     <>
-          <style>{`
+      <style>{`
+        /* Reset and Base Styles */
+        * {
+          box-sizing: border-box;
+          margin: 0;
+          padding: 0;
+        }
+
+        .manage-turf-container {
+          min-height: 100vh;
+          background-color: #f8f9fa;
+          padding-top: 70px;
+          width: 100%;
+          overflow-x: hidden;
+        }
+
+        /* Container Responsive */
+        .content-wrapper {
+          width: 100%;
+          max-width: 1400px;
+          margin: 0 auto;
+          padding: 1rem;
+        }
+
+        @media (min-width: 768px) {
+          .content-wrapper {
+            padding: 1.5rem;
+          }
+        }
+
+        @media (min-width: 1200px) {
+          .content-wrapper {
+            padding: 2rem;
+          }
+        }
+
+        /* Header Section */
+        .header-section {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+          margin-bottom: 1.5rem;
+        }
+
+        @media (min-width: 992px) {
+          .header-section {
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+          }
+        }
+
+        .header-content h1 {
+          font-size: 1.75rem;
+          font-weight: 700;
+          color: #198754;
+          margin-bottom: 0.25rem;
+        }
+
+        @media (min-width: 768px) {
+          .header-content h1 {
+            font-size: 2rem;
+          }
+        }
+
+        @media (min-width: 1200px) {
+          .header-content h1 {
+            font-size: 2.5rem;
+          }
+        }
+
+        .header-content p {
+          font-size: 0.875rem;
+          color: #6c757d;
+          margin: 0;
+        }
+
+        @media (min-width: 768px) {
+          .header-content p {
+            font-size: 1rem;
+          }
+        }
+
+        /* Total Count Badge */
+        .total-badge {
+          background: linear-gradient(135deg, #198754 0%, #157347 100%);
+          color: white;
+          border-radius: 1rem;
+          padding: 1rem 1.5rem;
+          box-shadow: 0 4px 12px rgba(25, 135, 84, 0.2);
+          text-align: center;
+          max-width: 200px;
+          margin: 0 auto;
+        }
+
+        @media (min-width: 992px) {
+          .total-badge {
+            margin: 0 0 0 auto;
+          }
+        }
+
+        .total-badge-label {
+          font-size: 0.7rem;
+          text-transform: uppercase;
+          opacity: 0.9;
+          letter-spacing: 1px;
+          font-weight: 600;
+          display: block;
+          margin-bottom: 0.25rem;
+        }
+
+        .total-badge-count {
+          font-size: 2rem;
+          font-weight: 700;
+          margin: 0;
+        }
+
+        /* Search and Filter Section */
+        .search-filter-section {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+          margin-bottom: 1.5rem;
+        }
+
+        @media (min-width: 768px) {
+          .search-filter-section {
+            flex-direction: row;
+            gap: 1rem;
+            margin-bottom: 2rem;
+          }
+        }
+
+        .search-wrapper {
+          flex: 1;
+          position: relative;
+        }
+
+        .search-input-group {
+          display: flex;
+          align-items: center;
+          background: white;
+          border-radius: 2rem;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+          overflow: hidden;
+          border: 2px solid transparent;
+          transition: all 0.3s ease;
+        }
+
+        .search-input-group:focus-within {
+          border-color: #198754;
+          box-shadow: 0 4px 12px rgba(25, 135, 84, 0.15);
+        }
+
+        .search-icon {
+          padding: 0 1rem;
+          font-size: 1.25rem;
+          color: #6c757d;
+        }
+
+        .search-input {
+          flex: 1;
+          border: none;
+          outline: none;
+          padding: 0.875rem 1rem;
+          font-size: 1rem;
+          background: transparent;
+        }
+
+        @media (max-width: 576px) {
+          .search-input {
+            font-size: 0.875rem;
+            padding: 0.75rem 0.5rem;
+          }
+        }
+
+        /* Filter Dropdown */
+        .filter-dropdown {
+          position: relative;
+          width: 100%;
+        }
+
+        @media (min-width: 768px) {
+          .filter-dropdown {
+            width: auto;
+            min-width: 180px;
+          }
+        }
+
+        .filter-button {
+          width: 100%;
+          background: white;
+          border: 2px solid #198754;
+          color: #198754;
+          border-radius: 2rem;
+          padding: 0.875rem 1.5rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 0.5rem;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .filter-button:hover {
+          background: #198754;
+          color: white;
+        }
+
+        .filter-button:active {
+          transform: scale(0.98);
+        }
+
+        .filter-dropdown-menu {
+          position: absolute;
+          top: calc(100% + 0.5rem);
+          left: 0;
+          right: 0;
+          background: white;
+          border-radius: 1rem;
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+          z-index: 1000;
+          max-height: 300px;
+          overflow-y: auto;
+          display: none;
+        }
+
+        .filter-dropdown-menu.show {
+          display: block;
+        }
+
+        .filter-dropdown-item {
+          padding: 0.75rem 1.25rem;
+          cursor: pointer;
+          border: none;
+          background: none;
+          width: 100%;
+          text-align: left;
+          transition: background 0.2s ease;
+          font-size: 0.95rem;
+        }
+
+        .filter-dropdown-item:hover {
+          background: #f8f9fa;
+        }
+
+        .filter-dropdown-item.active {
+          background: #e7f5ec;
+          color: #198754;
+          font-weight: 600;
+        }
+
+        .filter-divider {
+          height: 1px;
+          background: #e9ecef;
+          margin: 0.5rem 0;
+        }
+
+        /* Results Count */
+        .results-count {
+          text-align: center;
+          color: #6c757d;
+          font-size: 0.875rem;
+          margin-bottom: 1rem;
+        }
+
+        /* Turf Cards Grid */
+        .turf-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 1rem;
+          margin-bottom: 2rem;
+        }
+
+        @media (min-width: 576px) {
+          .turf-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.25rem;
+          }
+        }
+
+        @media (min-width: 992px) {
+          .turf-grid {
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+          }
+        }
+
+        @media (min-width: 1400px) {
+          .turf-grid {
+            grid-template-columns: repeat(4, 1fr);
+          }
+        }
+
+        /* Turf Card */
+        .turf-card {
+          background: white;
+          border-radius: 1.25rem;
+          overflow: hidden;
+          box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+          transition: all 0.3s ease;
+          display: flex;
+          flex-direction: column;
+          height: 100%;
+        }
+
+        .turf-card:hover {
+          transform: translateY(-8px);
+          box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+        }
+
+        .turf-card-image-wrapper {
+          position: relative;
+          width: 100%;
+          padding-top: 56.25%; /* 16:9 aspect ratio */
+          overflow: hidden;
+        }
+
+        .turf-card-image {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          transition: transform 0.3s ease;
+        }
+
+        .turf-card:hover .turf-card-image {
+          transform: scale(1.05);
+        }
+
+        .turf-card-badge {
+          position: absolute;
+          top: 0.75rem;
+          right: 0.75rem;
+          background: #198754;
+          color: white;
+          padding: 0.375rem 0.875rem;
+          border-radius: 1rem;
+          font-size: 0.75rem;
+          font-weight: 600;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .turf-card-body {
+          padding: 1.25rem;
+          display: flex;
+          flex-direction: column;
+          flex-grow: 1;
+        }
+
+        @media (max-width: 576px) {
+          .turf-card-body {
+            padding: 1rem;
+          }
+        }
+
+        .turf-card-title {
+          font-size: 1.125rem;
+          font-weight: 700;
+          color: #198754;
+          margin-bottom: 0.75rem;
+          line-height: 1.3;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+        }
+
+        @media (max-width: 576px) {
+          .turf-card-title {
+            font-size: 1rem;
+          }
+        }
 
         .turf-card-sports {
           display: flex;
@@ -183,121 +594,495 @@ const filteredTurfs = useMemo(() => {
         .sport-badge-icon {
           font-size: 1rem;
         }
-         `}</style>
 
-    <div className="container-fluid py-5 px-md-4 px-lg-5 mt-5 mb-5">
-      {/* Header + Filters */}
-      <div className="d-flex flex-column gap-3 mb-4">
-        <h2 className="fw-bold text-center text-md-start">
-          View All Sports Venues
-        </h2>
+        @media (max-width: 576px) {
+          .sport-badge {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.7rem;
+          }
+        }
 
-        <div className="d-flex flex-column flex-md-row gap-3 align-items-stretch align-items-md-center">
-          {/* Search */}
-          <InputGroup className="w-100">
-            <InputGroup.Text>
-              <i className="bi bi-search"></i>
-            </InputGroup.Text>
-            <Form.Control
-              placeholder="Search by name, location or owner"
-              onChange={handleSearchChange}
-            />
-          </InputGroup>
+        .turf-card-location {
+          color: #6c757d;
+          font-size: 0.875rem;
+          margin-bottom: 1rem;
+          margin-top: auto;
+          display: flex;
+          align-items: flex-start;
+          gap: 0.5rem;
+          cursor: pointer;
+          transition: color 0.2s ease;
+          line-height: 1.4;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+        }
 
-<div className="position-relative w-100">
-  <button
-    type="button"
-    className="form-select text-start"
-    onClick={() => setIsSportOpen(prev => !prev)}
-  >
-    {selectedSport === "all" ? "Filter Sports" : selectedSport}
-  </button>
+        .turf-card-location:hover {
+          color: #0d6efd;
+        }
 
-  {isSportOpen && (
-    <div className="dropdown-menu show w-100 p-2">
-      <button
-        className={`dropdown-item ${selectedSport === "all" ? "active" : ""}`}
-        onClick={() => {
-          setSelectedSport("all");
-          setIsSportOpen(false);
-        }}
-      >
-        All Sports
-      </button>
+        .location-icon {
+          flex-shrink: 0;
+          font-size: 1rem;
+        }
 
-      {availableSports.map((sport) => (
-        <button
-          key={sport}
-          className={`dropdown-item ${selectedSport === sport ? "active" : ""}`}
-          onClick={() => {
-            setSelectedSport(sport);
-            setIsSportOpen(false);
-          }}
-        >
-          {sport}
-        </button>
-      ))}
-    </div>
-  )}
-</div>
+        .turf-card-actions {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 0.5rem;
+        }
 
+        @media (max-width: 400px) {
+          .turf-card-actions {
+            grid-template-columns: 1fr;
+          }
+        }
 
-          {/* Status Filter */}
-          <Form.Select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="w-100 w-md-auto"
-          >
-            <option value="all">All Status</option>
-            <option value="approved">Approved</option>
-            <option value="pending">Pending Approval</option>
-          </Form.Select>
+        .action-button {
+          padding: 0.75rem 1rem;
+          border: 2px solid;
+          border-radius: 2rem;
+          font-weight: 600;
+          font-size: 0.875rem;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.375rem;
+        }
 
-          {/* Count */}
-          <Badge bg="success" className="fs-6 px-3 py-2 align-self-start">
-            {filteredTurfs.length}
-          </Badge>
-        </div>
-      </div>
+        .action-button:active {
+          transform: scale(0.96);
+        }
 
-      {/* Grid */}
-      {filteredTurfs.length === 0 ? (
-        <div className="text-center py-5 text-muted">
-          <h5>No turfs match your filters</h5>
-        </div>
-      ) : (
-        <Row xs={1} sm={2} md={2} lg={3} xl={4} xxl={5} className="g-4">
-          {filteredTurfs.map((turf) => {
-            const isApproved = !!turf.turf_active_status;
-            const statusText = isApproved ? "Approved" : "Pending Approval";
-            const statusBg = isApproved ? "success" : "danger";
+        .action-button-modify {
+          background: white;
+          color: #0d6efd;
+          border-color: #0d6efd;
+        }
 
-            return (
-              <Col key={turf.id}>
-                <Card
-                  className={`h-100 shadow-sm border-0 ${
-                    !isApproved ? "border border-danger border-2" : ""
-                  }`}
-                  style={{ borderRadius: "14px" }}
+        .action-button-modify:hover {
+          background: #0d6efd;
+          color: white;
+        }
+
+        .action-button-delete {
+          background: white;
+          color: #dc3545;
+          border-color: #dc3545;
+        }
+
+        .action-button-delete:hover {
+          background: #dc3545;
+          color: white;
+        }
+
+        /* Empty State */
+        .empty-state {
+          background: white;
+          border-radius: 1.25rem;
+          padding: 3rem 1.5rem;
+          text-align: center;
+          box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .empty-state-icon {
+          font-size: 4rem;
+          opacity: 0.3;
+          margin-bottom: 1.5rem;
+        }
+
+        .empty-state-title {
+          font-size: 1.5rem;
+          color: #6c757d;
+          margin-bottom: 0.5rem;
+          font-weight: 600;
+        }
+
+        .empty-state-text {
+          color: #adb5bd;
+          font-size: 1rem;
+        }
+
+        /* Modal Styles */
+        .modal-backdrop-custom {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.5);
+          z-index: 1040;
+          backdrop-filter: blur(4px);
+        }
+
+        .modal-wrapper {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          z-index: 1050;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 1rem;
+          overflow-y: auto;
+        }
+
+        .modal-dialog-custom {
+          width: 100%;
+          max-width: 600px;
+          margin: auto;
+        }
+
+        .modal-content-custom {
+          background: white;
+          border-radius: 1.5rem;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+          overflow: hidden;
+          max-height: 90vh;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .modal-header-custom {
+          padding: 1.5rem;
+          border-bottom: 1px solid #e9ecef;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          flex-shrink: 0;
+        }
+
+        .modal-title-custom {
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: #198754;
+          margin: 0;
+        }
+
+        @media (max-width: 576px) {
+          .modal-title-custom {
+            font-size: 1.25rem;
+          }
+        }
+
+        .modal-close-button {
+          background: none;
+          border: none;
+          font-size: 1.5rem;
+          cursor: pointer;
+          color: #6c757d;
+          width: 2rem;
+          height: 2rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 0.5rem;
+          transition: all 0.2s ease;
+        }
+
+        .modal-close-button:hover {
+          background: #f8f9fa;
+          color: #212529;
+        }
+
+        .modal-body-custom {
+          padding: 1.5rem;
+          overflow-y: auto;
+          flex: 1;
+        }
+
+        .modal-footer-custom {
+          padding: 1.5rem;
+          border-top: 1px solid #e9ecef;
+          display: flex;
+          gap: 0.75rem;
+          flex-shrink: 0;
+        }
+
+        @media (max-width: 576px) {
+          .modal-footer-custom {
+            flex-direction: column-reverse;
+          }
+        }
+
+        /* Form Styles */
+        .form-group {
+          margin-bottom: 1.25rem;
+        }
+
+        .form-label-custom {
+          display: block;
+          font-weight: 600;
+          font-size: 0.875rem;
+          color: #212529;
+          margin-bottom: 0.5rem;
+        }
+
+        .form-input-custom {
+          width: 100%;
+          padding: 0.75rem 1rem;
+          border: 2px solid #e9ecef;
+          border-radius: 0.75rem;
+          font-size: 1rem;
+          transition: all 0.2s ease;
+          outline: none;
+        }
+
+        .form-input-custom:focus {
+          border-color: #198754;
+          box-shadow: 0 0 0 4px rgba(25, 135, 84, 0.1);
+        }
+
+        .form-textarea-custom {
+          resize: vertical;
+          min-height: 100px;
+        }
+
+        .form-hint {
+          font-size: 0.75rem;
+          color: #6c757d;
+          margin-top: 0.25rem;
+        }
+
+        /* Image Upload Section */
+        .image-upload-wrapper {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          padding: 1rem;
+          background: #f8f9fa;
+          border-radius: 0.75rem;
+          border: 2px dashed #dee2e6;
+        }
+
+        .image-preview {
+          width: 80px;
+          height: 80px;
+          border-radius: 0.75rem;
+          object-fit: cover;
+          flex-shrink: 0;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        @media (max-width: 576px) {
+          .image-preview {
+            width: 60px;
+            height: 60px;
+          }
+        }
+
+        .image-upload-input-wrapper {
+          flex: 1;
+        }
+
+        .file-input-custom {
+          width: 100%;
+          padding: 0.5rem;
+          border: 1px solid #dee2e6;
+          border-radius: 0.5rem;
+          font-size: 0.875rem;
+        }
+
+        /* Modal Buttons */
+        .modal-button {
+          flex: 1;
+          padding: 0.875rem 1.5rem;
+          border-radius: 2rem;
+          font-weight: 600;
+          font-size: 1rem;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          border: none;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+        }
+
+        .modal-button:active {
+          transform: scale(0.96);
+        }
+
+        .modal-button-cancel {
+          background: #f8f9fa;
+          color: #6c757d;
+        }
+
+        .modal-button-cancel:hover {
+          background: #e9ecef;
+        }
+
+        .modal-button-primary {
+          background: linear-gradient(135deg, #198754 0%, #157347 100%);
+          color: white;
+        }
+
+        .modal-button-primary:hover {
+          background: linear-gradient(135deg, #157347 0%, #146c43 100%);
+        }
+
+        .modal-button-primary:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .spinner {
+          width: 1rem;
+          height: 1rem;
+          border: 2px solid rgba(255, 255, 255, 0.3);
+          border-top-color: white;
+          border-radius: 50%;
+          animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+
+        /* Scrollbar Styles */
+        .modal-body-custom::-webkit-scrollbar,
+        .filter-dropdown-menu::-webkit-scrollbar {
+          width: 6px;
+        }
+
+        .modal-body-custom::-webkit-scrollbar-track,
+        .filter-dropdown-menu::-webkit-scrollbar-track {
+          background: #f1f1f1;
+          border-radius: 10px;
+        }
+
+        .modal-body-custom::-webkit-scrollbar-thumb,
+        .filter-dropdown-menu::-webkit-scrollbar-thumb {
+          background: #198754;
+          border-radius: 10px;
+        }
+
+        .modal-body-custom::-webkit-scrollbar-thumb:hover,
+        .filter-dropdown-menu::-webkit-scrollbar-thumb:hover {
+          background: #157347;
+        }
+
+        /* Loading State */
+        .loading-spinner {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          min-height: 300px;
+        }
+
+        .spinner-large {
+          width: 3rem;
+          height: 3rem;
+          border: 4px solid #f3f3f3;
+          border-top: 4px solid #198754;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+      `}</style>
+
+      <div className="manage-turf-container">
+        <AdminNavbar />
+        
+        <div className="content-wrapper">
+          {/* Header Section */}
+          <div className="header-section">
+            <div className="header-content">
+              <h1>Manage Your Turfs</h1>
+              <p>View, edit, or remove turfs from the main database</p>
+            </div>
+            
+            <div className="total-badge">
+              <span className="total-badge-label">Total Turfs</span>
+              <h2 className="total-badge-count">{turfs.length}</h2>
+            </div>
+          </div>
+
+          {/* Search and Filter Section */}
+          <div className="search-filter-section">
+            <div className="search-wrapper">
+              <div className="search-input-group">
+                <span className="search-icon">🔍</span>
+                <input
+                  type="text"
+                  className="search-input"
+                  placeholder="Search by name or location..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="filter-dropdown">
+              <button
+                className="filter-button"
+                onClick={() => {
+                  const menu = document.getElementById('filter-menu');
+                  menu?.classList.toggle('show');
+                }}
+              >
+                <span>{selectedSport === "all" ? "Filter Sports" : selectedSport}</span>
+                <span>▼</span>
+              </button>
+
+              <div id="filter-menu" className="filter-dropdown-menu">
+                <button
+                  className={`filter-dropdown-item ${selectedSport === "all" ? "active" : ""}`}
+                  onClick={() => {
+                    setSelectedSport("all");
+                    document.getElementById('filter-menu')?.classList.remove('show');
+                  }}
                 >
-                  <Card.Img
-                    variant="top"
-                    src={
-                      turf.turf_images?.[0] ||
-                      "https://via.placeholder.com/400x180/67a521/ffffff?text=Turf"
-                    }
-                    alt={turf.turf_name}
-                    style={{
-                      height: "clamp(140px, 22vw, 180px)",
-                      objectFit: "cover",
+                  All Sports
+                </button>
+                <div className="filter-divider"></div>
+                {availableSports.map((sport) => (
+                  <button
+                    key={sport}
+                    className={`filter-dropdown-item ${selectedSport === sport ? "active" : ""}`}
+                    onClick={() => {
+                      setSelectedSport(sport);
+                      document.getElementById('filter-menu')?.classList.remove('show');
                     }}
-                  />
+                  >
+                    {sport}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
 
-                  <Card.Body className="d-flex flex-column">
-                    <Card.Title className="fw-bold fs-6 fs-md-5">
-                      {turf.turf_name || "Unnamed Turf"}
-                    </Card.Title>
-  <div className="turf-card-sports">
+          {/* Results Count */}
+          {(search || selectedSport !== "all") && (
+            <div className="results-count">
+              Showing {filteredTurfs.length} of {turfs.length} turfs
+            </div>
+          )}
+
+          {/* Turf Cards Grid */}
+          {filteredTurfs.length > 0 ? (
+            <div className="turf-grid">
+              {filteredTurfs.map((turf) => (
+                <div className="turf-card" key={turf.turf_id}>
+                  <div className="turf-card-image-wrapper">
+                    <img 
+                      src={turf.turf_images?.[0] || "https://via.placeholder.com/400x250/67a521/ffffff?text=Turf+Image"} 
+                      className="turf-card-image"
+                      alt={turf.turf_name}
+                    />
+                    <div className="turf-card-badge">Active</div>
+                  </div>
+
+                  <div className="turf-card-body">
+                    <h3 className="turf-card-title">{turf.turf_name}</h3>
+                    
+                    <div className="turf-card-sports">
                       {turf.available_sports_list?.slice(0, 3).map((sport: string, i: number) => (
                         <div key={i} className="sport-badge">
                           <span className="sport-badge-icon">{sportIcon(sport)}</span>
@@ -310,34 +1095,188 @@ const filteredTurfs = useMemo(() => {
                         </div>
                       )} */}
                     </div>
-                    <div className="text-muted small mb-3">
-                      <strong>Address:</strong>{" "}
-                      {turf.turf_location || turf.city || "—"}
+
+                    <div 
+                      className="turf-card-location"
+                      onClick={() => openInGoogleMaps(turf.turf_location)}
+                      title="Click to open in Google Maps"
+                    >
+                      <span className="location-icon">📍</span>
+                      <span>{turf.turf_location}</span>
                     </div>
 
-                    <Badge bg={statusBg} className="mb-3 py-2">
-                      {statusText}
-                    </Badge>
+                    <div className="turf-card-actions">
+                      <button
+                        className="action-button action-button-modify"
+                        onClick={() => handleModify(turf)}
+                      >
+                        <span>✏️</span>
+                        <span>Modify</span>
+                      </button>
+                      <button
+                        className="action-button action-button-delete"
+                        onClick={() => handleDelete(turf.id, turf.turf_name)}
+                      >
+                        <span>🗑️</span>
+                        <span>Delete</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="empty-state">
+              <div className="empty-state-icon">🏟️</div>
+              <h3 className="empty-state-title">No Turfs Found</h3>
+              <p className="empty-state-text">
+                {search || selectedSport !== "all" 
+                  ? "Try adjusting your filters" 
+                  : "No turfs available in the database"}
+              </p>
+            </div>
+          )}
+        </div>
 
-                    <button
-                      className="btn btn-outline-success mt-auto w-100 rounded-pill"
-                      onClick={() =>
-                        navigate(
-                          `/dashboard/owners/${turf.owner_id}/turfs/${turf.id}`
-                        )
-                      }
+        {/* Edit Modal */}
+        {selectedTurf && (
+          <>
+            <div 
+              className="modal-backdrop-custom"
+              onClick={() => {
+                setSelectedTurf(null);
+                clearImageStates();
+              }}
+            />
+            
+            <div className="modal-wrapper">
+              <div className="modal-dialog-custom">
+                <div className="modal-content-custom">
+                  <div className="modal-header-custom">
+                    <h2 className="modal-title-custom">Update Turf Details</h2>
+                    <button 
+                      className="modal-close-button"
+                      onClick={() => {
+                        setSelectedTurf(null);
+                        clearImageStates();
+                      }}
                     >
-                      View Details
+                      ✕
                     </button>
-                  </Card.Body>
-                </Card>
-              </Col>
-            );
-          })}
-        </Row>
-      )}
-    </div>
-     </>
-     
+                  </div>
+
+                  <div className="modal-body-custom">
+                    {/* Image Upload */}
+                    <div className="form-group">
+                      <label className="form-label-custom">Update Turf Image</label>
+                      <div className="image-upload-wrapper">
+                        <img 
+                          src={previews.length > 0 ? previews[0] : (selectedTurf.turf_images?.[0] || "https://via.placeholder.com/100")} 
+                          alt="Turf" 
+                          className="image-preview"
+                        />
+                        <div className="image-upload-input-wrapper">
+                          <input
+                            type="file"
+                            className="file-input-custom"
+                            accept="image/*"
+                            multiple
+                            onChange={(e) => {
+                              const files = Array.from(e.target.files || []);
+                              if (files.length > 0) {
+                                setSelectedFiles(files);
+                                const newPreviews = files.map(file => URL.createObjectURL(file));
+                                setPreviews(newPreviews);
+                              }
+                            }}
+                          />
+                          <div className="form-hint">Select new file(s) to replace current image</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Turf Name */}
+                    <div className="form-group">
+                      <label className="form-label-custom">Turf Name</label>
+                      <input
+                        type="text"
+                        className="form-input-custom"
+                        value={selectedTurf.turf_name}
+                        onChange={(e) => setSelectedTurf({ ...selectedTurf, turf_name: e.target.value })}
+                      />
+                    </div>
+
+                    {/* Mobile Number */}
+                    <div className="form-group">
+                      <label className="form-label-custom">Mobile Number</label>
+                      <input
+                        type="tel"
+                        className="form-input-custom"
+                        value={selectedTurf.turf_mobile_number}
+                        onChange={(e) => setSelectedTurf({ ...selectedTurf, turf_mobile_number: e.target.value })}
+                      />
+                    </div>
+
+                    {/* Sports Available */}
+                    <div className="form-group">
+                      <label className="form-label-custom">Sports Available</label>
+                      <input
+                        type="text"
+                        className="form-input-custom"
+                        value={selectedTurf.available_sports_list?.join(", ") || ""}
+                        onChange={(e) => setSelectedTurf({ 
+                          ...selectedTurf, 
+                          available_sports_list: e.target.value.split(",").map(s => s.trim()) 
+                        })}
+                        placeholder="e.g., Cricket, Football, Badminton"
+                      />
+                      <div className="form-hint">Separate sports with commas</div>
+                    </div>
+
+                    {/* Address */}
+                    <div className="form-group">
+                      <label className="form-label-custom">Address</label>
+                      <textarea
+                        className="form-input-custom form-textarea-custom"
+                        value={selectedTurf.turf_location}
+                        onChange={(e) => setSelectedTurf({ ...selectedTurf, turf_location: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="modal-footer-custom">
+                    <button 
+                      className="modal-button modal-button-cancel"
+                      onClick={() => {
+                        setSelectedTurf(null);
+                        clearImageStates();
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      className="modal-button modal-button-primary"
+                      onClick={handleUpdateSubmit}
+                      disabled={isUpdating}
+                    >
+                      {isUpdating ? (
+                        <>
+                          <div className="spinner" />
+                          <span>Saving...</span>
+                        </>
+                      ) : (
+                        <span>Save Changes</span>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </>
   );
-}
+};
+
+export default ManageTurf;
