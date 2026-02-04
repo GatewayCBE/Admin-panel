@@ -9,8 +9,6 @@ import Owner from "../pages/admin/Owner/Owner";
 import Turfowner from "../pages/admin/Owner/Turfowner";
 import TurfDetails from "../pages/admin/Owner/TurfDetails";
 import TurfBookingsPage from "../pages/admin/Slot/TurfBookingsPage";
-import AnalyticsPanel from "../pages/admin/Analytics/AnalyticsPanel";
-import RecentBookingsPage from "../pages/admin/Analytics/RecentBookingsPage";
 import Turf from "../pages/admin/Turf/Turf";
 
 import Login from "../pages/auth/Login";
@@ -20,7 +18,7 @@ import AuthContainer from "../pages/auth/AuthContainer";
 import { PublicLayout, AdminLayout, OwnerLayout, UserLayout } from "./Layout";
 import TurfDetail from "../pages/user/TurfDetail";
 import SlotDetails from "../pages/user/SlotDetails";
-import OwnerDashboard from "../pages/owner/OwnerDashboard";
+// import OwnerDashboard from "../pages/owner/OwnerDashboard";
 import AddTurfForm from "../pages/admin/Owner/AddTurf";
 import AdminLogin from "../pages/auth/AdminLogin";
 import UGames from "../pages/user/UGames";
@@ -69,7 +67,7 @@ const AppRoutes: React.FC = () => {
 
       {/* 👤 Owner pages */}
       <Route element={<OwnerLayout/>}>
-      <Route path="/owner/home" element={<OwnerDashboard />} />
+      {/* <Route path="/owner/home" element={<OwnerDashboard />} /> */}
         <Route path="/owner/dashboard" element={<AddTurfForm />} />
         <Route path="/owner/turfs" element={<OwnerTurfs />} />
         <Route path="/owner/turf/edit/:turfId" element={<OwnerTurfEdit />} />
@@ -97,7 +95,6 @@ const AppRoutes: React.FC = () => {
         <Route path="/dashboard/owners/:ownerId/:turfId/slots" element={<TurfBookingsPage />} />
         {/* <Route path="/admin/reports/*" element={<AnalyticsPanel />} /> */}
         <Route path="/admin/reportspanel" element={<ReportsPanel />} />
-        <Route path="/admin/recentbookings" element={<RecentBookingsPage />} />
         <Route path="/admin/userbookings" element={<UserBookings />} />
       </Route>
 
