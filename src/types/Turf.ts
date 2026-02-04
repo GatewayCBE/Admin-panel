@@ -54,3 +54,13 @@ export interface Turf {
   turf_active_status?: boolean;
 }
 
+export interface TurfListItem {
+  id: string;
+  turf_id: string;
+  turf_name?: string;
+  turf_location?: string;
+  turf_active_status?: boolean;
+  created_at?: any;
+  available_sports_list?: string[];
+  // add only what you actually display in the list
+}

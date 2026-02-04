@@ -39,6 +39,8 @@ import UserProfile from "../pages/user/UserProfile";
 import UserBookingHistory from "../pages/user/UserBookings";
 import UserBookingHistoryPage from "../pages/user/UserBookings";
 import ReportsPanel from "../pages/admin/All Reports/ReportsPanel";
+import OwnerTurfs from "../pages/admin/Owner/OwnerTurfs";
+import OwnerTurfEdit from "../pages/admin/Owner/OwnerTurfEdit";
 
 const AppRoutes: React.FC = () => {
   return (
@@ -69,6 +71,8 @@ const AppRoutes: React.FC = () => {
       <Route element={<OwnerLayout/>}>
       <Route path="/owner/home" element={<OwnerDashboard />} />
         <Route path="/owner/dashboard" element={<AddTurfForm />} />
+        <Route path="/owner/turfs" element={<OwnerTurfs />} />
+        <Route path="/owner/turf/edit/:turfId" element={<OwnerTurfEdit />} />
         <Route path="/owner/channelpartnerdashboard" element={<ChannelPartnerDashboard/>} />
         <Route path="/owner/profile" element={<OwnerProfile />} />
         <Route path="/owner/slotmanagement" element={<SlotManagement/>} />

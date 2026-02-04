@@ -20,8 +20,7 @@ async function setAdmin(uid) {
 }
 
 const ADMIN_UID = [
-  "zx1mlwMcTtNJVyQwTMCpzxjHCiq2",
-  "E1jKyyKbnjakUKlrUggTKfTdYrk1",
+  "coGUbxu4mLZVpJhDmAl2aqG8zsj2",
   "bVvLILbnsSPJBQEhUiztgMQ5Cre2",
   "zGWf5MR0k6bCgFE7zWoK8Gtu0lI3",
 ];
