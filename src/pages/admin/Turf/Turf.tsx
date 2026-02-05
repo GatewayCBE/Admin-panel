@@ -151,7 +151,7 @@ const availableSports = Array.from(
               : "bg-success-subtle text-success"
           }`}
         >
-          {bookingType === "book_now" ? "Online" : "Call"}
+          {bookingType === "call_now" ? "Call" : "Online"}
         </span>
       </div>
 
@@ -176,7 +176,7 @@ const availableSports = Array.from(
       </p>
 
       {/* CTA */}
-      {bookingType === "book_now" ? (
+      {bookingType !== "call_now" ? (
         <button
           className="btn btn-primary w-100 rounded-pill fw-semibold"
           onClick={() =>

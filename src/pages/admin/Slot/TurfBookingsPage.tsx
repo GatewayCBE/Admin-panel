@@ -23,7 +23,9 @@ const TurfBookingsPage: React.FC = () => {
       try {
         const channelBookings = await getChannelPartnerBookings();
         const filtered = turfId 
-          ? channelBookings.filter((b) => b.turfId === turfId || b.turf_id === turfId)
+          ? channelBookings.filter(
+  (b) => b.turfId === turfId
+)
           : channelBookings;
         setRawBookings(filtered);
       } catch (err) {
@@ -166,17 +168,36 @@ const TurfBookingsPage: React.FC = () => {
           <tbody>
             {displayedBookings.map((booking) => (
               <tr key={booking.id}>
-                <td>{booking.date || booking.selectedDate || "—"}</td>
-                <td>{booking.booking_username || "—"}</td>
-                <td>{booking.booked_sports_name || booking.sport || "—"}</td>
+                <td>
+  {booking.createdAt
+    ? new Date(
+        booking.createdAt.seconds * 1000
+      ).toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
+    : "—"}
+</td>
+                <td>{booking.bookingUsername || "—"}</td>
+                <td>{booking.bookedSportsName || booking.sport || "—"}</td>
                 <td>{booking.court || "—"}</td>
                 <td>{booking.date || booking.selectedDate || "—"}</td>
-                <td>{booking.slot_start_time || (Array.isArray(booking.allSlots) ? booking.allSlots.join(", ") : "—")}</td>
-                <td>₹{Number(booking.paid_amount || booking.paidAmount || 0).toLocaleString("en-IN")}</td>
                 <td>
-                  <Badge bg={isPaid(booking.payment_status || booking.paymentStatus) ? "success" : "warning"}>
-                    {isPaid(booking.payment_status || booking.paymentStatus) ? "Paid" : "Pending"}
-                  </Badge>
+  {booking.slot_start_time && booking.slot_end_time
+    ? `${booking.slot_start_time} - ${booking.slot_end_time}`
+    : booking.allSlotsString || "—"}
+</td>
+                <td>₹{Number(booking.totalAmount || 0)}</td>
+                <td>
+                  <Badge bg={
+  booking.paymentStatus === "PAID" ? "success" :
+  booking.paymentStatus === "UNPAID" ? "warning" :
+  booking.paymentStatus === "CANCELLED" ? "secondary" :
+  "info"
+}>
+  {booking.paymentStatus}
+</Badge>
                 </td>
                 <td>{booking.booking_id?.slice(-8) || booking.id?.slice(-8)}</td>
                 <td>
@@ -200,25 +221,169 @@ const TurfBookingsPage: React.FC = () => {
       )}
 
       {/* Details Modal */}
-      <Modal show={showModal} onHide={() => setShowModal(false)} size="lg">
-        <Modal.Header closeButton>
-          <Modal.Title>Booking Details - {selectedBooking?.id?.slice(-8)}</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {selectedBooking ? (
-            <pre style={{ whiteSpace: "pre-wrap", fontSize: "0.9rem" }}>
-              {JSON.stringify(selectedBooking, null, 2)}
-            </pre>
-          ) : (
-            <p>No details available</p>
-          )}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowModal(false)}>
-            Close
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      {selectedBooking && (
+  <Modal
+    show={showModal}
+    onHide={() => {
+      setShowModal(false);
+      setSelectedBooking(null);
+    }}
+    size="lg"
+    centered
+  >
+    <Modal.Header closeButton>
+     <Modal.Title className="fs-5 fw-bold">
+        Booking Details
+      </Modal.Title>
+    </Modal.Header>
+
+    <Modal.Body className="px-4 py-3">
+
+  {/* Top info row */}
+  <div className="row mb-3 align-items-center">
+    <div className="col-md-4">
+      <div className="text-muted small">
+        <i className="bi bi-geo-alt me-1" />
+        Turf
+      </div>
+      <div className="fw-bold fs-5">{selectedBooking.turfName}</div>
+    </div>
+
+    <div className="col-md-4 text-center">
+      <div className="text-muted small">
+        <i className="bi bi-receipt me-1" />
+        Booking ID
+      </div>
+      <div className="fw-semibold">{selectedBooking.bookingId}</div>
+    </div>
+
+    <div className="col-md-4 text-md-end">
+      <div className="text-muted small">
+        <i className="bi bi-person-circle me-1" />
+        User
+      </div>
+      <div className="fw-bold">{selectedBooking.bookingUsername}</div>
+      <div className="text-muted">{selectedBooking.bookingUserMobile}</div>
+    </div>
+  </div>
+
+  <hr />
+
+  {/* Booking details */}
+  <div className="row gy-3 mb-3">
+    <div className="col-md-4">
+      <div className="text-muted small">
+        <i className="bi bi-trophy me-1" />
+        Sport
+      </div>
+      <div className="fw-semibold text-capitalize">
+        {selectedBooking.bookedSportsName}
+      </div>
+    </div>
+
+    <div className="col-md-4">
+      <div className="text-muted small">
+        <i className="bi bi-grid me-1" />
+        Court
+      </div>
+      <div className="fw-semibold">{selectedBooking.court}</div>
+    </div>
+
+    <div className="col-md-4">
+      <div className="text-muted small">
+        <i className="bi bi-calendar-event me-1" />
+        Date
+      </div>
+      <div className="fw-semibold">{selectedBooking.date}</div>
+    </div>
+  </div>
+
+{/* Slot */}
+<div className="mb-4">
+  <div className="text-muted small mb-2">
+    <i className="bi bi-clock me-1" />
+    Slot
+  </div>
+
+  <div className="d-flex align-items-center">
+    {/* Left: Slot time */}
+    <Badge bg="success" className="px-3 py-2 fs-6">
+      {selectedBooking.allSlotsString}
+    </Badge>
+
+    {/* Push status to the right */}
+    <div className="ms-auto">
+      <Badge
+        bg={
+          selectedBooking.paymentStatus === "PAID"
+            ? "success"
+            : selectedBooking.paymentStatus === "UNPAID"
+            ? "warning"
+            : "secondary"
+        }
+        className="px-4 py-2 fs-6 text-uppercase text-danger"
+      >
+        <i
+          className={`bi ${
+            selectedBooking.paymentStatus === "PAID"
+              ? "bi-check-circle"
+              : selectedBooking.paymentStatus === "UNPAID"
+              ? "bi-exclamation-circle"
+              : "bi-x-circle"
+          } me-1`}
+        />
+        {selectedBooking.paymentStatus}
+      </Badge>
+    </div>
+  </div>
+</div>
+
+  {/* Amount summary */}
+  <div className="row text-center bg-light rounded py-3">
+    <div className="col">
+      <div className="text-muted small">
+        <i className="bi bi-currency-rupee me-1" />
+        Total
+      </div>
+      <div className="fw-bold fs-5">₹{selectedBooking.totalAmount}</div>
+    </div>
+
+    <div className="col">
+      <div className="text-muted small">
+        <i className="bi bi-check-circle me-1 text-success" />
+        Paid
+      </div>
+      <div className="fw-bold fs-5 text-success">
+        ₹{selectedBooking.paidAmount}
+      </div>
+    </div>
+
+    <div className="col">
+      <div className="text-muted small">
+        <i className="bi bi-exclamation-circle me-1 text-danger" />
+        Balance
+      </div>
+      <div className="fw-bold fs-5 text-danger">
+  ₹{selectedBooking.unpaidAmount}
+</div>
+    </div>
+  </div>
+
+</Modal.Body>
+
+    <Modal.Footer>
+      <Button
+        variant="secondary"
+        onClick={() => {
+          setShowModal(false);
+          setSelectedBooking(null);
+        }}
+      >
+        Close
+      </Button>
+    </Modal.Footer>
+  </Modal>
+)}
 
       {/* Toast Notification */}
       <Toast

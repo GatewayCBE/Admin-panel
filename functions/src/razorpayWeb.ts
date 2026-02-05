@@ -165,9 +165,12 @@ export const verifyWebRazorpayPayment = onRequest(
           user_mobile_number,
           user_email,
           sport,
+          court,
           slots,
           date,
           payment_type,
+          turf_location,
+          turf_mobile_number
         } = req.body;
 
         if (!turf_id || !Array.isArray(slots) || !slots.length || !user_mobile_number) {
@@ -195,21 +198,22 @@ export const verifyWebRazorpayPayment = onRequest(
         const bookingId = `BYT_U_${Date.now()}`;
         console.log("🆔 Generated bookingId:", bookingId);
 
-        const baseRef = db.collection("environments").doc("testing");
+        const masterRef = db.collection("environment").doc("testing");
+const txnRef = db.collection("environments").doc("testing");
 
-        const userRef = baseRef
+        const userRef = masterRef
           .collection("users")
           .doc(user_mobile_number);
 
-        const turfRef = baseRef
+        const turfRef = masterRef
           .collection("turfs")
           .doc(turf_id);
 
-        const bookingRef = baseRef
+        const bookingRef = txnRef
           .collection("bookings")
           .doc(bookingId);
 
-        const userPaymentCopyRef = baseRef
+        const userPaymentCopyRef = txnRef
           .collection("users")
           .doc(user_mobile_number)
           .collection("payment_coppys")
@@ -219,10 +223,10 @@ export const verifyWebRazorpayPayment = onRequest(
           console.log("🔄 Transaction started");
 
           const userSnap = await tx.get(userRef);
-          const turfSnap = await tx.get(turfRef);
+if (!userSnap.exists) throw new Error("USER_NOT_FOUND");
 
-          if (!userSnap.exists) throw new Error("USER_NOT_FOUND");
-          if (!turfSnap.exists) throw new Error("TURF_NOT_FOUND");
+const turfSnap = await tx.get(turfRef);
+if (!turfSnap.exists) throw new Error("TURF_NOT_FOUND");
 
           const weekday = getWeekday(date);
           const pricing =
@@ -246,33 +250,71 @@ export const verifyWebRazorpayPayment = onRequest(
           const balanceAmount = totalAmount - paidAmount;
           const now = admin.firestore.Timestamp.now();
 
+          const addOneHour = (time12h: string) => {
+  const [time, modifier] = time12h.split(" ");
+  let [hours, minutes] = time.split(":").map(Number);
+
+  if (modifier === "PM" && hours !== 12) hours += 12;
+  if (modifier === "AM" && hours === 12) hours = 0;
+
+  const date = new Date();
+  date.setHours(hours);
+  date.setMinutes(minutes);
+  date.setHours(date.getHours() + 1);
+
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+};
+
           console.log("💰 Amounts", { totalAmount, paidAmount, balanceAmount });
 
           // Write main booking document
           tx.set(bookingRef, {
             bookingId,
-            bookingType: payment_type === "advance" ? "ADVANCE" : "FULL",
-            turfId: turf_id,
-            turfName: turf_name,
-            ownerId: owner_id,
-            userId: user_id,
-            userName: user_name,
-            userMobile: user_mobile_number,
-            userEmail: user_email || null,
-            selectedDate: formattedDate,
-            slots,
-            slotList: slots,
-            slotCount: slots.length,
-            slotStartTime: slots[0],
-            slotEndTime: slots[slots.length - 1],
-            totalAmount,
-            paidAmount,
-            unpaidAmount: balanceAmount,
-            paymentId: razorpay_payment_id,
-            paymentMethod: "Razorpay",
-            paymentStatus: "PAID",
-            createdAt: now,
-            updatedAt: now,
+  bookingType: payment_type === "advance" ? "ADVANCE" : "FULL",
+  bookingStatus: "CONFIRMED",
+
+  turfId: turf_id,
+  turfName: turf_name,
+  turfLocation: turf_location || null,
+  turfMobileNumber: turf_mobile_number || null,
+
+  ownerId: owner_id,
+
+  userId: user_id,
+  userName: user_name,
+  userMobile: user_mobile_number,
+  userEmail: user_email || null,
+
+  bookedSportsName: sport,
+  court,
+
+  date: formattedDate,
+  selectedDate: formattedDate,
+  environment: "testing",
+
+  slots,
+  slotList: slots,
+  slotCount: slots.length,
+  isMultipleSlots: slots.length > 1,
+  displaySlots: slots.join(", "),
+
+  slotStartTime: slots[0],
+  slotEndTime: addOneHour(slots[slots.length - 1]),
+
+  totalAmount,
+  paidAmount,
+  unpaidAmount: balanceAmount,
+
+  paymentId: razorpay_payment_id,
+  paymentMethod: "Razorpay",
+  paymentStatus: "PAID",
+
+  createdAt: now,
+  updatedAt: now,
           });
 
           // Write user payment copy
@@ -290,6 +332,7 @@ export const verifyWebRazorpayPayment = onRequest(
             bookingType: payment_type === "advance" ? "ADVANCE" : "FULL",
             userName: user_name,
             userMobile: user_mobile_number,
+            userEmail: user_email || null,
             createdAt: now,
           });
 

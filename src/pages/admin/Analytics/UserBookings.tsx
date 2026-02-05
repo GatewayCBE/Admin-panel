@@ -244,7 +244,7 @@ const UserBookings: React.FC = () => {
                   {canCancel && (
                     <button
                       className="btn btn-outline-danger btn-sm w-100"
-                      onClick={() => handleCancel(booking)}
+                      onClick={() => handleCancel(booking.id)}
                       disabled={cancellingId === booking.id}
                     >
                       {cancellingId === booking.id ? (

@@ -72,7 +72,7 @@ const AdminNavbar: React.FC = () => {
               </Link>
             </li>
             <li className="nav-item">
-              <Link className="nav-link text-white fs-6 fw-bold" to="/admin/recentbookings" onClick={closeMenu}>
+              <Link className="nav-link text-white fs-6 fw-bold" to="/admin/userbookings" onClick={closeMenu}>
                 BOOKINGS
               </Link>
             </li>
