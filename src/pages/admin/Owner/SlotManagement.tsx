@@ -1,9 +1,7 @@
 import React, { useEffect, useState } from "react";
 import {
-  createBooking,
   getAllBookedSlots,
   getTurfsByOwner,
-  onSlotUpdate,
 } from "../../../services/firestoreService";
 import pickleballImg from "../../../assets/PickleImg.png";
 import badmintonImg from "../../../assets/badminton.png";
@@ -155,6 +153,50 @@ const SlotManagement: React.FC = () => {
 
     setSlots(tempSlots);
   };
+
+  const loadBooked = async () => {
+  if (!selectedTurf?.turf_id || !selectedSport || !selectedCourt || !bookingDate) {
+    console.log("⏭️ loadBooked skipped (incomplete selection)");
+    return;
+  }
+
+  console.log("🔄 Loading booked slots", {
+    turfId: selectedTurf.turf_id,
+    sport: selectedSport,
+    court: selectedCourt,
+    date: bookingDate,
+  });
+
+  try {
+    const booked = await getAllBookedSlots(
+      selectedTurf.turf_id,
+      bookingDate,
+      selectedSport,
+      selectedCourt
+    );
+
+    // ✅ ONLY ACTIVE BOOKINGS SHOULD BLOCK SLOTS
+    const activeBookings = booked.filter((b: any) => {
+      const status = (b.paymentStatus || b.payment_status || "").toUpperCase();
+      return status !== "CANCELLED" && !b.cancelledAt;
+    });
+
+    const blockedTimes = activeBookings
+      .map(b => (b.slotStartTime || b.slot_start_time || "").trim())
+      .filter(Boolean);
+
+    console.log("🚫 Blocked times:", blockedTimes);
+
+    setSlots(prev =>
+      prev.map(slot => ({
+        ...slot,
+        isBooked: blockedTimes.includes(slot.startTime.trim()),
+      }))
+    );
+  } catch (err) {
+    console.error("❌ Failed to load booked slots:", err);
+  }
+};
 
   // Fetch booked slots – improved version with better logging
   useEffect(() => {
@@ -316,7 +358,11 @@ const SlotManagement: React.FC = () => {
     navigate("/owner/booking-confirmation", {
       state: {
         turfId: selectedTurf.turf_id,
-        turfName: selectedTurf.turf_name,
+        turfName:
+  selectedTurf.turf_name ||
+  selectedTurf.turfName ||
+  selectedTurf.name ||
+  "Unknown Turf",
         bookingName,
         bookingMobile,
         sport: selectedSport,
@@ -339,44 +385,6 @@ const SlotManagement: React.FC = () => {
   window.addEventListener("slotsUpdated", reload);
   return () => window.removeEventListener("slotsUpdated", reload);
 }, []);
-
-
-// Add this useEffect to listen for slot updates
-useEffect(() => {
-  const unsubscribe = onSlotUpdate(() => {
-    console.log("🔄 SlotManagement: Refreshing slots after cancellation");
-    // Re-fetch booked slots
-    loadBooked();
-  });
-
-  return () => unsubscribe();
-}, [selectedTurf, selectedSport, selectedCourt, bookingDate]);
-
-// Extract the loadBooked logic into a separate function
-const loadBooked = async () => {
-  if (!selectedTurf || !selectedSport || !selectedCourt || !bookingDate) return;
-
-  const booked = await getAllBookedSlots(
-    selectedTurf.turf_id,
-    bookingDate,
-    selectedSport,
-    selectedCourt
-  );
-
-  const bookedTimes = booked.map(b => b.slot_start_time);
-
-  setSlots(prev =>
-    prev.map(slot => ({
-      ...slot,
-      isBooked: bookedTimes.includes(slot.startTime)
-    }))
-  );
-};
-
-// Update the existing useEffect to use loadBooked
-useEffect(() => {
-  loadBooked();
-}, [selectedSport, selectedCourt, selectedTurf, bookingDate]);
 
   const getSportImage = (sport: string) => {
     const name = sport.toLowerCase();

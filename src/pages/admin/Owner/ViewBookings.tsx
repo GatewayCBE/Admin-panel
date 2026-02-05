@@ -7,21 +7,21 @@ import pickleImg from "../../../assets/PickleImg.png";
 
 export interface SlotBooking {
   id: string;
-  turf_id: string;
+  turfId: string;
   date: string;
-  booked_sports_name: string;
+  bookedSportsName: string;
   court: string;
   slots?: string[];
-  slot_start_time?: string;
-  slot_end_time?: string;
-  booking_username: string;
-  booking_user_mobile: string;
-  paid_amount: number;
-  unpaid_amount: number;
-  total_paid: number;
-  total_unpaid: number;
-  total_amount: number;
-  payment_status: string;
+  slotStartTime?: string;
+  slotEndTime?: string;
+  bookingUsername: string;
+  bookingUserMobile: string;
+  paidAmount: number;
+  unpaidAmount: number;
+  totalPaid: number;
+  totalUnpaid: number;
+  totalAmount: number;
+  paymentStatus: string;
   createdBy?: string;
   docIds?: string[];
 }
@@ -90,9 +90,22 @@ const ViewBookings: React.FC = () => {
         );
 
         console.log("📦 Raw bookings:", raw);
+        // ✅ FILTER CANCELLED BOOKINGS HERE
+const active = raw.filter((b: any) => {
+  const status = (b.paymentStatus || "").toUpperCase();
+  return status !== "CANCELLED" && !b.cancelledAt;
+});
 
         const grouped = groupBookings(raw);
-        console.log("📊 Grouped bookings:", grouped);
+        console.table(
+  grouped.map(b => ({
+    id: b.id,
+    sport: b.bookedSportsName,
+    totalPaid: b.totalPaid,
+    totalUnpaid: b.totalUnpaid,
+    totalAmount: b.totalAmount
+  }))
+);
         
         setBookings(grouped);
       } catch (err) {
@@ -119,9 +132,9 @@ const ViewBookings: React.FC = () => {
           b.id === booking.id
             ? {
                 ...b,
-                total_paid: b.total_amount,
-                total_unpaid: 0,
-                payment_status: "paid",
+                totalPaid: b.totalAmount,
+                totalUnpaid: 0,
+                paymentStatus: "paid",
               }
             : b
         )
@@ -137,21 +150,28 @@ const ViewBookings: React.FC = () => {
   };
 
   // Get sport image based on sport name
-  const getSportImage = (sportName: string): string => {
-    const sport = sportName.toLowerCase().trim();
-
-    if (sport.includes("cricket") || sport.includes("boxcricket")) {
-      return cricketImg;
-    } else if (sport.includes("football")) {
-      return cricketImg;
-    } else if (sport.includes("badminton")) {
-      return badmintonImg;
-    } else if (sport.includes("pickle")) {
-      return pickleImg;
-    }
-
+  const getSportImage = (sportName?: string): string => {
+  if (!sportName) {
     return "https://via.placeholder.com/60x60/67a521/ffffff?text=Sport";
-  };
+  }
+
+  const sport = sportName.toLowerCase().trim();
+
+  if (sport.includes("cricket") || sport.includes("box")) {
+    return cricketImg;
+  }
+  if (sport.includes("football")) {
+    return cricketImg;
+  }
+  if (sport.includes("badminton")) {
+    return badmintonImg;
+  }
+  if (sport.includes("pickle")) {
+    return pickleImg;
+  }
+
+  return "https://via.placeholder.com/60x60/67a521/ffffff?text=Sport";
+};
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString("en-US", {
@@ -163,8 +183,15 @@ const ViewBookings: React.FC = () => {
   };
 
   // ✅ Calculate totals from grouped bookings (already calculated correctly)
-  const totalPaid = bookings.reduce((sum, b) => sum + b.total_paid, 0);
-  const totalUnpaid = bookings.reduce((sum, b) => sum + b.total_unpaid, 0);
+  const totalPaid = bookings.reduce(
+  (sum, b) => sum + Number(b.totalPaid || 0),
+  0
+);
+
+const totalUnpaid = bookings.reduce(
+  (sum, b) => sum + Number(b.totalUnpaid || 0),
+  0
+);
 
   return (
     <>
@@ -485,6 +512,10 @@ const ViewBookings: React.FC = () => {
           background: #f7eb7a;
           color: #eb3c10;
         }
+          .badge-cancelled {
+  background: #e9ecef;
+  color: #495057;
+}
 
         .sport-section {
           display: flex;
@@ -798,12 +829,12 @@ const ViewBookings: React.FC = () => {
           {!loading &&
             bookings.map((booking, index) => {
               // ✅ Use values directly from grouped booking - NO CALCULATION
-              const paidAmount = booking.total_paid;
-              const balanceAmount = booking.total_unpaid;
-              const totalAmount = booking.total_amount;
+              const paidAmount = booking.totalPaid;
+              const balanceAmount = booking.totalUnpaid;
+              const totalAmount = booking.totalAmount;
 
-              const firstLetter = booking.booking_username?.charAt(0).toUpperCase() || "U";
-              const sportImage = getSportImage(booking.booked_sports_name);
+              const firstLetter = booking.bookingUsername?.charAt(0).toUpperCase() || "U";
+              const sportImage = getSportImage(booking.bookedSportsName ?? "Unknown Sport");
 
               return (
                 <div key={`${booking.id}-${index}`} className="booking-card">
@@ -813,20 +844,20 @@ const ViewBookings: React.FC = () => {
                         {firstLetter}
                       </div>
                       <div className="booking-user-info">
-                        <h6>{booking.booking_username}</h6>
+                        <h6>{booking.bookingUsername}</h6>
                         <div className="booking-mobile">
-                          <span>{booking.booking_user_mobile}</span>
+                          <span>{booking.bookingUserMobile}</span>
                         </div>
                       </div>
                     </div>
                     <span
                       className={`booking-status-badge ${
-                        booking.payment_status === "paid"
+                        booking.paymentStatus === "paid"
                           ? "badge-paid"
                           : "badge-advance"
                       }`}
                     >
-                      {booking.payment_status === "paid" ? "PAID" : "ADVANCE"}
+                      {booking.paymentStatus === "paid" ? "PAID" : "ADVANCE"}
                       {booking.createdBy && ` (${booking.createdBy})`}
                     </span>
                   </div>
@@ -834,12 +865,12 @@ const ViewBookings: React.FC = () => {
                   <div className="sport-section">
                     <img
                       src={sportImage}
-                      alt={booking.booked_sports_name}
+                      alt={booking.bookedSportsName}
                       className="sport-image"
                     />
                     <div className="sport-details">
                       <div className="sport-name">
-                        {booking.booked_sports_name}
+                        {booking.bookedSportsName || "Unknown Sport"}
                       </div>
                       <div className="court-name">
                         Court: {booking.court}
@@ -871,15 +902,15 @@ const ViewBookings: React.FC = () => {
                     <div className="payment-grid">
                       <div className="payment-item">
   <span className="payment-label">Total</span>
-  <span className="payment-value total">₹{totalAmount}</span>
+  <span className="payment-value total">₹{Number(totalAmount || 0)}</span>
 </div>
 <div className="payment-item">
   <span className="payment-label">Paid</span>
-  <span className="payment-value paid">₹{paidAmount}</span>
+  <span className="payment-value paid">₹{Number(paidAmount || 0)}</span>
 </div>
 <div className="payment-item">
   <span className="payment-label">Balance</span>
-  <span className="payment-value balance">₹{balanceAmount}</span>
+  <span className="payment-value balance">₹{Number(balanceAmount || 0)}</span>
 </div>
                     </div>
                   </div>

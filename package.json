@@ -16,6 +16,7 @@
     "dayjs": "^1.11.19",
     "firebase": "^12.2.1",
     "firebase-admin": "^13.6.0",
+    "firebase-functions": "^7.0.5",
     "leaflet": "^1.9.4",
     "lodash": "^4.17.23",
     "lucide-react": "^0.562.0",

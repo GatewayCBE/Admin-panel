@@ -1,17 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import { useNavigate } from 'react-router-dom';
 import { uploadTurfImages } from '../../../services/storageService';
 import { buildSportMaps, createTurf, generateTurfId } from '../../../services/firestoreService';
+import { getTurfsByOwner } from '../../../services/firestoreService';
 import pickleballImg from "../../../assets/PickleImg.png";
 import BadmintonImg from "../../../assets/badminton.png";
 import boxcricket from "../../../assets/boxcricket_football.png";
 import football from "../../../assets/football.png";
 import { formatHourOnly12 } from '../../../utils/dateUtils';
 
+// Your existing interfaces (unchanged)
 interface TurfData {
   turfImages: File[];
   turfName: string;
-  // turfMobileNumber: string;
   turfAddress: string;
   latitude: number;
   longitude: number;
@@ -57,20 +59,73 @@ interface Sport {
   courtCount: string;
 }
 
+// NEW: Minimal interface just for displaying the list (no type errors)
+interface TurfListItem {
+  id: string;
+  turf_id: string;
+  turf_name?: string;
+  turf_location?: string;
+  turf_active_status?: boolean;
+  available_sports_list?: string[];
+  turf_images?: string[];           // first image used as cover
+}
+
 const AddTurfForm: React.FC = () => {
   const [step, setStep] = useState(1);
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [imagePreview, setImagePreview] = useState<string>('');
   const [currentSport, setCurrentSport] = useState('');
   const [expandedSections, setExpandedSections] = useState<{[key: string]: boolean}>({});
-  const [addedViaWeb, setAddedViaWeb] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const navigate = useNavigate();
 
   type VenueType = 'turf' | 'badminton' | 'pickleball' | null;
   const [venueType, setVenueType] = useState<VenueType>(null);
 
-  const toMinutes = (time: string) => {
+  // NEW: State for owner's existing turfs
+  const [myTurfs, setMyTurfs] = useState<TurfListItem[]>([]);
+const [loadingTurfs, setLoadingTurfs] = useState(true);
+
+// Load owner's turfs
+useEffect(() => {
+  const loadMyTurfs = async () => {
+    const ownerId = localStorage.getItem("user_id");
+    if (!ownerId) {
+      console.warn("No owner ID found");
+      setLoadingTurfs(false);
+      return;
+    }
+
+    try {
+      // Use 'any' here to avoid inference issues from firestoreService
+      const rawTurfs: any[] = await getTurfsByOwner(ownerId);
+
+      // Explicitly map to TurfListItem with safe access
+      const formattedTurfs: TurfListItem[] = rawTurfs.map((t: any) => ({
+        id: t.id || "",
+        turf_id: t.turf_id || t.id || "",           // fallback
+        turf_name: t.turf_name || "Unnamed Venue",
+        turf_location: t.turf_location || "No location",
+        turf_active_status: t.turf_active_status ?? false,
+        available_sports_list: Array.isArray(t.available_sports_list)
+          ? t.available_sports_list
+          : [],
+          turf_images: t.turf_images || [], // array of image URLs
+      }));
+
+      setMyTurfs(formattedTurfs);
+    } catch (err) {
+      console.error("Failed to load turfs:", err);
+    } finally {
+      setLoadingTurfs(false);
+    }
+  };
+
+  loadMyTurfs();
+}, []);
+
+const toMinutes = (time: string) => {
     if (!time) return null;
     const [h, m] = time.split(":").map(Number);
     return h * 60 + m;
@@ -494,7 +549,85 @@ await createTurf({
 
 
 
-  if (!venueType) {
+// NEW: Render function for turf list
+  const renderMyTurfs = () => (
+  <div className="container mt-5">
+    <h3 className="text-success fw-bold mb-4 text-center">Your Sports Venues</h3>
+
+    {loadingTurfs ? (
+      <div className="text-center py-5">
+        <div className="spinner-border text-success" role="status" />
+        <p className="mt-3">Loading your venues...</p>
+      </div>
+    ) : myTurfs.length === 0 ? (
+      <div className="alert alert-info text-center">
+        You haven't added any venues yet.
+      </div>
+    ) : (
+      <div className="row g-4 justify-content-center">
+        {myTurfs.map((turf) => (
+          <div
+            key={turf.id}
+            className="col-12 col-sm-6 col-md-4 col-lg-3"
+            onClick={() => navigate(`/owner/turf/edit/${turf.turf_id}`)}
+            style={{ cursor: 'pointer' }}
+          >
+            <div
+              className="card turf-card shadow-sm border-0 h-100"
+              style={{
+                borderRadius: '12px',
+                overflow: 'hidden',
+                transition: 'all 0.3s ease',
+              }}
+            >
+              {/* Image at top */}
+              <div
+                className="card-img-top"
+                style={{
+                  height: '180px',
+                  backgroundImage: `url(${
+                    turf.turf_images?.[0] ||
+                    'https://via.placeholder.com/400x180?text=No+Image'
+                  })`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  transition: 'transform 0.4s ease',
+                }}
+              />
+
+              {/* Content */}
+              <div className="card-body d-flex flex-column p-3">
+                {/* Turf Name */}
+                <h5 className="card-title fw-bold mb-2" style={{ fontSize: '1.1rem' }}>
+                  {turf.turf_name || "Unnamed Turf"}
+                </h5>
+
+                {/* Address */}
+                <p className="card-text text-muted small mb-3" style={{ fontSize: '0.9rem' }}>
+                  Address: {turf.turf_location || "No address provided"}
+                </p>
+
+                {/* Status Badge */}
+                <div className="mt-auto">
+                  <span
+                    className={`badge py-2 px-3 w-100 fs-6 ${
+                      turf.turf_active_status ? 'bg-success' : 'bg-danger'
+                    }`}
+                    style={{ borderRadius: '20px' }}
+                  >
+                    {turf.turf_active_status ? 'Approved' : 'Pending Approval'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+);
+
+if (!venueType) {
     return (
       <div className="app-container mt-5 pt-4">
         <div className="header">
@@ -528,7 +661,8 @@ await createTurf({
           </div>
         </div>
 
-        <style>{`
+{renderMyTurfs()}
+<style>{`
           .venue-card {
             width: 160px;
             height: 140px;
@@ -550,12 +684,26 @@ await createTurf({
             width: 50px;
             margin-bottom: 10px;
           }
+            .turf-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.15) !important;
+          }
+          .turf-card .card-img-top {
+            transition: transform 0.4s ease;
+          }
+          .turf-card:hover .card-img-top {
+            transform: scale(1.08);
+          }
+          .badge {
+            font-weight: 500;
+            border-radius: 20px;
+          }
         `}</style>
-      </div>
+</div>
     );
   }
 
-  const renderStep1 = () => (
+const renderStep1 = () => (
   <>
     <button
   className="btn-back"
@@ -1225,9 +1373,8 @@ await createTurf({
     </div>
     </>
   );
-
-  return (
-    <div className="app-container">
+return (
+<div className="app-container">
       <div className="header">
         <button className="btn-back" onClick={() => step === 2 ? setStep(1) : null}>
           <svg width="24" height="24" fill="white" viewBox="0 0 16 16">
@@ -1244,8 +1391,7 @@ await createTurf({
       <div className="content">
         {step === 1 ? renderStep1() : renderStep2()}
       </div>
-
-      <style>{`
+<style>{`
         * {
           box-sizing: border-box;
         }
