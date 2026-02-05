@@ -751,6 +751,14 @@ export async function getAllBookedSlots(
 
     snapshot.docs.forEach((doc) => {
       const data = doc.data();
+      // 🚫 Ignore cancelled bookings
+  if (
+    data.paymentStatus === "CANCELLED" ||
+    data.bookingStatus === "CANCELLED"
+  ) {
+    console.log("Skipping cancelled booking:", doc.id);
+    return;
+  }
       const storedDateStr = data.date || data.selectedDate || "";
 
       const parsedStored = parseDate(storedDateStr);
@@ -813,7 +821,7 @@ export async function createBooking(bookingData: Omit<Booking, "bookingId">): Pr
     };
 
     // Create formatted date
-    const formattedDate = formatDateToDisplay(bookingData.date || bookingData.selectedDate || "");
+    const formattedDate = formatDateToDisplay(bookingData.date || bookingData.date || "");
 
     // Prepare the data to save
     const dataToSave = {
@@ -933,21 +941,21 @@ export const getBookingsByUserMobile = async (
 
 export interface SlotBooking {
   id: string;
-  turf_id: string;
+  turfId: string;
   date: string;
-  booked_sports_name: string;
+  bookedSportsName: string;
   court: string;
   slots?: string[];
-  slot_start_time?: string;
-  slot_end_time?: string;
-  booking_username: string;
-  booking_user_mobile: string;
-  paid_amount: number;
-  unpaid_amount: number;
-  total_paid: number;
-  total_unpaid: number;
-  total_amount: number;
-  payment_status: string;
+  slotStartTime?: string;
+  slotEndTime?: string;
+  bookingUsername: string;
+  bookingUserMobile: string;
+  paidAmount: number;
+  unpaidAmount: number;
+  totalPaid: number;
+  totalUnpaid: number;
+  totalAmount: number;
+  paymentStatus: string;
   createdBy?: string;
   docIds?: string[];
   slotPaidAmounts?: number[];
@@ -981,7 +989,12 @@ export const getBookingsByTurfAndDate = async (
 
     snapshot.forEach((doc) => {
       const d = doc.data();
-
+      const bookedSportsName =
+  d.bookedSportsName ||
+  d.sportsName ||
+  d.sportName ||
+  d.availableSport ||
+  "Unknown Sport";
       //  Extract amounts EXACTLY as stored
       const paidAmount = Number(d.paidAmount ?? 0);
       const unpaidAmount = Number(d.unpaidAmount ?? d.balanceAmount ?? 0);
@@ -993,24 +1006,24 @@ export const getBookingsByTurfAndDate = async (
 
       allBookings.push({
         id: doc.id,
-        turf_id: d.turfId || "",
+        turfId: d.turfId || "",
         date: d.date || d.selectedDate || "",
-        booked_sports_name: d.bookedSportsName || "",
+        bookedSportsName,
         court: d.court || "",
         slots: formattedSlots,
-        slot_start_time: d.slotStartTime ? formatTo12Hour(d.slotStartTime) : "",
-        slot_end_time: d.slotEndTime ? formatTo12Hour(d.slotEndTime) : "",
-        booking_username: d.bookingUsername || d.userName || "",
-        booking_user_mobile: d.bookingUserMobile || d.userMobile || "",
+        slotStartTime: d.slotStartTime ? formatTo12Hour(d.slotStartTime) : "",
+        slotEndTime: d.slotEndTime ? formatTo12Hour(d.slotEndTime) : "",
+        bookingUsername: d.bookingUsername || d.userName || "",
+        bookingUserMobile: d.bookingUserMobile || d.userMobile || "",
         
         //  Use EXACT values from Firestore
-        paid_amount: paidAmount,
-        unpaid_amount: unpaidAmount,
-        total_paid: paidAmount,
-        total_unpaid: unpaidAmount,
-        total_amount: totalAmount,
+        paidAmount: paidAmount,
+        unpaidAmount: unpaidAmount,
+        totalPaid: paidAmount,
+        totalUnpaid: unpaidAmount,
+        totalAmount: totalAmount,
         
-        payment_status: (d.paymentStatus || "advance").toLowerCase(),
+        paymentStatus: (d.paymentStatus || "advance").toLowerCase(),
         createdBy: d.createdBy || "USER",
         
         //  CRITICAL: Preserve the original bookingId
@@ -1027,76 +1040,75 @@ export const getBookingsByTurfAndDate = async (
 };
 
 export const groupBookings = (slots: any[]) => {
+  // ✅ STEP 1: FILTER OUT CANCELLED BOOKINGS
+  const activeSlots = slots.filter((s) => {
+    const status = (s.paymentStatus || s.payment_status || "").toUpperCase();
+    return status !== "CANCELLED" && !s.cancelledAt;
+  });
+
   const grouped: Record<string, any> = {};
 
-  slots.forEach((s) => {
-    // Normalize values
-    const username = (s.booking_username || s.bookingUsername || "").trim();
-    const mobile = (s.booking_user_mobile || s.bookingUserMobile || "").trim();
+  // ✅ STEP 2: USE activeSlots INSTEAD OF slots
+  activeSlots.forEach((s) => {
+    const bookingUsername = (s.bookingUsername || s.booking_username || "").trim();
+    const bookingUserMobile = (s.bookingUserMobile || s.booking_user_mobile || "").trim();
     const court = (s.court || "").trim();
-    const sport = (s.booked_sports_name || s.bookedSportsName || "").trim();
+    const bookedSportsName = (s.bookedSportsName || s.booked_sports_name || "").trim();
     const date = (s.date || s.selectedDate || "").trim();
 
-    // 🔑 KEY decides merging behavior
-    const key = `${username}_${mobile}_${court}_${sport}_${date}`;
+    const key = `${bookingUsername}_${bookingUserMobile}_${court}_${bookedSportsName}_${date}`;
 
-    const paid = Number(s.paid_amount ?? s.paidAmount ?? 0);
-    const unpaid = Number(s.unpaid_amount ?? s.unpaidAmount ?? 0);
+    const paid = Number(s.paidAmount ?? s.paid_amount ?? 0);
+    const unpaid = Number(s.unpaidAmount ?? s.unpaid_amount ?? 0);
 
     if (!grouped[key]) {
       grouped[key] = {
         id: key,
         docIds: [],
-        turf_id: s.turf_id || s.turfId,
+        turfId: s.turfId || s.turf_id || "",
         date,
-        booked_sports_name: sport,
+        bookedSportsName,
         court,
-        booking_username: username,
-        booking_user_mobile: mobile,
+        bookingUsername,
+        bookingUserMobile,
         slots: [],
-        slot_start_time: "",
-        slot_end_time: "",
-        paid_amount: 0,
-        unpaid_amount: 0,
-        total_paid: 0,
-        total_unpaid: 0,
-        total_amount: 0,
-        payment_status: "advance",
-        createdBy: s.createdBy || "OWNER"
+        totalPaid: 0,
+        totalUnpaid: 0,
+        totalAmount: 0,
+        paymentStatus: "advance",
+        createdBy: s.createdBy || "OWNER",
       };
     }
 
-    // Keep doc ids for updates later
     grouped[key].docIds.push(s.id);
 
-    // Add slot time
-const start = formatTo12Hour(s.slot_start_time || s.slotStartTime || "");
-const end = formatTo12Hour(s.slot_end_time || s.slotEndTime || "");
+    const start = formatTo12Hour(s.slotStartTime || s.slot_start_time || "");
+    const end = formatTo12Hour(s.slotEndTime || s.slot_end_time || "");
 
-if (start && end) {
-  grouped[key].slots.push(`${start} - ${end}`);
-}
+    if (start && end) {
+      grouped[key].slots.push(`${start} - ${end}`);
+    }
 
-    // Add amounts
-    grouped[key].total_paid += paid;
-    grouped[key].total_unpaid += unpaid;
+    grouped[key].totalPaid += paid;
+    grouped[key].totalUnpaid += unpaid;
   });
 
-  // Final calculations
+  // ✅ STEP 3: CALCULATE FINAL STATUS
   Object.values(grouped).forEach((g: any) => {
-    g.total_amount = g.total_paid + g.total_unpaid;
+    g.totalAmount = g.totalPaid + g.totalUnpaid;
 
-    if (g.total_unpaid === 0 && g.total_paid > 0) {
-      g.payment_status = "paid";
-    } else if (g.total_paid === 0 && g.total_unpaid > 0) {
-      g.payment_status = "unpaid";
+    if (g.totalUnpaid === 0 && g.totalPaid > 0) {
+      g.paymentStatus = "paid";
+    } else if (g.totalPaid === 0 && g.totalUnpaid > 0) {
+      g.paymentStatus = "unpaid";
     } else {
-      g.payment_status = "advance";
+      g.paymentStatus = "advance";
     }
   });
 
   return Object.values(grouped);
 };
+
 
 export const markBookingFullyPaid = async (booking: any) => {
   try {
@@ -1258,7 +1270,6 @@ export const bookSlot = async (bookingData: {
   try {
     const {
       turfId,
-      turfName,
       date,
       sport,
       court,
@@ -1269,122 +1280,135 @@ export const bookSlot = async (bookingData: {
       price,
       paidAmount,
       unpaidAmount,
-      ownerId
+      ownerId,
     } = bookingData;
 
-    //  Handle both single and multiple slot formats
-const bookingSlots = Array.isArray(slots)
-  ? slots.filter(Boolean) // removes undefined/null
-  : slot
-  ? [slot]
-  : [];
-      
+    let resolvedTurfName = "Unknown Turf";
+
+    const turfRef = doc(db, "environment", "testing", "turfs", turfId);
+    const turfSnap = await getDoc(turfRef);
+
+    if (turfSnap.exists()) {
+      const turfData = turfSnap.data();
+      resolvedTurfName =
+        turfData.turf_name ||
+        turfData.turfName ||
+        turfData.name ||
+        "Unknown Turf";
+    }
+
+    // ✅ Normalize slots (single / multiple)
+    const bookingSlots = Array.isArray(slots)
+      ? slots.filter(Boolean)
+      : slot
+      ? [slot]
+      : [];
+
     if (bookingSlots.length === 0) {
       throw new Error("No slots provided for booking");
     }
 
-    //  Generate unique booking ID for this transaction
+    // ✅ Generate YOUR booking ID (BYT_P_...)
     const bookingId = generateBookingId();
-    
-    //  Extract slot times and convert to 24-hour format
-    const allSlots24 = bookingSlots.map(s => {
-      // Extract start time from label "6:00 PM - 7:00 PM"
+
+    // ✅ Convert slots to 24-hour format
+    const allSlots24 = bookingSlots.map((s) => {
       const startTime = s.startTime || s.label.split(" - ")[0];
       return convertTo24Hour(startTime.trim());
     });
-    
-    //  Get first and last slot for time range
+
     const firstSlot = bookingSlots[0];
     const lastSlot = bookingSlots[bookingSlots.length - 1];
-    
-    const slotStartTime24 = convertTo24Hour(firstSlot.startTime || firstSlot.label.split(" - ")[0]);
-    const slotEndTime24 = convertTo24Hour(lastSlot.endTime || lastSlot.label.split(" - ")[1]);
-    
-    //  Format all slots as 12-hour strings for display
-    const allSlotsString = bookingSlots.map(s => s.label).join(", ");
-    
-    //  Format date to Firestore format
-    const formattedDate = formatFirestoreDate(date);
-    
-    //  Calculate payment status
-    let paymentStatus = "ADVANCE";
-    if (unpaidAmount === 0 && paidAmount > 0) {
-      paymentStatus = "PAID";
-    } else if (paidAmount === 0) {
-      paymentStatus = "UNPAID";
-    }
 
-    //  Create booking document
+    const slotStartTime24 = convertTo24Hour(
+      firstSlot.startTime || firstSlot.label.split(" - ")[0]
+    );
+    const slotEndTime24 = convertTo24Hour(
+      lastSlot.endTime || lastSlot.label.split(" - ")[1]
+    );
+
+    const allSlotsString = bookingSlots.map((s) => s.label).join(", ");
+    const formattedDate = formatFirestoreDate(date);
+
+    // ✅ Payment status logic
+    let paymentStatus = "ADVANCE";
+    if (unpaidAmount === 0 && paidAmount > 0) paymentStatus = "PAID";
+    else if (paidAmount === 0) paymentStatus = "UNPAID";
+
+    // ✅ Firestore reference
     const bookingsRef = collection(db, "environments", "testing", "bookings");
+
+    // 🔑 IMPORTANT: use bookingId as Firestore document ID
+    const bookingDocRef = doc(bookingsRef, bookingId);
     
     const bookingDoc = {
       // IDs
-      bookingId: bookingId,
-      turfId: turfId,
-      ownerId: ownerId,
+      bookingId,
+      turfId,
+      ownerId,
       userId: `owner_${ownerId}`,
-      
+
       // User Info
       bookingUsername: bookingName,
       bookingUserMobile: bookingMobile,
       userName: bookingName,
       userMobile: bookingMobile,
-      
+
       // Turf Info
-      turfName: turfName || "",
+      turfName: resolvedTurfName,
       turfLocation: "",
-      
+
       // Booking Details
-      bookedSportsName: sport,
-      court: court,
+      bookedSportsName: sport.toLowerCase(),
+      court,
       date: formattedDate,
       selectedDate: formattedDate,
-      
-      //  Slots - IMPORTANT!
-      allSlots: allSlots24,              // ["19:00", "20:00", "21:00"]
-      allSlotsString: allSlotsString,    // "7:00 PM - 8:00 PM, 8:00 PM - 9:00 PM"
+
+      // Slots
+      allSlots: allSlots24,
+      allSlotsString,
       numberOfSlots: bookingSlots.length,
-      slotStartTime: slotStartTime24,    // "19:00"
-      slotEndTime: slotEndTime24,        // "22:00"
-      
+      slotStartTime: slotStartTime24,
+      slotEndTime: slotEndTime24,
+
       // Payment
       totalAmount: price,
-      paidAmount: paidAmount,
-      unpaidAmount: unpaidAmount,
+      paidAmount,
+      unpaidAmount,
       balanceAmount: unpaidAmount,
-      paymentStatus: paymentStatus,
-      
-      // Payment Details
+      paymentStatus,
+
+      // Payment Meta
       paymentMethod: "Offline payment to owner",
       paymentId: `OFFLINE_${Date.now()}`,
       paymentTransactionId: `OFFLINE_${Date.now()}`,
       paymentInitiatedTime: new Date().toISOString(),
       paidBy: "Offline payment to owner",
-      
-      // Other Fields
+
+      // Other
       bookingType: "OFFLINE",
       createdBy: "OWNER",
       turfClosed: false,
       dayPrice: 0,
       nightPrice: 0,
-      
+
       // Timestamps
       createdAt: Timestamp.now(),
       updated_at: Timestamp.now(),
     };
 
-    console.log("📝 Creating booking document:", bookingDoc);
-    
-    const docRef = await addDoc(bookingsRef, bookingDoc);
-    
-    console.log(` Booking created successfully: ${docRef.id}`);
-    console.log(` Booking ID: ${bookingId}`);
-    console.log(` Slots: ${allSlotsString}`);
-    console.log(` Total: ₹${price}, Paid: ₹${paidAmount}, Balance: ₹${unpaidAmount}`);
-    
-    return docRef.id;
+    console.log("📝 Creating booking with bookingId as docId:", bookingId);
+
+    // ✅ THIS IS THE KEY FIX
+    await setDoc(bookingDocRef, bookingDoc);
+
+    console.log(`✅ Booking stored with Firestore ID: ${bookingId}`);
+    console.log(`Slots: ${allSlotsString}`);
+    console.log(`Total: ₹${price}, Paid: ₹${paidAmount}, Balance: ₹${unpaidAmount}`);
+
+    return bookingId;
   } catch (error) {
-    console.error(" Error creating booking:", error);
+    console.error("❌ Error creating booking:", error);
     throw error;
   }
 };
@@ -1512,24 +1536,40 @@ export const cancelBooking = async (bookingId: string) => {
     throw new Error(data.error || "Cancel failed");
   }
 
+  // 🔔 Notify SlotManagement
+  window.dispatchEvent(new Event("slotsUpdated"));
+
   return true;
 };
 export interface Booking {
   id: string;
-  booking_id?: string;
-  date: string;                   // "01-Feb-2026"
-  turf_name?: string;
-  booked_sports_name?: string;
-  court?: string;
-  slot_start_time?: string;
-  slot_end_time?: string;
-  total_amount?: number;
-  paid_amount?: number;
-  unpaid_amount?: number;
-  payment_status?: string;
-  paymentStatus?: string;         // some bookings use camelCase
-  user_id: string;
-  [key: string]: any;             // allow extra fields
+  bookingId: string;
+
+  turfId: string;
+  turfName: string;
+
+  bookingUsername: string;
+  bookingUserMobile: string;
+
+  bookedSportsName: string;
+  court: string;
+
+  date: string;
+
+  slotStartTime: string;
+  slotEndTime: string;
+  allSlotsString: string;
+
+  totalAmount: number;
+  paidAmount: number;
+  unpaidAmount: number;
+
+  paymentStatus: string;
+
+  userId: string;
+  createdBy: string;
+
+  createdAt?: any;
 }
 
 export const getCurrentUserId = (): string | null => {
@@ -1611,8 +1651,8 @@ export const getUserBookings = async (): Promise<Booking[]> => {
         }
       };
 
-      const dateA = parseDate(a.date || a.selectedDate);
-      const dateB = parseDate(b.date || b.selectedDate);
+      const dateA = parseDate(a.date || a.date);
+      const dateB = parseDate(b.date || b.date);
       return dateB.getTime() - dateA.getTime();
     });
 
@@ -1649,16 +1689,33 @@ export const getChannelPartnerBookings = async (): Promise<Booking[]> => {
         const data = doc.data();
         return {
           id: doc.id,
-          ...data,
-          // Normalize fields (same as before)
-          date: data.date || data.selectedDate || data.selecteddated || "",
-          slot_start_time: data.slot_start_time || data.slotStartTime || data.slotStart || "",
-          slot_end_time: data.slot_end_time || data.slotEndTime || data.slotEnd || "",
-          turf_name: data.turf_name || data.turfName || "Unknown Turf",
-          booked_sports_name: data.booked_sports_name || data.bookedSportsName || data.sport || "—",
-          total_amount: data.total_amount ?? data.totalAmount ?? 0,
-          paid_amount: data.paid_amount ?? data.paidAmount ?? 0,
-          payment_status: data.payment_status || data.paymentStatus || data.paymentstatus || "Unknown",
+    bookingId: data.bookingId || doc.id,
+
+    turfId: data.turfId,
+    turfName: data.turfName || data.turf_name || "Unknown Turf",
+
+    bookingUsername: data.bookingUsername || data.booking_username || "",
+    bookingUserMobile: data.bookingUserMobile || data.booking_user_mobile || "",
+
+    bookedSportsName: data.bookedSportsName || data.booked_sports_name || "",
+    court: data.court || "",
+
+    date: data.date || data.selectedDate || "",
+
+    slotStartTime: data.slotStartTime || data.slot_start_time || "",
+    slotEndTime: data.slotEndTime || data.slot_end_time || "",
+    allSlotsString: data.allSlotsString || "",
+
+    totalAmount: data.totalAmount ?? data.total_amount ?? 0,
+    paidAmount: data.paidAmount ?? data.paid_amount ?? 0,
+    unpaidAmount: data.unpaidAmount ?? data.unpaid_amount ?? 0,
+
+    paymentStatus: data.paymentStatus || data.payment_status || "UNPAID",
+
+    userId: data.userId || "",
+    createdBy: data.createdBy || "OWNER",
+
+    createdAt: data.createdAt,
         } as Booking;
       });
 
