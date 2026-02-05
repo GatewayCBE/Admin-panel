@@ -15,6 +15,7 @@ import {
 
 import {
   getFunctions,
+  httpsCallable,
 } from "firebase/functions";
 import { getApp } from "firebase/app";
 import { Owner } from "../types/Owner";
