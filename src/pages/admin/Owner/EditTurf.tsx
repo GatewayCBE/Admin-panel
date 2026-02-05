@@ -3,8 +3,9 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../../firebase';
-import { getTurfById } from '../../../services/firestoreService';
+import { getTurfById, normalizeSportKeyFormate, to12HourFormate } from '../../../services/firestoreService';
 import { uploadTurfImages } from '../../../services/storageService';
+import { formatHourOnly12, hour12ToMinutes } from '../../../utils/dateUtils';
 
 interface Sport {
   id: string;
@@ -62,6 +63,31 @@ const EditTurf: React.FC = () => {
 
   const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
+  // Convert any time format to 12-hour format
+  const convertTo12Hour = (time: string): string => {
+    if (!time) return '';
+    
+    // If already in 12-hour format (e.g., "09:00 AM"), return as is
+    if (/^(0[1-9]|1[0-2]):00\s?(AM|PM)$/i.test(time)) {
+      return time.toUpperCase();
+    }
+    
+    // If in 24-hour format (e.g., "09:00" or "21:00"), convert
+    const match24 = time.match(/^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/);
+    if (match24) {
+      let hours = parseInt(match24[1]);
+      const minutes = match24[2];
+      const period = hours >= 12 ? 'PM' : 'AM';
+      
+      if (hours === 0) hours = 12;
+      else if (hours > 12) hours -= 12;
+      
+      return `${hours.toString().padStart(2, '0')}:${minutes} ${period}`;
+    }
+    
+    return time;
+  };
+
   useEffect(() => {
     if (!turfId) return;
 
@@ -86,20 +112,21 @@ const EditTurf: React.FC = () => {
 
           setImagePreviews(turfData.turf_images || []);
 
-          let loadedSports: Sport[] = [];
           if (turfData.sport_specific_timing && turfData.sport_specific_price) {
-            loadedSports = Object.keys(turfData.sport_specific_timing!).map((name) => {
+            const loaded = Object.keys(turfData.sport_specific_timing!).map((name) => {
               const timing = turfData.sport_specific_timing![name];
               const prices = turfData.sport_specific_price![name] || {};
+              
               return {
                 id: Date.now().toString() + name,
                 name,
-                openingTime: timing.opening_time || '',
-                closingTime: timing.closing_time || '',
-                daySlotStart: timing.day_start_time || '',
-                daySlotEnd: timing.day_end_time || '',
-                nightSlotStart: timing.night_start_time || '',
-                nightSlotEnd: timing.night_end_time || '',
+                // Convert all times to 12-hour format
+                openingTime: convertTo12Hour(timing.opening_time || ''),
+                closingTime: convertTo12Hour(timing.closing_time || ''),
+                daySlotStart: convertTo12Hour(timing.day_start_time || ''),
+                daySlotEnd: convertTo12Hour(timing.day_end_time || ''),
+                nightSlotStart: convertTo12Hour(timing.night_start_time || ''),
+                nightSlotEnd: convertTo12Hour(timing.night_end_time || ''),
                 dayPrices: daysOfWeek.reduce((acc, day) => ({
                   ...acc,
                   [day]: prices[day]?.day?.toString() || ''
@@ -112,40 +139,7 @@ const EditTurf: React.FC = () => {
                 courtCount: timing.court_count?.toString() || '1'
               };
             });
-            setSports(loadedSports);
-          }
-
-          // Detect venue type
-          let detectedType: VenueType = null;
-          const sportNames = loadedSports.map(s => s.name.toLowerCase().trim());
-
-          if (sportNames.length === 0) {
-            const nameLower = (turfData.turf_name || '').toLowerCase();
-            if (nameLower.includes('badminton')) detectedType = 'badminton';
-            else if (nameLower.includes('pickle')) detectedType = 'pickleball';
-            else detectedType = 'turf';
-          } else if (sportNames.every(n => n.includes('badminton'))) {
-            detectedType = 'badminton';
-          } else if (sportNames.every(n => n.includes('pickle'))) {
-            detectedType = 'pickleball';
-          } else if (sportNames.some(n => 
-              n.includes('cricket') || n.includes('football') || 
-              n.includes('box') || n.includes('soccer') || n.includes('turf')
-            )) {
-            detectedType = 'turf';
-          } else {
-            detectedType = 'mixed';
-          }
-
-          setVenueType(detectedType);
-
-          if (detectedType !== 'turf') {
-            setFormData(prev => ({
-              ...prev,
-              turfLength: '',
-              turfBreadth: '',
-              turfHeight: ''
-            }));
+            setSports(loaded);
           }
         }
       } catch (err) {
@@ -158,15 +152,9 @@ const EditTurf: React.FC = () => {
     fetchTurf();
   }, [turfId]);
 
-  const toMinutes = (time: string) => {
-    if (!time) return null;
-    const [h, m] = time.split(":").map(Number);
-    return h * 60 + m;
-  };
-
   const resolveCloseMinutes = (open: string, close: string) => {
-    const openMin = toMinutes(open);
-    let closeMin = toMinutes(close);
+    const openMin = hour12ToMinutes(open);
+    let closeMin = hour12ToMinutes(close);
     if (openMin == null || closeMin == null) return null;
     if (closeMin <= openMin) closeMin += 24 * 60;
     return closeMin;
@@ -174,12 +162,12 @@ const EditTurf: React.FC = () => {
 
   const validateSportTimes = (sport: Sport, index: number) => {
     const errors: Record<string, string> = {};
-    const open = toMinutes(sport.openingTime);
+    const open = hour12ToMinutes(sport.openingTime);
     const close = resolveCloseMinutes(sport.openingTime, sport.closingTime);
-    const dayStart = toMinutes(sport.daySlotStart);
-    const dayEnd = toMinutes(sport.daySlotEnd);
-    const nightStart = toMinutes(sport.nightSlotStart);
-    let nightEnd = toMinutes(sport.nightSlotEnd);
+    const dayStart = hour12ToMinutes(sport.daySlotStart);
+    const dayEnd = hour12ToMinutes(sport.daySlotEnd);
+    const nightStart = hour12ToMinutes(sport.nightSlotStart);
+    let nightEnd = hour12ToMinutes(sport.nightSlotEnd);
 
     if (!sport.openingTime) errors[`openingTime-${index}`] = "Opening time is required";
     if (!sport.closingTime) errors[`closingTime-${index}`] = "Closing time is required";
@@ -260,12 +248,48 @@ const EditTurf: React.FC = () => {
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // ... your original image upload logic ...
-    // (paste your full function here)
+    const files = Array.from(e.target.files || []);
+    let newErrors: any = {};
+
+    if (files.length + selectedImages.length + imagePreviews.length > 5) {
+      newErrors.images = "Maximum 5 images allowed";
+      setErrors(newErrors);
+      return;
+    }
+
+    const totalSize = [...selectedImages, ...files].reduce((acc, file) => acc + file.size, 0);
+    if (totalSize > 25 * 1024 * 1024) {
+      newErrors.images = "Total image size cannot exceed 25MB";
+      setErrors(newErrors);
+      return;
+    }
+
+    files.forEach(file => {
+      if (file.size > 5 * 1024 * 1024) newErrors.images = "Each image must be less than 5MB";
+    });
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    const updatedImages = [...selectedImages, ...files];
+    setSelectedImages(updatedImages);
+    const previews = updatedImages.map(file => URL.createObjectURL(file));
+    setImagePreviews([...imagePreviews, ...previews]);
+    setErrors(prev => ({ ...prev, images: "" }));
   };
 
   const removeImage = (index: number) => {
-    // ... your original remove image logic ...
+    if (index < imagePreviews.length - selectedImages.length) {
+      const newPreviews = imagePreviews.filter((_, i) => i !== index);
+      setImagePreviews(newPreviews);
+    } else {
+      const newImages = selectedImages.filter((_, i) => i !== index - (imagePreviews.length - selectedImages.length));
+      setSelectedImages(newImages);
+      const newPreviews = imagePreviews.filter((_, i) => i !== index);
+      setImagePreviews(newPreviews);
+    }
   };
 
   const handleFacilityToggle = (facility: string) => {
@@ -322,6 +346,45 @@ const EditTurf: React.FC = () => {
     ));
   };
 
+  // Handle time input change - convert from 24h to 12h format
+  const handleTimeChange = (sportId: string, field: keyof Sport, value: string) => {
+    if (!value) {
+      updateSportField(sportId, field, '');
+      return;
+    }
+
+    // Convert 24-hour input to 12-hour format
+    const match24 = value.match(/^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/);
+    if (match24) {
+      let hours = parseInt(match24[1]);
+      const minutes = match24[2];
+      const period = hours >= 12 ? 'PM' : 'AM';
+      
+      if (hours === 0) hours = 12;
+      else if (hours > 12) hours -= 12;
+      
+      const formatted12 = `${hours.toString().padStart(2, '0')}:${minutes} ${period}`;
+      updateSportField(sportId, field, formatted12);
+    }
+  };
+
+  // Convert 12-hour format to 24-hour for input display
+  const convertTo24HourForInput = (time12: string): string => {
+    if (!time12) return '';
+    
+    const match = time12.match(/^(0[1-9]|1[0-2]):([0-5][0-9])\s?(AM|PM)$/i);
+    if (!match) return '';
+    
+    let hours = parseInt(match[1]);
+    const minutes = match[2];
+    const period = match[3].toUpperCase();
+    
+    if (period === 'PM' && hours !== 12) hours += 12;
+    if (period === 'AM' && hours === 12) hours = 0;
+    
+    return `${hours.toString().padStart(2, '0')}:${minutes}`;
+  };
+
   const handleSubmit = async () => {
     if (!validateStep1() || !validateStep2()) return;
     if (!turfId) return;
@@ -375,27 +438,34 @@ const EditTurf: React.FC = () => {
     const timings: any = {};
     const persons: any = {};
     const sportNames: string[] = [];
+
     sports.forEach((sport) => {
-      sportNames.push(sport.name);
-      prices[sport.name] = {};
-      timings[sport.name] = {
-        opening_time: sport.openingTime,
-        closing_time: sport.closingTime,
-        day_start_time: sport.daySlotStart,
-        day_end_time: sport.daySlotEnd,
-        night_start_time: sport.nightSlotStart,
-        night_end_time: sport.nightSlotEnd,
-        sport_available: true,
-        court_count: Number(sport.courtCount) || 1,
-      };
-      persons[sport.name] = Number(sport.maxPersons);
+      const key = normalizeSportKeyFormate(sport.name);
+      sportNames.push(key);
+
+      // PRICE MAP
+      prices[key] = {};
       Object.keys(sport.dayPrices).forEach((day) => {
-        prices[sport.name][day] = {
-          day: Number(sport.dayPrices[day as keyof typeof sport.dayPrices]) || 0,
-          night: Number(sport.nightPrices[day as keyof typeof sport.nightPrices]) || 0,
+        prices[key][day] = {
+          day: Number(sport.dayPrices[day]) || 0,
+          night: Number(sport.nightPrices[day]) || 0,
         };
       });
+
+      // TIMINGS MAP - Store in 12-hour format
+      timings[key] = {
+        opening_time: sport.openingTime || '',
+        closing_time: sport.closingTime || '',
+        day_start_time: sport.daySlotStart || '',
+        day_end_time: sport.daySlotEnd || '',
+        night_start_time: sport.nightSlotStart || '',
+        night_end_time: sport.nightSlotEnd || '',
+        court_count: Number(sport.courtCount) || 1,
+      };
+
+      persons[key] = Number(sport.maxPersons) || 0;
     });
+
     return { prices, timings, persons, sportNames };
   };
 
@@ -420,10 +490,10 @@ const EditTurf: React.FC = () => {
       </button>
 
       <h1 className="header-title fw-bold fs-3 text-success text-center">
-      {step === 1 && venueType === 'turf' && 'Add Turf Venue'}
-      {step === 1 && venueType === 'badminton' && 'Add Badminton Venue'}
-      {step === 1 && venueType === 'pickleball' && 'Add Pickleball Venue'}
-    </h1>
+        {step === 1 && venueType === 'turf' && 'Edit Turf Venue'}
+        {step === 1 && venueType === 'badminton' && 'Edit Badminton Venue'}
+        {step === 1 && venueType === 'pickleball' && 'Edit Pickleball Venue'}
+      </h1>
 
       <div className="step-container mt-5">
         <div className="mb-4">
@@ -514,8 +584,8 @@ const EditTurf: React.FC = () => {
           <textarea
             className={`form-control custom-input ${errors.turfDescription ? "is-invalid" : ""}`}
             placeholder={venueType === "turf"
-        ? "Turf Description & Achievements *"
-        : "Description & Achievements *"}
+              ? "Turf Description & Achievements *"
+              : "Description & Achievements *"}
             name="turfDescription"
             value={formData.turfDescription}
             onChange={(e) => {
@@ -635,12 +705,6 @@ const EditTurf: React.FC = () => {
             className="btn btn-next"
             onClick={() => {
               if (!validateStep1()) return;
-              const sportName =
-              venueType === 'turf'
-                ? 'Football & Boxcricket'
-                : venueType === 'badminton'
-                ? 'Badminton'
-                : 'Pickleball';
               setStep(2);
             }}
           >
@@ -689,9 +753,12 @@ const EditTurf: React.FC = () => {
                       <input
                         type="time"
                         className={`form-control custom-input ${errors[`openingTime-${index}`] ? "is-invalid" : ""}`}
-                        value={sport.openingTime}
-                        onChange={(e) => updateSportField(sport.id, "openingTime", e.target.value)}
+                        value={convertTo24HourForInput(sport.openingTime)}
+                        onChange={(e) => handleTimeChange(sport.id, "openingTime", e.target.value)}
                       />
+                      {sport.openingTime && (
+                        <small className="text-muted mt-1">{sport.openingTime}</small>
+                      )}
                       <div className="field-error">{errors[`openingTime-${index}`]}</div>
                     </div>
                   </div>
@@ -703,9 +770,12 @@ const EditTurf: React.FC = () => {
                       <input
                         type="time"
                         className={`form-control custom-input ${errors[`closingTime-${index}`] ? "is-invalid" : ""}`}
-                        value={sport.closingTime}
-                        onChange={(e) => updateSportField(sport.id, "closingTime", e.target.value)}
+                        value={convertTo24HourForInput(sport.closingTime)}
+                        onChange={(e) => handleTimeChange(sport.id, "closingTime", e.target.value)}
                       />
+                      {sport.closingTime && (
+                        <small className="text-muted mt-1">{sport.closingTime}</small>
+                      )}
                       <div className="field-error">{errors[`closingTime-${index}`]}</div>
                     </div>
                   </div>
@@ -726,9 +796,12 @@ const EditTurf: React.FC = () => {
                             <input
                               type="time"
                               className={`form-control custom-input ${errors[`dayStart-${index}`] ? "is-invalid" : ""}`}
-                              value={sport.daySlotStart}
-                              onChange={(e) => updateSportField(sport.id, "daySlotStart", e.target.value)}
+                              value={convertTo24HourForInput(sport.daySlotStart)}
+                              onChange={(e) => handleTimeChange(sport.id, "daySlotStart", e.target.value)}
                             />
+                            {sport.daySlotStart && (
+                              <small className="text-muted mt-1">{sport.daySlotStart}</small>
+                            )}
                             <div className="field-error">{errors[`dayStart-${index}`]}</div>
                           </div>
                         </div>
@@ -738,9 +811,12 @@ const EditTurf: React.FC = () => {
                             <input
                               type="time"
                               className={`form-control custom-input ${errors[`dayEnd-${index}`] ? "is-invalid" : ""}`}
-                              value={sport.daySlotEnd}
-                              onChange={(e) => updateSportField(sport.id, "daySlotEnd", e.target.value)}
+                              value={convertTo24HourForInput(sport.daySlotEnd)}
+                              onChange={(e) => handleTimeChange(sport.id, "daySlotEnd", e.target.value)}
                             />
+                            {sport.daySlotEnd && (
+                              <small className="text-muted mt-1">{sport.daySlotEnd}</small>
+                            )}
                             <div className="field-error">{errors[`dayEnd-${index}`]}</div>
                           </div>
                         </div>
@@ -777,7 +853,6 @@ const EditTurf: React.FC = () => {
                   </div>
                   {expandedSections[`${sport.id}-night`] && (
                     <div className="section-content">
-                      {/* Night start/end */}
                       <div className="row g-3 mb-3">
                         <div className="col-6">
                           <div className="input-group-vertical">
@@ -785,9 +860,12 @@ const EditTurf: React.FC = () => {
                             <input
                               type="time"
                               className={`form-control custom-input ${errors[`nightStart-${index}`] ? "is-invalid" : ""}`}
-                              value={sport.nightSlotStart}
-                              onChange={(e) => updateSportField(sport.id, "nightSlotStart", e.target.value)}
+                              value={convertTo24HourForInput(sport.nightSlotStart)}
+                              onChange={(e) => handleTimeChange(sport.id, "nightSlotStart", e.target.value)}
                             />
+                            {sport.nightSlotStart && (
+                              <small className="text-muted mt-1">{sport.nightSlotStart}</small>
+                            )}
                             <div className="field-error">{errors[`nightStart-${index}`]}</div>
                           </div>
                         </div>
@@ -797,15 +875,17 @@ const EditTurf: React.FC = () => {
                             <input
                               type="time"
                               className={`form-control custom-input ${errors[`nightEnd-${index}`] ? "is-invalid" : ""}`}
-                              value={sport.nightSlotEnd}
-                              onChange={(e) => updateSportField(sport.id, "nightSlotEnd", e.target.value)}
+                              value={convertTo24HourForInput(sport.nightSlotEnd)}
+                              onChange={(e) => handleTimeChange(sport.id, "nightSlotEnd", e.target.value)}
                             />
+                            {sport.nightSlotEnd && (
+                              <small className="text-muted mt-1">{sport.nightSlotEnd}</small>
+                            )}
                             <div className="field-error">{errors[`nightEnd-${index}`]}</div>
                           </div>
                         </div>
                       </div>
 
-                      {/* Night prices */}
                       <div className="row g-2">
                         {daysOfWeek.map((day) => (
                           <div className="col-6" key={day}>
@@ -892,7 +972,7 @@ const EditTurf: React.FC = () => {
       <div className="content">
         {step === 1 ? renderStep1() : renderStep2()}
       </div>
-<style>{`
+      <style>{`
         * {
           box-sizing: border-box;
         }
@@ -911,25 +991,41 @@ const EditTurf: React.FC = () => {
           background-color: #ffffff;
           box-shadow: 0 0 30px rgba(0,0,0,0.1);
         }
-.input-group-vertical {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-}
 
-.field-error {
-  min-height: 18px;        /* Keeps layout stable */
-  font-size: 12px;
-  color: #dc3545;
-  margin-top: 4px;
-  line-height: 1.2;
-}
+        .input-group-vertical {
+          display: flex;
+          flex-direction: column;
+          width: 100%;
+        }
 
+        .field-error {
+          min-height: 18px;
+          font-size: 12px;
+          color: #dc3545;
+          margin-top: 4px;
+          line-height: 1.2;
+        }
+
+        .image-upload-box {
+          width: 140px;
+          height: 140px;
+          border: 2px dashed #dee2e6;
+          border-radius: 16px;
+          background-color: #f8f9fa;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.3s;
+        }
+
+        .image-upload-box:hover {
+          border-color: #198754;
+          background-color: #e7f5ed;
+        }
 
         .header {
           background: linear-gradient(135deg, #198754 0%, #157347 100%);
           color: white;
-        //   padding: 20px 24px;
           display: flex;
           align-items: center;
           gap: 16px;
@@ -971,23 +1067,6 @@ const EditTurf: React.FC = () => {
           padding: 32px;
           border-radius: 16px;
           box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-        }
-
-        .image-upload-box {
-          width: 140px;
-          height: 140px;
-          border: 2px dashed #dee2e6;
-          border-radius: 16px;
-          background-color: #f8f9fa;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: all 0.3s;
-        }
-
-        .image-upload-box:hover {
-          border-color: #198754;
-          background-color: #e7f5ed;
         }
 
         .custom-input {
@@ -1279,46 +1358,7 @@ const EditTurf: React.FC = () => {
             padding: 16px 20px;
           }
         }
-          .time-label {
-          display: block;
-          font-size: 13px;
-          color: #6c757d;
-          margin-bottom: 8px;
-          font-weight: 600;
-        }
-
-        input[type="time"] {
-          cursor: pointer;
-        }
-
-        input[type="time"]::-webkit-calendar-picker-indicator {
-          cursor: pointer;
-          padding: 4px;
-          filter: invert(0.5);
-        }
-
-        input[type="time"]:hover::-webkit-calendar-picker-indicator {
-          filter: invert(0.3);
-        }
-
-        .flex-1 {
-          flex: 1;
-        }
-
-        @media (max-width: 768px) {
-          .content {
-            padding: 24px 16px;
-          }
-
-          .step-container {
-            padding: 24px 20px;
-          }
-
-          .header {
-            padding: 16px 20px;
-          }
-        }
-            `}</style>
+      `}</style>
     </div>
   );
 };

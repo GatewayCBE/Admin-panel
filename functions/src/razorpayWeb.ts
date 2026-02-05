@@ -215,87 +215,105 @@ export const verifyWebRazorpayPayment = onRequest(
           .collection("payment_coppys")
           .doc(bookingId);
 
-        const result = await db.runTransaction(async (tx) => {
-          console.log("🔄 Transaction started");
+       const result = await db.runTransaction(async (tx) => {
+  console.log("🔄 Transaction started");
 
-          const userSnap = await tx.get(userRef);
-          const turfSnap = await tx.get(turfRef);
+  const userSnap = await tx.get(userRef);
+  const turfSnap = await tx.get(turfRef);
 
-          if (!userSnap.exists) throw new Error("USER_NOT_FOUND");
-          if (!turfSnap.exists) throw new Error("TURF_NOT_FOUND");
+  // ✅ AUTO CREATE WEB USER
+  if (!userSnap.exists) {
+    console.log("👤 Creating web guest user:", user_mobile_number);
+    tx.set(userRef, {
+      userId: user_id || "WEB_USER",
+      userName: user_name || "Web User",
+      userMobile: user_mobile_number,
+      userEmail: user_email || null,
+      createdAt: admin.firestore.Timestamp.now(),
+      source: "web_booking"
+    });
+  }
 
-          const weekday = getWeekday(date);
-          const pricing =
-            turfSnap.data()?.sport_specific_price?.[sport]?.[weekday];
+  if (!turfSnap.exists) throw new Error("TURF_NOT_FOUND");
 
-          if (!pricing) throw new Error("PRICING_NOT_CONFIGURED");
+  const weekday = getWeekday(date);
+  const pricing = turfSnap.data()?.sport_specific_price?.[sport]?.[weekday];
+  if (!pricing) throw new Error("PRICING_NOT_CONFIGURED");
 
-          // No more slot-level checks — availability is now handled by querying /bookings
+  const normalizedSlots = slots.map(s => normalizeSlotTime(s));
 
-          let totalAmount = 0;
-          for (const rawSlot of slots) {
-            const slot = normalizeSlotTime(rawSlot);
-            totalAmount += isNightSlot(slot)
-              ? Number(pricing.night)
-              : Number(pricing.day);
-          }
+  // 🚨 SLOT AVAILABILITY CHECK
+  for (const slot of normalizedSlots) {
+    const existingBookingSnap = await tx.get(
+      baseRef
+        .collection("bookings")
+        .where("turfId", "==", turf_id)
+        .where("selectedDate", "==", formattedDate)
+        .where("slots", "array-contains", slot)
+    );
 
-          const paidAmount =
-            payment_type === "advance" ? slots.length : totalAmount;
+    if (!existingBookingSnap.empty) {
+      console.error("❌ SLOT ALREADY BOOKED:", slot);
+      throw new Error(`SLOT_ALREADY_BOOKED_${slot}`);
+    }
+  }
 
-          const balanceAmount = totalAmount - paidAmount;
-          const now = admin.firestore.Timestamp.now();
+  let totalAmount = 0;
+  for (const slot of normalizedSlots) {
+    totalAmount += isNightSlot(slot)
+      ? Number(pricing.night)
+      : Number(pricing.day);
+  }
 
-          console.log("💰 Amounts", { totalAmount, paidAmount, balanceAmount });
+  const paidAmount = payment_type === "advance" ? normalizedSlots.length : totalAmount;
+  const balanceAmount = totalAmount - paidAmount;
+  const now = admin.firestore.Timestamp.now();
 
-          // Write main booking document
-          tx.set(bookingRef, {
-            bookingId,
-            bookingType: payment_type === "advance" ? "ADVANCE" : "FULL",
-            turfId: turf_id,
-            turfName: turf_name,
-            ownerId: owner_id,
-            userId: user_id,
-            userName: user_name,
-            userMobile: user_mobile_number,
-            userEmail: user_email || null,
-            selectedDate: formattedDate,
-            slots,
-            slotList: slots,
-            slotCount: slots.length,
-            slotStartTime: slots[0],
-            slotEndTime: slots[slots.length - 1],
-            totalAmount,
-            paidAmount,
-            unpaidAmount: balanceAmount,
-            paymentId: razorpay_payment_id,
-            paymentMethod: "Razorpay",
-            paymentStatus: "PAID",
-            createdAt: now,
-            updatedAt: now,
-          });
+  tx.set(bookingRef, {
+    bookingId,
+    turfId: turf_id,
+    turfName: turf_name,
+    ownerId: owner_id,
+    userId: user_id,
+    userName: user_name,
+    userMobile: user_mobile_number,
+    userEmail: user_email || null,
+    selectedDate: formattedDate,
+    slots: normalizedSlots,
+    slotList: normalizedSlots,
+    slotCount: normalizedSlots.length,
+    slotStartTime: normalizedSlots[0],
+    slotEndTime: normalizedSlots[normalizedSlots.length - 1],
+    totalAmount,
+    paidAmount,
+    unpaidAmount: balanceAmount,
+    paymentId: razorpay_payment_id,
+    paymentMethod: "Razorpay",
+    paymentStatus: "PAID",
+    createdAt: now,
+    updatedAt: now,
+  });
 
-          // Write user payment copy
-          tx.set(userPaymentCopyRef, {
-            bookingId,
-            turfId: turf_id,
-            turfName: turf_name,
-            selectedDate: formattedDate,
-            slotList: slots,
-            slotCount: slots.length,
-            totalAmount,
-            paidAmount,
-            unpaidAmount: balanceAmount,
-            paymentStatus: "PAID",
-            bookingType: payment_type === "advance" ? "ADVANCE" : "FULL",
-            userName: user_name,
-            userMobile: user_mobile_number,
-            createdAt: now,
-          });
+  tx.set(userPaymentCopyRef, {
+    bookingId,
+    turfId: turf_id,
+    turfName: turf_name,
+    selectedDate: formattedDate,
+    slotList: normalizedSlots,
+    slotCount: normalizedSlots.length,
+    totalAmount,
+    paidAmount,
+    unpaidAmount: balanceAmount,
+    paymentStatus: "PAID",
+    bookingType: payment_type === "advance" ? "ADVANCE" : "FULL",
+    userName: user_name,
+    userMobile: user_mobile_number,
+    createdAt: now,
+  });
 
-          console.log("✅ Transaction writes prepared");
-          return { success: true, bookingId };
-        });
+  return { success: true, bookingId };
+});
+
 
         console.log("🎉 Booking completed:", result);
         return res.status(200).json(result);

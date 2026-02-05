@@ -12,6 +12,7 @@ const Navbar: React.FC = () => {
 
   const handleLogout = async () => {
     await signOut(auth);
+      localStorage.clear();
     navigate("/");
   };
 

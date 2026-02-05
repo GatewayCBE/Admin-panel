@@ -41,6 +41,8 @@ const decryptAES = async (encrypted: string) => {
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
+const location = useLocation();
+
   const { state } = useLocation();
   const role: "user" | "owner" = state?.role || "user";
 
@@ -55,6 +57,8 @@ const normalizeMobile = (value: string) => {
   const digits = value.replace(/\D/g, "");
   return digits.slice(-10);
 };
+const from = (location.state as any)?.from?.pathname;
+
 
 const handleLogin = async (e: React.FormEvent) => {
   e.preventDefault();
@@ -120,6 +124,7 @@ const handleLogin = async (e: React.FormEvent) => {
 
     localStorage.setItem("user_role", role);
     localStorage.setItem("is_logged_in", "true");
+localStorage.setItem("auth_token", "logged_in");
 
     // 🔔 Register FCM
     await registerFcmToken(
@@ -128,11 +133,14 @@ const handleLogin = async (e: React.FormEvent) => {
     );
 
     // 🚀 REDIRECT
-    if (role === "user") {
-      navigate("/user/turfs");
-    } else {
-      navigate("/owner/channelpartnerdashboard");
-    }
+  // 🚀 SMART REDIRECT
+const fallbackPath =
+  role === "owner"
+    ? "/owner/channelpartnerdashboard"
+    : "/user/turfs";
+
+navigate(from || fallbackPath, { replace: true });
+
 
   } catch (err: any) {
     console.error("Login error:", err);
@@ -173,13 +181,19 @@ const handleLogin = async (e: React.FormEvent) => {
     );
     localStorage.setItem("user_role", role);
     localStorage.setItem("is_logged_in", "true");
+localStorage.setItem("auth_token", "logged_in"); // dummy token for route guard
 
     await registerFcmToken(
       role === "user" ? account.user_id : account.owner_id,
       role
     );
 
-    navigate(role === "user" ? "/user/turfs" : "/owner/channelpartnerdashboard");
+const fallbackPath =
+  role === "owner"
+    ? "/owner/channelpartnerdashboard"
+    : "/user/turfs";
+
+navigate(from || fallbackPath, { replace: true });
   } catch (err) {
     setError("Google login failed");
   }

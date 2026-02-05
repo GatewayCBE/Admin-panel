@@ -16,7 +16,7 @@ export const useTurf = () => {
           turf_name: turf.turf_name ?? "",
           turf_mobile_number: turf.turf_mobile_number ?? "",
           turf_location: turf.turf_location ?? "",
-          booking_type: turf.booking_type ?? "call_now",
+          booking_type: turf.booking_type ?? "",
           owner_id: turf.owner_id ?? "",
           owner_name: turf.owner_name ?? "",
           owner_mobile_number: turf.owner_mobile_number ?? "",
@@ -40,7 +40,7 @@ export const useTurf = () => {
           turf_breadth: turf.turf_breadth ?? "",
           turf_height: turf.turf_height ?? "",
 
-          turf_active_status: turf.turf_active_status ?? true,
+          turf_active_status: turf.turf_active_status ?? false,
         }))
       );
     };

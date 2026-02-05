@@ -176,38 +176,40 @@ const [refreshKey, setRefreshKey] = useState(0);
   );
 
 useEffect(() => {
-  async function loadBookedSlots() {
-    if (!turf || !selectedSport || !selectedDate) return;
+const loadBookedSlots = async () => {
+  if (!turf || !selectedSport || !selectedDate) return;
 
-    const dateString = selectedDate
-      .toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      })
-      .replace(/ /g, "-"); // "23-Jan-2026"
+  const dateString = selectedDate
+    .toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    })
+    .replace(/ /g, "-");
 
-    const bookedSlots = await getAllBookedSlots(
-      turf.turf_id,
-      dateString,
-      selectedSport,
-      `court ${selectedCourt}`
-    );
+  const bookedSlots = await getAllBookedSlots(
+    turf.turf_id,
+    dateString,
+    selectedSport,
+    `court ${selectedCourt}`
+  );
 
-const set = new Set(
-  bookedSlots.map((s) => {
-    const raw = s.slot_start_time || "";
-    return convertTo24Hour(raw) || raw; // ensures "6:00 PM" → "18:00"
-  })
-);
+  const set = new Set<string>();
 
-console.log("🔴 Booked Slots (24h):", set);
-setBookedSlotSet(set);
+  bookedSlots.forEach((s) => {
+    const raw = (s.slot_start_time || "").trim();
 
-    console.log("🔴 Booked Slots:", set);
+    const converted = convertTo24Hour(raw); // "6:00 PM" → "18:00"
 
-    setBookedSlotSet(set);
-  }
+    if (converted) {
+      set.add(converted);
+    }
+  });
+
+  console.log("🔴 Booked Slots (STANDARD 24h):", set);
+  setBookedSlotSet(set);
+};
+
 
   loadBookedSlots();
 }, [turf, selectedSport, selectedCourt, selectedDate]);
@@ -258,29 +260,46 @@ useEffect(() => {
 }, [turf, selectedSport, selectedCourt, selectedDate]);
 
   // -------- Timing info for chosen sport --------
-  const timing = useMemo(() => {
-    if (!turf || !selectedSport) return null;
-    const t = turf.sport_specific_timing?.[selectedSport];
-    if (!t) return null;
+const timing = useMemo(() => {
+  if (!turf || !selectedSport) return null;
 
-    const opening = convertTo24Hour(t.opening_time ?? null) ?? "00:00";
-    const closing = convertTo24Hour(t.closing_time ?? null) ?? "23:59";
+  const t = turf.sport_specific_timing?.[selectedSport];
+  if (!t) return null;
 
-    const dayStart = convertTo24Hour(t.day_start_time ?? null);
-    const dayEnd = convertTo24Hour(t.day_end_time ?? null);
-    const nightStart = convertTo24Hour(t.night_start_time ?? null);
-    const nightEnd = convertTo24Hour(t.night_end_time ?? null);
+  const opening24 = convertTo24Hour(t.opening_time);
+  const closing24 = convertTo24Hour(t.closing_time);
 
-    return {
-      openingMin: toMinutes(opening),
-      closingMin: toMinutes(closing),
-      dayStartMin: dayStart ? toMinutes(dayStart) : null,
-      dayEndMin: dayEnd ? toMinutes(dayEnd) : null,
-      nightStartMin: nightStart ? toMinutes(nightStart) : null,
-      nightEndMin: nightEnd ? toMinutes(nightEnd) : null,
-      courtCount: t.court_count ?? 1,
-    };
-  }, [turf, selectedSport]);
+  if (!opening24 || !closing24) return null;
+
+  let openingMin = toMinutes(opening24);
+  let closingMin = toMinutes(closing24);
+
+  // 🔥 HANDLE OVERNIGHT (closing after midnight)
+  if (closingMin <= openingMin) {
+    closingMin += 24 * 60; // move closing to next day
+  }
+
+  const fixRange = (start?: string | null, end?: string | null) => {
+    if (!start || !end) return { start: null, end: null };
+    let s = toMinutes(convertTo24Hour(start)!);
+    let e = toMinutes(convertTo24Hour(end)!);
+    if (e <= s) e += 24 * 60;
+    return { start: s, end: e };
+  };
+
+  const day = fixRange(t.day_start_time, t.day_end_time);
+  const night = fixRange(t.night_start_time, t.night_end_time);
+
+  return {
+    openingMin,
+    closingMin,
+    dayStartMin: day.start,
+    dayEndMin: day.end,
+    nightStartMin: night.start,
+    nightEndMin: night.end,
+    courtCount: t.court_count ?? 1,
+  };
+}, [turf, selectedSport]);
 
   // Ensure court selection stays in range
   useEffect(() => {
@@ -291,28 +310,29 @@ useEffect(() => {
   }, [timing, selectedCourt]);
 
   // -------- All 1-hour slots across 24h (filtered by opening/closing) --------
-  const allSlots = useMemo<Slot[]>(() => {
-    if (!timing) return [];
+const allSlots = useMemo<Slot[]>(() => {
+  if (!timing) return [];
 
-    const slots: Slot[] = [];
-    for (let h = 0; h < 24; h++) {
-      const startMin = h * 60;
-      const endMin = startMin + 60;
+  const slots: Slot[] = [];
 
-      // Respect opening / closing
-      if (startMin < timing.openingMin || endMin > timing.closingMin) continue;
+  for (let min = timing.openingMin; min < timing.closingMin; min += 60) {
+    const hour24 = Math.floor(min / 60) % 24;
+    const endMin = min + 60;
 
-      const startLabel = formatToAmPm(
-        `${h.toString().padStart(2, "0")}:00`
-      );
-      const endLabel = formatToAmPm(
-        `${(h + 1).toString().padStart(2, "0")}:00`
-      );
+    const startLabel = formatToAmPm(`${hour24.toString().padStart(2, "0")}:00`);
+    const endHour24 = Math.floor(endMin / 60) % 24;
+    const endLabel = formatToAmPm(`${endHour24.toString().padStart(2, "0")}:00`);
 
-      slots.push({ startLabel, endLabel, startMin, endMin });
-    }
-    return slots;
-  }, [timing]);
+    slots.push({
+      startLabel,
+      endLabel,
+      startMin: min,
+      endMin,
+    });
+  }
+
+  return slots;
+}, [timing]);
 
   // -------- Filter slots by Twilight / Morning / Noon / Evening --------
   const filteredSlots = useMemo<Slot[]>(() => {
@@ -339,6 +359,9 @@ useEffect(() => {
       (s) => s.startMin >= segStart && s.endMin <= segEnd
     );
   }, [allSlots, selectedSegment, timing]);
+
+
+
 
   // Split into 2 "timeline" rows
   const [row1Slots, row2Slots] = useMemo(() => {
@@ -515,6 +538,18 @@ const nowMinutes = now.getHours() * 60 + now.getMinutes();
 const isToday =
   selectedDate.toDateString() === new Date().toDateString();
 
+  const isPastSlot = (slot: Slot) => {
+  if (!selectedDate) return false;
+
+  const today = new Date();
+  const isToday =
+    selectedDate.toDateString() === today.toDateString();
+
+  if (!isToday) return false;
+
+  return slot.startMin <= nowMinutes;
+};
+
 function renderTimelineRow(hours: number[]) {
   return (
     <>
@@ -541,14 +576,15 @@ function renderTimelineRow(hours: number[]) {
           const slot = allSlots.find((s) => s.startMin === startMin);
           const price = slot ? calculatePriceForSlot(slot) : null;
 
-const slotKey = `${realHour.toString().padStart(2, "0")}:00`;
-const isBooked = bookedSlotSet.has(slotKey);
+const slotKey24 = `${realHour.toString().padStart(2, "0")}:00`;
+const isBooked = bookedSlotSet.has(slotKey24);
 
 
 const disabled =
-  price === null ||
-  (isToday && startMin <= nowMinutes) ||
-  isBooked;
+  (isToday && startMin <= nowMinutes) || // past slots today
+  isBooked ||                           // already booked
+  !slot;                                // slot not inside opening hours
+
 
               // 🔒 already booked
 
@@ -577,7 +613,9 @@ const disabled =
                   ? "repeating-linear-gradient(45deg,#ddd,#ddd 4px,#eee 4px,#eee 8px)"
                   : "none",
               }}
-              onClick={() => !disabled && toggleSlot(slot!)}
+onClick={() => {
+  if (!disabled && slot) toggleSlot(slot);
+}}
             >
               {formatToAmPm(
                 `${realHour.toString().padStart(2, "0")}:00`
@@ -608,7 +646,7 @@ const disabled =
   const courts = Array.from({ length: timing.courtCount || 1 }, (_, i) => i + 1);
 
   return (
-    <div className="container-fluid py-4">
+    <div className="container-fluid py-5 mt-5">
       <div className="mx-auto" style={{ maxWidth: "1100px" }}>
         {/* Header */}
         <div className="d-flex align-items-center mb-4">

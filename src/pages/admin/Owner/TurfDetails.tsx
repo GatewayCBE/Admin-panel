@@ -287,7 +287,17 @@ const TurfDetails: React.FC = () => {
           <div className="col-12 col-sm-6 col-md-4">
             <div className="card shadow-sm p-3 h-100">
               <h6 className="text-muted mb-1" style={{ fontSize: "clamp(0.75rem, 2vw, 0.875rem)" }}>Timings</h6>
-              <h5 className="fw-bold mb-0" style={{ fontSize: "clamp(1rem, 2.5vw, 1.5rem)" }}>6 AM – 11 PM</h5>
+<div className="flex-grow-1">
+{firstTiming ? (
+  <>
+    <h5 className="fw-bold mb-1">
+      {firstTiming.opening_time} – {firstTiming.closing_time}
+    </h5>
+  </>
+) : (
+  <h5 className="fw-bold mb-0">Timing not available</h5>
+)}
+</div>
             </div>
           </div>
           <div className="col-12 col-sm-12 col-md-4">
@@ -310,13 +320,13 @@ const TurfDetails: React.FC = () => {
               </div>
               <div className="card-body p-3 p-md-4 d-flex flex-column">
                 {Object.entries(turf.sport_specific_timing || {}).length > 0 ? (
-                  <div className="flex-grow-1 d-flex flex-column gap-2 gap-md-3 overflow-auto" style={{ maxHeight: "400px" }}>
+                  <div className="flex-grow-1 d-flex flex-column gap-3 gap-md-3 overflow-auto" style={{ maxHeight: "400px" }}>
                     {Object.entries(turf.sport_specific_timing || {}).map(([sport, timing]: any) => {
                       const sportKey = sport.toLowerCase().trim();
                       const sportImage = sportImageMap[sportKey] || "/assets/default.png";
 
                       return (
-                        <div key={sport} className="d-flex align-items-center gap-2 gap-md-3 p-2 bg-white rounded border border-light">
+                        <div key={sport} className="d-flex align-items-center gap-2 gap-md-3 p-3 bg-white rounded border border-light">
                           <img
                             src={sportImage}
                             alt={sport}
@@ -337,7 +347,7 @@ const TurfDetails: React.FC = () => {
                             }`}
                             style={{ fontSize: "clamp(0.75rem, 1.5vw, 0.875rem)" }}
                           >
-                            {timing.sport_available ? "Available" : "Closed"}
+                            {/* {timing.sport_available ? "Available" : "Closed"} */}
                           </span>
                         </div>
                       );

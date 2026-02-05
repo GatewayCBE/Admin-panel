@@ -84,7 +84,7 @@ export default function AllTurfs() {
   }
 
   return (
-    <div className="container-fluid px-3 px-md-4 px-lg-5 mt-4 mb-5">
+    <div className="container-fluid px-3 px-md-4 px-lg-5 mt-5 py-5 mb-5">
       {/* Header + Filters */}
       <div className="d-flex flex-column gap-3 mb-4">
         <h2 className="fw-bold text-center text-md-start">

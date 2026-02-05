@@ -39,68 +39,74 @@ import UserProfile from "../pages/user/UserProfile";
 import UserBookingHistory from "../pages/user/UserBookings";
 import UserBookingHistoryPage from "../pages/user/UserBookings";
 import ReportsPanel from "../pages/admin/All Reports/ReportsPanel";
+import ProtectedRoute from "./ProtectedRoutes";
 
 const AppRoutes: React.FC = () => {
   return (
     <Routes>
       {/* 🌍 Public pages */}
-      <Route element={<PublicLayout />}>
-        <Route path="/" element={<Home />} />
-        <Route path="/about" element={<About />} />
-        <Route path="/games" element={<Games />} />
-      </Route>
+    <Route element={<PublicLayout />}>
+  <Route path="/" element={<Home />} />
+  <Route path="/about" element={<About />} />
+  <Route path="/games" element={<Games />} />
+</Route>
 
-      {/* 👤 User pages */}
-      <Route element={<UserLayout/>}>
-        <Route path="/user/turfs" element={<Turf />} />
-        <Route path="/ugames" element={<UGames />} />
-        <Route path="/user/turfs/:turfId" element={<TurfDetail />} />
-        <Route path="/user/turfs/:turfId/slots" element={<SlotDetails />} />
-        <Route path="/user/advancepayment" element={<AdvancePayment />} />
-        <Route path="/user/profile" element={<UserProfile />} />
-        <Route path="/user/bookinghistory" element={<UserBookingHistoryPage />} />
+<Route path="/login" element={<Login />} />
+<Route path="/auth" element={<AuthContainer />} />
+<Route path="/register" element={<Register />} />
+<Route path="/admin" element={<AdminLogin />} />  {/* PUBLIC */}
 
+<Route
+  element={
+    <ProtectedRoute allowedRoles={["user"]}>
+      <UserLayout />
+    </ProtectedRoute>
+  }
+>
+  <Route path="/user/turfs" element={<Turf />} />
+  <Route path="/user/turfs/:turfId" element={<TurfDetail />} />
+  <Route path="/user/turfs/:turfId/slots" element={<SlotDetails />} />
+  <Route path="/user/advancepayment" element={<AdvancePayment />} />
+  <Route path="/user/razorpay" element={<RazorpayPage />} />
+  <Route path="/user/profile" element={<UserProfile />} />
+  <Route path="/user/bookinghistory" element={<UserBookingHistoryPage />} />
+</Route>
 
-        
-      </Route>
-      <Route path="/user/razorpay" element={<RazorpayPage />} />
+<Route
+  element={
+    <ProtectedRoute allowedRoles={["owner"]}>
+      <OwnerLayout />
+    </ProtectedRoute>
+  }
+>
+  {/* <Route path="/owner/home" element={<OwnerDashboard />} /> */}
+  <Route path="/owner/dashboard" element={<AddTurfForm />} />
+  <Route path="/owner/channelpartnerdashboard" element={<ChannelPartnerDashboard />} />
+  <Route path="/owner/profile" element={<OwnerProfile />} />
+  <Route path="/owner/slotmanagement" element={<SlotManagement />} />
+  <Route path="/owner/booking-confirmation" element={<SlotBookingConfirmation />} />
+  <Route path="/owner/viewbookings" element={<ViewBookings />} />
+</Route>
 
-      {/* 👤 Owner pages */}
-      <Route element={<OwnerLayout/>}>
-      <Route path="/owner/home" element={<OwnerDashboard />} />
-        <Route path="/owner/dashboard" element={<AddTurfForm />} />
-        <Route path="/owner/channelpartnerdashboard" element={<ChannelPartnerDashboard/>} />
-        <Route path="/owner/profile" element={<OwnerProfile />} />
-        <Route path="/owner/slotmanagement" element={<SlotManagement/>} />
-<Route path="/owner/booking-confirmation" element={<SlotBookingConfirmation/>} />
-<Route path="/owner/viewbookings" element={<ViewBookings/>} />
-
-
-
-      </Route>
-
-      {/* 🛠 Admin pages */}
-      <Route element={<AdminLayout />}>
-      <Route path="/admin" element={ <AdminLogin />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/dashboard/turfs" element={<AllTurfs />} />
-        <Route path="/dashboard/manageturf" element={<ManageTurf />} />
-        <Route path="/dashboard/owners" element={<Owner />} />
-        <Route path="/dashboard/owners/:ownerId" element={<Turfowner />} />
-        <Route path="/dashboard/owners/:ownerId/:turfId" element={<TurfDetails />} />
-        <Route path="/dashboard/owners/:ownerId/turfs/:turfId" element={<TurfDetails />} />
-        <Route path="/dashboard/owners/:ownerId/turfs/:turfId/edit" element={<EditTurf />} />
-        <Route path="/dashboard/owners/:ownerId/:turfId/slots" element={<TurfBookingsPage />} />
-        {/* <Route path="/admin/reports/*" element={<AnalyticsPanel />} /> */}
-        <Route path="/admin/reportspanel" element={<ReportsPanel />} />
-        <Route path="/admin/recentbookings" element={<RecentBookingsPage />} />
-        <Route path="/admin/userbookings" element={<UserBookings />} />
-      </Route>
-
-      {/* 🔐 Auth pages (no navbar/footer) */}
-      <Route path="/login" element={<Login />} />
-      <Route path="/auth" element={<AuthContainer />} />
-      <Route path="/register" element={<Register />} />
+<Route
+  element={
+    <ProtectedRoute allowedRoles={["admin"]}>
+      <AdminLayout />
+    </ProtectedRoute>
+  }
+>
+  <Route path="/dashboard" element={<Dashboard />} />
+  <Route path="/dashboard/turfs" element={<AllTurfs />} />
+  <Route path="/dashboard/manageturf" element={<ManageTurf />} />
+  <Route path="/dashboard/owners" element={<Owner />} />
+  <Route path="/dashboard/owners/:ownerId" element={<Turfowner />} />
+    <Route path="/dashboard/owners/:ownerId/turfs/:turfId" element={<TurfDetails />} />
+  <Route path="/dashboard/owners/:ownerId/turfs/:turfId/edit" element={<EditTurf />} />
+  <Route path="/dashboard/owners/:ownerId/:turfId/slots" element={<TurfBookingsPage />} />
+  <Route path="/admin/reportspanel" element={<ReportsPanel />} />
+  <Route path="/admin/recentbookings" element={<RecentBookingsPage />} />
+  <Route path="/admin/userbookings" element={<UserBookings />} />
+</Route>
     </Routes>
   );
 };
