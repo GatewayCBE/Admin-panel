@@ -48,9 +48,12 @@ const extractSports = (raw: string): string[] => {
 
 // ✅ NOW use it
 const filteredTurfs = turfs.filter(turf => {
+  // ✅ Only show ACTIVE turfs
+  if (!turf.turf_active_status) return false;
+
   const matchesSearch =
-    turf.turf_name.toLowerCase().includes(search.toLowerCase()) ||
-    turf.turf_location.toLowerCase().includes(search.toLowerCase());
+    turf.turf_name?.toLowerCase().includes(search.toLowerCase()) ||
+    turf.turf_location?.toLowerCase().includes(search.toLowerCase());
 
   const matchesSport =
     selectedSport === "all" ||
@@ -59,7 +62,10 @@ const filteredTurfs = turfs.filter(turf => {
     );
 
   return matchesSearch && matchesSport;
+  
 });
+  console.log('filteredTurfs',filteredTurfs);
+
 
 
 const availableSports = Array.from(
@@ -72,12 +78,15 @@ const availableSports = Array.from(
   )
 ).sort();
 
-  const bookNowTurfs = filteredTurfs.filter(
-    (t) => t.booking_type === "book_now"
-  );
-  const callNowTurfs = filteredTurfs.filter(
-    (t) => t.booking_type !== "book_now"
-  );
+/* 🔹 Split by booking type */
+const callNowTurfs = filteredTurfs.filter(
+  t => t.booking_type === "call_now"
+);
+
+const bookNowTurfs = filteredTurfs.filter(
+  t => t.booking_type !== "call_now" // includes undefined, null, "book_now", etc.
+);
+
 
   const sportIcon = (sport: string) => {
     const s = sport.toLowerCase();
@@ -176,27 +185,24 @@ const availableSports = Array.from(
       </p>
 
       {/* CTA */}
-      {bookingType !== "call_now" ? (
-        <button
-          className="btn btn-primary w-100 rounded-pill fw-semibold"
-          onClick={() =>
-            navigate(`/user/turfs/${turf.turf_id}/slots`)
-          }
-        >
-          Book Slots
-        </button>
-      ) : (
-        <button
-          className="btn btn-success w-100 rounded-pill fw-semibold"
-          data-bs-toggle="modal"
-          data-bs-target="#contactModal"
-          onClick={() =>
-            handleShowContact(turf.turf_name, phone)
-          }
-        >
-          Contact Turf
-        </button>
-      )}
+  {bookingType === "call_now" ? (
+  <button
+    className="btn btn-success w-100 rounded-pill"
+    data-bs-toggle="modal"
+    data-bs-target="#contactModal"
+    onClick={() => handleShowContact(turf.turf_name, phone)}
+  >
+    📞 Contact Turf
+  </button>
+) : (
+  <button
+    className="btn btn-primary w-100 rounded-pill"
+    onClick={() => navigate(`/user/turfs/${turf.turf_id}/slots`)}
+  >
+    🗓️ Book Slots
+  </button>
+)}
+
     </div>
   </div>
 </div>
@@ -207,7 +213,7 @@ const availableSports = Array.from(
   return (
     <div className="container py-4 mt-5" style={{ maxWidth: "1200px" }}>
       <h2 className="text-center text-success fw-bold mb-4 display-5">
-        Turf Details
+        List of Venues
       </h2>
 
       {/* Search */}

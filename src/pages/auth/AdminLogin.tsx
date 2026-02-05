@@ -21,7 +21,11 @@ const AdminLogin: React.FC = () => {
       password
     );
 
-    navigate("/dashboard");
+localStorage.setItem("auth_token", "true");
+localStorage.setItem("user_role", "admin");
+localStorage.setItem("is_logged_in", "true");
+navigate("/dashboard", { replace: true });
+
   } catch (err) {
     setError("Invalid admin credentials");
   }

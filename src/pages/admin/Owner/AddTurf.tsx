@@ -2,11 +2,13 @@ import React, { useEffect, useState } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { useNavigate } from 'react-router-dom';
 import { uploadTurfImages } from '../../../services/storageService';
-import { createTurf, generateTurfId, getTurfsByOwner } from '../../../services/firestoreService';
+import { buildSportMaps, createTurf, generateTurfId } from '../../../services/firestoreService';
+import { getTurfsByOwner } from '../../../services/firestoreService';
 import pickleballImg from "../../../assets/PickleImg.png";
 import BadmintonImg from "../../../assets/badminton.png";
 import boxcricket from "../../../assets/boxcricket_football.png";
 import football from "../../../assets/football.png";
+import { formatHourOnly12 } from '../../../utils/dateUtils';
 
 // Your existing interfaces (unchanged)
 interface TurfData {
@@ -515,20 +517,16 @@ const toMinutes = (time: string) => {
       );
 
       // 3️⃣ Save Firestore data
-      await createTurf({
-        turfId,
-        formData,
-        sports,
-        ownerId,
-        ownerName,
-        imageUrls,
-        venueType,
-        turf_opened: true,
-        turf_active_status: true,
-        addedSource: {
-          platform: "web"
-        }
-      });
+
+await createTurf({
+  formData,
+  sports,
+  ownerId,
+  ownerName,
+  imageUrls,
+  addedSource: { platform: "web" }
+});
+
 
       alert("✅ Turf added successfully");
       setFormData(createInitialForm());
@@ -547,35 +545,9 @@ const toMinutes = (time: string) => {
     }
   };
 
-  const buildSportMaps = (sports: Sport[]) => {
-    const prices: any = {};
-    const timings: any = {};
-    const persons: any = {};
-    const sportNames: string[] = [];
 
-    sports.forEach((sport) => {
-      sportNames.push(sport.name);
 
-      prices[sport.name] = {};
-      timings[sport.name] = {
-        day_start: sport.daySlotStart,
-        day_end: sport.daySlotEnd,
-        night_start: sport.nightSlotStart,
-        night_end: sport.nightSlotEnd,
-      };
 
-      persons[sport.name] = Number(sport.maxPersons);
-
-      Object.keys(sport.dayPrices).forEach((day) => {
-        prices[sport.name][day] = {
-          day: Number(sport.dayPrices[day as keyof typeof sport.dayPrices]),
-          night: Number(sport.nightPrices[day as keyof typeof sport.nightPrices]),
-        };
-      });
-    });
-
-    return { prices, timings, persons, sportNames };
-  };
 
 // NEW: Render function for turf list
   const renderMyTurfs = () => (
@@ -1129,7 +1101,7 @@ const renderStep1 = () => (
                     <input
                       type="time"
                       className={`form-control custom-input ${errors[`openingTime-${index}`] ? "is-invalid" : ""}`}
-                      value={sport.openingTime}
+                      value={formatHourOnly12(sport.openingTime)}
                       onChange={(e) => {
                         updateSportField(sport.id, "openingTime", e.target.value);
                         if (e.target.value) setErrors(prev => ({ ...prev, [`openingTime-${index}`]: "" }));
@@ -1149,7 +1121,7 @@ const renderStep1 = () => (
                     <input
                       type="time"
                       className={`form-control custom-input ${errors[`closingTime-${index}`] ? "is-invalid" : ""}`}
-                      value={sport.closingTime}
+                      value={formatHourOnly12(sport.closingTime)}
                       onChange={(e) => {
                         updateSportField(sport.id, "closingTime", e.target.value);
                         if (e.target.value) setErrors(prev => ({ ...prev, [`closingTime-${index}`]: "" }));
@@ -1253,7 +1225,7 @@ const renderStep1 = () => (
                           <input
                             type="time"
                             className={`form-control custom-input ${errors[`nightStart-${index}`] ? "is-invalid" : ""}`}
-                            value={sport.nightSlotStart}
+                            value={formatHourOnly12(sport.nightSlotStart)}
                             onChange={(e) => {
                               updateSportField(sport.id, "nightSlotStart", e.target.value);
                               if (e.target.value) setErrors(prev => ({ ...prev, [`nightStart-${index}`]: "" }));
@@ -1271,7 +1243,7 @@ const renderStep1 = () => (
                           <input
                             type="time"
                             className={`form-control custom-input ${errors[`nightEnd-${index}`] ? "is-invalid" : ""}`}
-                            value={sport.nightSlotEnd}
+                            value={formatHourOnly12(sport.nightSlotEnd)}
                             onChange={(e) => {
                               updateSportField(sport.id, "nightSlotEnd", e.target.value);
                               if (e.target.value) setErrors(prev => ({ ...prev, [`nightEnd-${index}`]: "" }));

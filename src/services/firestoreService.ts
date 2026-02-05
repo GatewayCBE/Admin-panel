@@ -22,6 +22,7 @@ import { Turf } from "../types/Turf";
 import { getAuth } from "firebase/auth";
 import { parseDate } from "../utils/dateUtils";
 
+
 /**
  * Generate Custom ID exactly like Flutter app
  * e.g., USID_rah_02122025163011 or OID_Rak_02122025163222
@@ -378,6 +379,25 @@ export const getUserByUserId = async (
   }
 };
 
+export const to12HourFormate = (time24: string) => {
+  if (!time24) return "";
+  const [hourStr, minute] = time24.split(":");
+  let hour = parseInt(hourStr, 10);
+  const ampm = hour >= 12 ? "PM" : "AM";
+  hour = hour % 12 || 12;
+  return `${hour}:${minute} ${ampm}`;
+};
+
+export const normalizeSportKeyFormate = (name: string) => {
+  const n = name.toLowerCase();
+  if (n.includes("football")) return "football";
+  if (n.includes("cricket")) return "boxcricket";
+  if (n.includes("badminton")) return "badminton";
+  if (n.includes("pickle")) return "pickleball";
+  return n.replace(/\s+/g, "");
+};
+
+
 const mapPrices = (sports: any[]) => {
   const result: any = {};
 
@@ -396,23 +416,29 @@ const mapPrices = (sports: any[]) => {
   return result;
 };
 
+
+
 const mapTimings = (sports: any[]) => {
   const result: any = {};
 
   sports.forEach((s) => {
     const key = s.name.toLowerCase();
+
     result[key] = {
-      opening_time: s.openingTime,
-      closing_time: s.closingTime,
-      day_start_time: s.daySlotStart,
-      day_end_time: s.daySlotEnd,
-      night_start_time: s.nightSlotStart,
-      night_end_time: s.nightSlotEnd,
+      opening_time: to12Hour(s.openingTime),
+      closing_time: to12Hour(s.closingTime),
+
+      day_start_time: to12Hour(s.daySlotStart),
+      day_end_time: to12Hour(s.daySlotEnd),
+
+      night_start_time: to12Hour(s.nightSlotStart),
+      night_end_time: to12Hour(s.nightSlotEnd),
     };
   });
 
   return result;
 };
+
 
 const mapPersons = (sports: any[]) => {
   const result: any = {};
@@ -425,6 +451,67 @@ const mapPersons = (sports: any[]) => {
   return result;
 };
 
+
+// 🔁 Convert 24h → 12h format (required for SlotDetails page)
+const to12Hour = (time24: string) => {
+  if (!time24) return "";
+  const [hourStr, minute] = time24.split(":");
+  let hour = parseInt(hourStr, 10);
+  const ampm = hour >= 12 ? "PM" : "AM";
+  hour = hour % 12 || 12;
+  return `${hour}:${minute} ${ampm}`;
+};
+
+// 🔥 Build MOBILE-STYLE sport maps (CRITICAL FIX)
+const normalizeSportKey = (name: string) => {
+  const n = name.toLowerCase();
+
+  if (n.includes("football")) return "football";
+  if (n.includes("cricket")) return "boxcricket";
+  if (n.includes("badminton")) return "badminton";
+  if (n.includes("pickle")) return "pickleball";
+
+  return n.replace(/\s+/g, "");
+};
+
+// 🔥 Build MOBILE-STYLE sport maps
+export const buildSportMaps = (sports: any[]) => {
+  const prices: any = {};
+  const timings: any = {};
+  const persons: any = {};
+  const sportNames: string[] = [];
+
+  sports.forEach((sport) => {
+    const key = normalizeSportKey(sport.name); // ✅ FIXED KEY
+    sportNames.push(key);
+
+    // PRICE MAP
+    prices[key] = {};
+    Object.keys(sport.dayPrices).forEach((day) => {
+      prices[key][day] = {
+        day: Number(sport.dayPrices[day]),
+        night: Number(sport.nightPrices[day]),
+      };
+    });
+
+    // TIMINGS MAP
+    timings[key] = {
+      opening_time: to12Hour(sport.openingTime),
+      closing_time: to12Hour(sport.closingTime),
+      day_start_time: to12Hour(sport.daySlotStart),
+      day_end_time: to12Hour(sport.daySlotEnd),
+      night_start_time: to12Hour(sport.nightSlotStart),
+      night_end_time: to12Hour(sport.nightSlotEnd),
+      court_count: Number(sport.courtCount) || 1,
+    };
+
+    persons[key] = Number(sport.maxPersons);
+  });
+
+  return { prices, timings, persons, sportNames };
+};
+
+// ✅ MAIN FUNCTION
 export const createTurf = async ({
   formData,
   sports,
@@ -435,10 +522,11 @@ export const createTurf = async ({
 }: any) => {
   const turfId = generateTurfId(ownerName);
 
+  const { prices, timings, persons, sportNames } = buildSportMaps(sports);
+
   const turfDoc = {
     turf_id: turfId,
     turf_name: formData.turfName,
-    // turf_mobile_number: formData.turfMobileNumber,
     turf_location: formData.turfAddress,
     turf_description: formData.turfDescription,
     turf_length: `${formData.turfLength} ${formData.dimensionUnit}`,
@@ -448,18 +536,22 @@ export const createTurf = async ({
     badminton_court_type: formData.badmintonCourtType || null,
     owner_id: ownerId,
     turf_images: imageUrls,
-    available_sports_list: sports.map((s: any) => s.name),
-    sport_specific_price: mapPrices(sports),
-    sport_specific_timing: mapTimings(sports),
-    sports_specific_person_count: mapPersons(sports),
+
+    // ✅ MOBILE COMPATIBLE STRUCTURE
+    available_sports_list: sportNames,
+    sport_specific_price: prices,
+    sport_specific_timing: timings,
+    sports_specific_person_count: persons,
+
     turf_active_status: false,
     turf_opened: true,
-    booking_type: "call_now",
+
     added_source: {
       platform: addedSource.platform,
       checked_by: ownerId,
       checked_at: new Date().toISOString(),
     },
+
     created_at: new Date(),
   };
 
@@ -1138,6 +1230,73 @@ export const markBookingFullyPaid = async (booking: any) => {
   }
 };
 
+
+
+export const sendBookingSMS = async (mobile: string, message: string) => {
+  try {
+    console.log("📲 Sending SMS to:", mobile);
+
+    const res = await fetch(
+      "https://sendbookingsms-xxxxx.cloudfunctions.net/sendBookingSMS",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mobile, message }),
+      }
+    );
+
+    const data = await res.json();
+    console.log("✅ SMS API response:", data);
+  } catch (error) {
+    console.error("❌ SMS sending failed:", error);
+  }
+};
+
+export const buildSMSBookingMessage = ({
+  bookingUserName,
+  turfName,
+  turfMobile,
+  sport,
+  court,
+  bookedOn,
+  bookingDate,
+  slots,
+  totalAmount,
+  paidAmount,
+  remainingAmount
+}: any) => {
+  const status =
+    remainingAmount > 0 ? "Partial Payment ⚠️" : "Fully Paid ✅";
+
+  return `Booking Confirmed!
+
+Dear ${bookingUserName}
+
+Sports Venue: ${turfName}
+Mobile: ${turfMobile}
+Sports: ${sport}
+Court: ${court}
+
+Booked On: ${bookedOn}
+
+Booking Date: ${bookingDate}
+
+Reserved Slots:
+${slots.map((s: string) => `• ${s}`).join("\n")}
+
+Total Amount: ₹ ${totalAmount.toFixed(2)}
+Paid Amount: ₹ ${paidAmount.toFixed(2)}
+Remaining: ₹ ${remainingAmount.toFixed(2)}
+Status: ${status}
+
+Thank you for booking with us!
+Book Your Turf
+
+Download our app:
+https://play.google.com/store/apps/details?id=com.bookyourturf.app`;
+};
+
+
 export const buildWhatsAppBookingMessage = ({
   bookingUserName,
   turfName,
@@ -1518,6 +1677,84 @@ function parseStringTimestampToDate(s?: string): Date | null {
   const fixed = s.replace(" ", "T").replace(/(\.\d{3})\d+/, "$1");
   const d = new Date(fixed);
   return isNaN(d.getTime()) ? null : d;
+}
+
+/**
+ * Fetch all booked slots for a given turf and date (across all sports)
+ */
+// export async function getSportsAndCourts(turfId: string, date: string) {
+//   try {
+//     // console.log("🔎 Fetching sports & courts for Turf:", turfId, "Date:", date);
+
+//     const dateCollectionRef = collection(
+//       db,
+//       "environment",
+//       "testing",
+//       "all_turfs_slot_booking",
+//       turfId,
+//       date
+//     );
+
+//     const sportsSnapshot = await getDocs(dateCollectionRef);
+
+//     if (sportsSnapshot.empty) {
+//       // console.warn("⚠️ No sports found for this date!");
+//       return [];
+//     }
+
+//     const result: any[] = [];
+
+//     for (const sportDoc of sportsSnapshot.docs) {
+//       const data = sportDoc.data();
+//       const sportName = sportDoc.id;
+//       const courts = data.courts || [];
+
+//       result.push({ sport: sportName, courts });
+//     }
+
+//     console.log("✅ Sports & courts fetched:", result);
+//     return result;
+//   } catch (err) {
+//     console.error("❌ Error fetching sports & courts:", err);
+//     return [];
+//   }
+// }
+
+const app = getApp();
+const functions = getFunctions(app, "asia-south1");
+
+// Use direct fetch — works perfectly with onRequest + emulator + production
+const baseUrl = "https://asia-south1-play-arena-e83d8.cloudfunctions.net";
+
+const sendNotifications = httpsCallable(functions, "sendBookingNotifications");
+
+export const sendBookingNotifications = async (data: any) => {
+  try {
+    await sendNotifications(data);
+    console.log("Notifications sent");
+  } catch (err) {
+    console.error("Notification error", err);
+  }
+};
+
+
+export async function getAllBookings(): Promise<any[]> {
+  try {
+    console.log("Fetching recent bookings...");
+    const response = await fetch(`${baseUrl}/getRecentBookings`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const result = await response.json();
+    console.log(`Loaded ${result.bookings?.length || 0} bookings`);
+    return result.bookings || [];
+  } catch (error: any) {
+    console.error("Failed to fetch bookings:", error);
+    return [];
+  }
 }
 
 export const cancelBooking = async (bookingId: string) => {

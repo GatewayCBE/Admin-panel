@@ -25,3 +25,42 @@ export const parseDate = (value: string): Date | null => {
   const native = new Date(value);
   return isNaN(native.getTime()) ? null : native;
 };
+
+// Accept ONLY hour format like "09:00 AM"
+  export const formatHourOnly12 = (value: string) => {
+    if (!value) return "";
+
+    value = value.toUpperCase().replace(/\s+/g, "");
+
+    // Convert 9AM → 09:00 AM
+    const short = value.match(/^(1[0-2]|0?[1-9])(AM|PM)$/);
+    if (short) {
+      return `${short[1].padStart(2, "0")}:00 ${short[2]}`;
+    }
+
+    // Accept only HH:00 AM/PM
+    const full = value.match(/^(0[1-9]|1[0-2]):00(AM|PM)$/);
+    if (full) {
+      return `${full[1]}:00 ${full[2]}`;
+    }
+
+    return value; // allow typing but won't validate
+  };
+
+// Convert "09:00 AM" → minutes (for comparison logic)
+export const hour12ToMinutes = (time12: string) => {
+  if (!time12) return null;
+
+  const match = time12.match(/(0[1-9]|1[0-2]):00\s?(AM|PM)/);
+  if (!match) return null;
+
+  let [_, h, period] = match;
+  let hours = parseInt(h);
+
+  if (period === "PM" && hours !== 12) hours += 12;
+  if (period === "AM" && hours === 12) hours = 0;
+
+  return hours * 60;
+};
+
+// 🔥 SAME as Add Turf

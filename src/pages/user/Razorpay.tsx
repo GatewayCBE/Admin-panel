@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { buildBookingEmailMessage, buildSMSBookingMessage, sendBookingNotifications } from "../../services/firestoreService";
 
 declare global {
   interface Window {
@@ -22,7 +23,7 @@ const RazorpayPage = () => {
       navigate(-1);
       return;
     }
-    
+
 
     /* ===============================
        👤 USER (SINGLE SOURCE OF TRUTH)
@@ -113,15 +114,50 @@ const RazorpayPage = () => {
             });
 
             if (!verifyRes.ok) {
-              throw new Error("Payment verification failed");
+              const errData = await verifyRes.json();
+              console.error("❌ Verification failed:", errData);
+              alert(errData.reason || "Payment verification failed");
+              throw new Error(errData.reason || "Payment verification failed");
             }
+            const smsMessage = buildSMSBookingMessage({
+              bookingUserName: user_name,
+              turfName: state.bookingPayload.turf.turf_name,
+              turfMobile: user_mobile_number,
+              sport: state.bookingPayload.selectedSport,
+              court: `Court ${state.bookingPayload.selectedCourt}`,
+              bookedOn: new Date().toLocaleString(),
+              bookingDate: new Date(state.bookingPayload.selectedDate).toDateString(),
+              slots: state.bookingPayload.selectedSlots.map((s: any) => s.startLabel),
+              totalAmount: order.pricing.total_amount,
+              paidAmount: order.pricing.paid_amount,
+              remainingAmount: order.pricing.remaining_amount
+            });
 
+            const emailMessage = buildBookingEmailMessage({
+              bookingUserName: user_name,
+              turfName: state.bookingPayload.turf.turf_name,
+              turfMobile: user_mobile_number,
+              sport: state.bookingPayload.selectedSport,
+              court: `Court ${state.bookingPayload.selectedCourt}`,
+              bookedOn: new Date().toLocaleString(),
+              bookingDate: new Date(state.bookingPayload.selectedDate).toDateString(),
+              slots: state.bookingPayload.selectedSlots.map((s: any) => s.startLabel),
+              totalAmount: order.pricing.total_amount,
+              paidAmount: order.pricing.paid_amount,
+              remainingAmount: order.pricing.remaining_amount
+            });
+
+            await sendBookingNotifications({
+              userPhone: user_mobile_number,
+              userEmail: localStorage.getItem("user_email"),
+              smsMessage,
+              emailMessage,
+            });
             // ✅ FIX SCROLL LOCK
-  document.body.style.overflow = "auto";
-  document.documentElement.style.overflow = "auto";
+            document.body.style.overflow = "auto";
+            document.documentElement.style.overflow = "auto";
 
-            // navigate("/admin/recentbookings");
-            navigate("/user/turfs");
+            navigate("/admin/recentbookings");
           },
 
           prefill: {

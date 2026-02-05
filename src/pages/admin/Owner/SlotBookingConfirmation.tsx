@@ -1,12 +1,14 @@
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import {
-  bookSlot,
-  buildWhatsAppBookingMessage,
-  shareBookingViaWhatsApp,
-  buildBookingEmailMessage,
-  sendBookingEmail
-} from "../../../services/firestoreService";
+// import {
+//   bookSlot,
+//   buildWhatsAppBookingMessage,
+//   shareBookingViaWhatsApp,
+//   buildBookingEmailMessage,
+//   sendBookingEmail
+// } from "../../../services/firestoreService";
+import { sendBookingSMS, buildSMSBookingMessage, bookSlot, buildWhatsAppBookingMessage, shareBookingViaWhatsApp, buildBookingEmailMessage, sendBookingNotifications } from "../../../services/firestoreService";
+
 
 interface BookingSlot {
   id: string;
@@ -54,74 +56,94 @@ const state = location.state as {
 
   const remaining = Math.max(totalPrice - paidAmount, 0);
 
-  const handleConfirmBooking = async () => {
-    try {
-      const bookedOn = new Date().toLocaleString();
+ 
+const handleConfirmBooking = async () => {
+  try {
+    const bookedOn = new Date().toLocaleString();
 
-      // ✅ Save each slot separately
-      for (const slotItem of slots) {
-        await bookSlot({
-          turfId,
-          date,
-          sport,
-          court,
-          slot: slotItem,
-          bookingName,
-          bookingMobile,
-          price: totalPrice / slots.length,
-          paidAmount: paidAmount / slots.length,
-          unpaidAmount: remaining / slots.length,
-          ownerId
-        });
-      }
-
-      // ✅ EMAIL MESSAGE
-      const emailMessage = buildBookingEmailMessage({
-        bookingUserName: bookingName,
-        turfName,
-        turfMobile: "N/A",
+    // 🔹 Save all slots
+    for (const slotItem of slots) {
+      await bookSlot({
+        turfId,
+        date,
         sport,
         court,
-        bookedOn,
-        bookingDate: new Date(date).toDateString(),
-        slots: slots.map(s => s.label),
-        totalAmount: totalPrice,
-        paidAmount,
-        remainingAmount: remaining
+        slot: slotItem,
+        bookingName,
+        bookingMobile,
+        price: totalPrice / slots.length,
+        paidAmount: paidAmount / slots.length,
+        unpaidAmount: remaining / slots.length,
+        ownerId
       });
-
-      if (channelPartnerEmail) {
-        await sendBookingEmail(
-          channelPartnerEmail,
-          "New Turf Booking Confirmation",
-          emailMessage
-        );
-      }
-
-      setShowModal(true);
-    } catch (err) {
-      console.error(err);
-      alert("Booking failed");
     }
-  };
 
-  const handleShareWhatsApp = () => {
-    const message = buildWhatsAppBookingMessage({
+    // 🔹 Build SMS
+    const smsMessage = buildSMSBookingMessage({
       bookingUserName: bookingName,
       turfName,
-      turfMobile: "N/A",
+      turfMobile: bookingMobile,
       sport,
       court,
-      bookedOn: new Date().toLocaleString(),
+      bookedOn,
       bookingDate: new Date(date).toDateString(),
-      slots: slots.map(s => s.label), // ✅ FIXED
+      slots: slots.map(s => s.label),
       totalAmount: totalPrice,
       paidAmount,
       remainingAmount: remaining
     });
 
-    shareBookingViaWhatsApp(bookingMobile, message);
-  };
+    // 🔹 Build Email
+    const emailMessage = buildBookingEmailMessage({
+      bookingUserName: bookingName,
+      turfName,
+      turfMobile: bookingMobile,
+      sport,
+      court,
+      bookedOn,
+      bookingDate: new Date(date).toDateString(),
+      slots: slots.map(s => s.label),
+      totalAmount: totalPrice,
+      paidAmount,
+      remainingAmount: remaining
+    });
+
+    // 🔹 SEND NOTIFICATIONS (SMS + EMAIL)
+    await sendBookingNotifications({
+      userPhone: bookingMobile,              // Customer SMS
+      userEmail: channelPartnerEmail,        // Customer Email
+      smsMessage,
+      emailMessage
+    });
+
+    // 🔹 Show WhatsApp share modal AFTER notifications
+    setShowModal(true);
+
+  } catch (err) {
+    console.error(err);
+    alert("Booking failed");
+  }
+};
+
+
+const handleShareWhatsApp = () => {
+  const message = buildWhatsAppBookingMessage({
+    bookingUserName: bookingName,
+    turfName,
+    turfMobile: "N/A",
+    sport,
+    court,
+    bookedOn: new Date().toLocaleString(),
+    bookingDate: new Date(date).toDateString(),
+    slots: slots.map(s => s.label),
+    totalAmount: totalPrice,
+    paidAmount,
+    remainingAmount: remaining
+  });
+
+  shareBookingViaWhatsApp(bookingMobile, message);
+};
+
 
   return (
     <div className="container mt-5 pt-5">
