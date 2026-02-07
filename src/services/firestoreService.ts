@@ -1251,7 +1251,10 @@ export const sendBookingSMS = async (mobile: string, message: string) => {
   } catch (error) {
     console.error("❌ SMS sending failed:", error);
   }
-};
+};  
+
+
+// ===== MESSAGE BUILDING FUNCTIONS =====
 
 export const buildSMSBookingMessage = ({
   bookingUserName,
@@ -1266,28 +1269,31 @@ export const buildSMSBookingMessage = ({
   paidAmount,
   remainingAmount
 }: any) => {
-  const status =
-    remainingAmount > 0 ? "Partial Payment ⚠️" : "Fully Paid ✅";
+  // ✅ FIX: Ensure all amounts are numbers and provide defaults
+  const total = Number(totalAmount) || 0;
+  const paid = Number(paidAmount) || 0;
+  const remaining = Number(remainingAmount) || 0;
+  
+  const status = remaining > 0 ? "Partial Payment ⚠️" : "Fully Paid ✅";
 
   return `Booking Confirmed!
 
 Dear ${bookingUserName}
 
 Sports Venue: ${turfName}
-Mobile: ${turfMobile}
+Mobile: ${turfMobile || "N/A"}
 Sports: ${sport}
 Court: ${court}
 
 Booked On: ${bookedOn}
-
 Booking Date: ${bookingDate}
 
 Reserved Slots:
-${slots.map((s: string) => `• ${s}`).join("\n")}
+${Array.isArray(slots) ? slots.map((s: string) => `• ${s}`).join("\n") : `• ${slots}`}
 
-Total Amount: ₹ ${totalAmount.toFixed(2)}
-Paid Amount: ₹ ${paidAmount.toFixed(2)}
-Remaining: ₹ ${remainingAmount.toFixed(2)}
+Total Amount: ₹${total.toFixed(2)}
+Paid Amount: ₹${paid.toFixed(2)}
+Remaining: ₹${remaining.toFixed(2)}
 Status: ${status}
 
 Thank you for booking with us!
@@ -1296,7 +1302,6 @@ Book Your Turf
 Download our app:
 https://play.google.com/store/apps/details?id=com.bookyourturf.app`;
 };
-
 
 export const buildWhatsAppBookingMessage = ({
   bookingUserName,
@@ -1311,22 +1316,28 @@ export const buildWhatsAppBookingMessage = ({
   paidAmount,
   remainingAmount
 }: any) => {
-  const status = remainingAmount > 0 ? "Partial Payment" : "Fully Paid";
+  // ✅ FIX: Ensure all amounts are numbers
+  const total = Number(totalAmount) || 0;
+  const paid = Number(paidAmount) || 0;
+  const remaining = Number(remainingAmount) || 0;
+  
+  const status = remaining > 0 ? "Partial Payment" : "Fully Paid";
+  const slotsList = Array.isArray(slots) ? slots.join(", ") : slots;
 
   return `*Booking Confirmed!* 
 
- Dear ${bookingUserName}
- Sports Venue: ${turfName}
- Mobile: ${turfMobile}
- Sport: ${sport}
- Court: ${court}
- Booked On: ${bookedOn}
- Booking Date: ${bookingDate}
- Reserved Slots: ${slots.join(", ")}
+Dear ${bookingUserName}
+Sports Venue: ${turfName}
+Mobile: ${turfMobile || "N/A"}
+Sport: ${sport}
+Court: ${court}
+Booked On: ${bookedOn}
+Booking Date: ${bookingDate}
+Reserved Slots: ${slotsList}
 
- *Total Amount:* ₹${totalAmount}
- *Paid Amount:* ₹${paidAmount}
- *Remaining:* ₹${remainingAmount}
+*Total Amount:* ₹${total.toFixed(2)}
+*Paid Amount:* ₹${paid.toFixed(2)}
+*Remaining:* ₹${remaining.toFixed(2)}
 *Status:* ${status}
 
 Thank you for booking with us! 
@@ -1335,14 +1346,6 @@ Book Your Turf
 For more information:
 Download our app:
 https://play.google.com/store/apps/details?id=com.bookyourturf.app`;
-};
-
-export const shareBookingViaWhatsApp = (phone: string, message: string) => {
-  const cleanPhone = phone.replace(/\D/g, ""); // remove + and spaces
-  const encodedMessage = encodeURIComponent(message);
-
-  const url = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
-  window.open(url, "_blank");
 };
 
 export const buildBookingEmailMessage = (data: {
@@ -1358,6 +1361,13 @@ export const buildBookingEmailMessage = (data: {
   paidAmount: number;
   remainingAmount: number;
 }) => {
+  // ✅ FIX: Ensure all amounts are numbers
+  const total = Number(data.totalAmount) || 0;
+  const paid = Number(data.paidAmount) || 0;
+  const remaining = Number(data.remainingAmount) || 0;
+  
+  const slotsList = Array.isArray(data.slots) ? data.slots.join(", ") : data.slots;
+
   return `
 Booking Confirmed
 
@@ -1366,17 +1376,17 @@ Dear ${data.bookingUserName},
 Here are the booking details:
 
 Sports Venue: ${data.turfName}
-Mobile: ${data.turfMobile}
+Mobile: ${data.turfMobile || "N/A"}
 Sports: ${data.sport}
 Court: ${data.court}
 Booked On: ${data.bookedOn}
 Booking Date: ${data.bookingDate}
-Reserved Slots: ${data.slots.join(", ")}
+Reserved Slots: ${slotsList}
 
-Total Amount: ₹${data.totalAmount}
-Paid Amount: ₹${data.paidAmount}
-Remaining Amount: ₹${data.remainingAmount}
-Status: ${data.remainingAmount > 0 ? "Partial Payment" : "Fully Paid"}
+Total Amount: ₹${total.toFixed(2)}
+Paid Amount: ₹${paid.toFixed(2)}
+Remaining Amount: ₹${remaining.toFixed(2)}
+Status: ${remaining > 0 ? "Partial Payment" : "Fully Paid"}
 
 Thank you for booking with us!
 
@@ -1385,32 +1395,67 @@ https://play.google.com/store/apps/details?id=com.bookyourturf.app
 `;
 };
 
-export const sendBookingEmail = async (
-  toEmail: string,
-  subject: string,
-  message: string
-) => {
-  try {
-     console.log("📧 Sending booking email...");
-    console.log("➡️ To:", toEmail);
-    console.log("📝 Subject:", subject);
- const res = await fetch("https://your-server.com/send-booking-email", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        to: toEmail,
-        subject,
-        message,
-      }),
-    });
-    const data = await res.json();
+export const shareBookingViaWhatsApp = (phone: string, message: string) => {
+  const cleanPhone = phone.replace(/\D/g, "");
+  const encodedMessage = encodeURIComponent(message);
+  const url = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
+  window.open(url, "_blank");
+};
 
-    console.log(" Email API response:", data);
-    console.log("📧 Booking email sent successfully!");
+// ===== SEND NOTIFICATIONS =====
+
+export const sendBookingNotifications = async ({
+  userPhone,
+  userEmail,
+  partnerPhone,
+  partnerEmail,
+  smsMessage,
+  emailMessage,
+}: {
+  userPhone?: string | null;
+  userEmail?: string | null;
+  partnerPhone?: string | null;
+  partnerEmail?: string | null;
+  smsMessage?: string | null;
+  emailMessage?: string | null;
+}) => {
+  try {
+    console.log("📤 Sending booking notifications", {
+      userPhone,
+      userEmail,
+      partnerPhone,
+      partnerEmail,
+    });
+
+    const notificationData = {
+      userPhone: userPhone ?? null,
+      userEmail: userEmail ?? null,
+      partnerPhone: partnerPhone ?? null,
+      partnerEmail: partnerEmail ?? null,
+      smsMessage: smsMessage ?? null,
+      emailMessage: emailMessage ?? null,
+    };
+
+    const response = await fetch(
+      "https://asia-south1-play-arena-e83d8.cloudfunctions.net/sendBookingNotifications",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data: notificationData }),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Notification API failed");
+    }
+
+    return await response.json();
   } catch (error) {
-    console.error(" Email sending failed:", error);
+    console.error("❌ Error sending notifications:", error);
+    return { success: false, error };
   }
 };
+
 
 export const bookSlot = async (bookingData: {
   turfId: string;
@@ -1726,17 +1771,6 @@ const functions = getFunctions(app, "asia-south1");
 
 // Use direct fetch — works perfectly with onRequest + emulator + production
 const baseUrl = "https://asia-south1-play-arena-e83d8.cloudfunctions.net";
-
-const sendNotifications = httpsCallable(functions, "sendBookingNotifications");
-
-export const sendBookingNotifications = async (data: any) => {
-  try {
-    await sendNotifications(data);
-    console.log("Notifications sent");
-  } catch (err) {
-    console.error("Notification error", err);
-  }
-};
 
 
 export async function getAllBookings(): Promise<any[]> {

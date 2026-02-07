@@ -515,6 +515,7 @@ function getSegmentHours(segment: Segment) {
   }
 }
 
+
 async function handleBooking() {
   if (!turf || !selectedSport || !totalPrice || selectedSlots.length === 0) return;
 

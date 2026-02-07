@@ -86,10 +86,18 @@ const SlotManagement: React.FC = () => {
       nightEnd: timing.night_end_time || "",
     });
 
-    const personCount = selectedTurf.sports_specific_person_count?.[selectedSport] || 4;
-    const courtCount = Math.max(1, Math.ceil(personCount / 4));
-    const courtList = Array.from({ length: courtCount }, (_, i) => `Court ${i + 1}`);
-    setCourts(courtList);
+const timingData = selectedTurf.sport_specific_timing?.[sportKey];
+
+const courtCount = Math.max(1, timingData?.court_count ?? 1);
+
+const courtList = Array.from(
+  { length: courtCount },
+  (_, i) => `Court ${i + 1}`
+);
+
+setCourts(courtList);
+if (courtList.length > 0) setSelectedCourt(courtList[0]);
+
     if (courtList.length > 0) setSelectedCourt(courtList[0]);
 
     generateSlots(timing.opening_time, timing.closing_time);
