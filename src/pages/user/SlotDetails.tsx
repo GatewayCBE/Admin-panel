@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getAllBookedSlots, getTurfById, onSlotUpdate } from "../../services/firestoreService";
+import { normalizeTimeTo24 } from "../../utils/dateUtils"; // ✅ Import your helper
 
 // ---------- Types ----------
 type TurfDoc = {
@@ -35,9 +36,9 @@ type TurfDoc = {
 };
 
 type Slot = {
-  startLabel: string; // e.g. "6:00 PM"
+  startLabel: string;
   endLabel: string;
-  startMin: number;   // minutes from 00:00
+  startMin: number;
   endMin: number;
 };
 
@@ -48,36 +49,6 @@ const toMinutes = (time24: string): number => {
   const [h, m] = time24.split(":").map((n) => parseInt(n, 10));
   if (Number.isNaN(h) || Number.isNaN(m)) return 0;
   return h * 60 + m;
-};
-
-const convertTo24Hour = (t: string | null | undefined): string | null => {
-  if (!t) return null;
-  const trimmed = t.trim();
-
-  // Already "HH:MM" 24h
-  if (/^\d{1,2}:\d{2}$/.test(trimmed) && !/[AP]M$/i.test(trimmed)) {
-    const [h, m] = trimmed.split(":").map((n) => parseInt(n, 10));
-    if (h >= 0 && h < 24 && m >= 0 && m < 60) {
-      return `${h.toString().padStart(2, "0")}:${m
-        .toString()
-        .padStart(2, "0")}`;
-    }
-  }
-
-  // "10:00 PM" etc
-  const match = trimmed.match(/^(\d{1,2}):(\d{2})\s*([AP]M)$/i);
-  if (!match) return null;
-
-  let hour = parseInt(match[1], 10);
-  const minute = parseInt(match[2], 10);
-  const ampm = match[3].toUpperCase();
-
-  if (ampm === "PM" && hour !== 12) hour += 12;
-  if (ampm === "AM" && hour === 12) hour = 0;
-
-  return `${hour.toString().padStart(2, "0")}:${minute
-    .toString()
-    .padStart(2, "0")}`;
 };
 
 const formatToAmPm = (time24: string): string => {
@@ -103,6 +74,17 @@ const dayKeyFromDate = (d: Date): string => {
   return names[d.getDay()];
 };
 
+// ✅ Format date for Firestore queries (DD-MMM-YYYY)
+const formatDateForFirestore = (date: Date): string => {
+  return date
+    .toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    })
+    .replace(/ /g, "-");
+};
+
 // ---------- Component ----------
 const SlotDetails: React.FC = () => {
   const { turfId } = useParams();
@@ -110,29 +92,26 @@ const SlotDetails: React.FC = () => {
 
   const [turf, setTurf] = useState<TurfDoc | null>(null);
   const [loading, setLoading] = useState(true);
-const [refreshKey, setRefreshKey] = useState(0);
-
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const [selectedSport, setSelectedSport] = useState<string | null>(null);
   const [selectedCourt, setSelectedCourt] = useState<number>(1);
 
-  const [visibleStartIndex, setVisibleStartIndex] = useState(0); // 6-day window
+  const [visibleStartIndex, setVisibleStartIndex] = useState(0);
   const [selectedDateIndex, setSelectedDateIndex] = useState(0);
 
-  const [selectedSegment, setSelectedSegment] =
-    useState<Segment>("evening");
-
+  const [selectedSegment, setSelectedSegment] = useState<Segment>("evening");
   const [selectedSlots, setSelectedSlots] = useState<Slot[]>([]);
-
   const [bookedSlotSet, setBookedSlotSet] = useState<Set<string>>(new Set());
 
+  // Listen for slot updates
   useEffect(() => {
-  const reload = () => setRefreshKey(k => k + 1);
-  window.addEventListener("slotsUpdated", reload);
-  return () => window.removeEventListener("slotsUpdated", reload);
-}, [turf, selectedSport, selectedCourt, refreshKey]);
+    const reload = () => setRefreshKey(k => k + 1);
+    window.addEventListener("slotsUpdated", reload);
+    return () => window.removeEventListener("slotsUpdated", reload);
+  }, []);
 
-  // -------- Fetch turf --------
+  // Fetch turf
   useEffect(() => {
     const run = async () => {
       if (!turfId) return;
@@ -152,7 +131,7 @@ const [refreshKey, setRefreshKey] = useState(0);
     run();
   }, [turfId]);
 
-  // -------- Dates (30-day window) --------
+  // Dates (30-day window)
   const today = useMemo(() => new Date(), []);
   const allDates = useMemo(() => {
     const arr: Date[] = [];
@@ -175,131 +154,122 @@ const [refreshKey, setRefreshKey] = useState(0);
     [selectedDate]
   );
 
-useEffect(() => {
-const loadBookedSlots = async () => {
-  if (!turf || !selectedSport || !selectedDate) return;
+  // ✅ Load booked slots with normalizeTimeTo24
+  const loadBookedSlots = useCallback(async () => {
+    if (!turf || !selectedSport || !selectedDate) return;
 
-  const dateString = selectedDate
-    .toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    })
-    .replace(/ /g, "-");
+    const dateString = formatDateForFirestore(selectedDate);
 
-  const bookedSlots = await getAllBookedSlots(
-    turf.turf_id,
-    dateString,
-    selectedSport,
-    `court ${selectedCourt}`
-  );
+    console.log("🔄 [SlotDetails] Loading booked slots:", {
+      turfId: turf.turf_id,
+      date: dateString,
+      sport: selectedSport,
+      court: `court ${selectedCourt}`,
+    });
 
-  const set = new Set<string>();
+    try {
+      const bookedSlots = await getAllBookedSlots(
+        turf.turf_id,
+        dateString,
+        selectedSport,
+        `court ${selectedCourt}` // ✅ lowercase "court"
+      );
 
-  bookedSlots.forEach((s) => {
-    const raw = (s.slot_start_time || "").trim();
+      console.log(`📦 [SlotDetails] Received ${bookedSlots.length} bookings`);
 
-    const converted = convertTo24Hour(raw); // "6:00 PM" → "18:00"
+      // ✅ Filter only active bookings (not cancelled)
+      const activeBookings = bookedSlots.filter((b: any) => {
+        const status = (b.paymentStatus || b.payment_status || "").toUpperCase();
+        const isCancelled = b.cancelledAt || b.cancelled_at;
+        return status !== "CANCELLED" && !isCancelled;
+      });
 
-    if (converted) {
-      set.add(converted);
+      console.log(`✅ [SlotDetails] ${activeBookings.length} active bookings`);
+
+      // ✅ Extract and normalize start times using your helper
+      const set = new Set<string>();
+
+      activeBookings.forEach((booking: any) => {
+        const rawTime = booking.slotStartTime || booking.slot_start_time || "";
+        
+        // ✅ Use your normalizeTimeTo24 helper
+        const normalized = normalizeTimeTo24(rawTime);
+        
+        if (normalized) {
+          set.add(normalized);
+          console.log(`  [SlotDetails] Blocked: ${rawTime} → ${normalized}`);
+        }
+      });
+
+      console.log("🔴 [SlotDetails] Final booked slots (24h):", Array.from(set));
+      setBookedSlotSet(set);
+    } catch (error) {
+      console.error("❌ [SlotDetails] Error loading booked slots:", error);
+      setBookedSlotSet(new Set());
     }
-  });
+  }, [turf, selectedSport, selectedCourt, selectedDate]);
 
-  console.log("🔴 Booked Slots (STANDARD 24h):", set);
-  setBookedSlotSet(set);
-};
-
-
-  loadBookedSlots();
-}, [turf, selectedSport, selectedCourt, selectedDate]);
-
-// Add this useEffect near the other useEffects
-useEffect(() => {
-  const unsubscribe = onSlotUpdate(() => {
-    console.log("🔄 SlotDetails: Refreshing slots after cancellation");
+  // Update when dependencies change
+  useEffect(() => {
     loadBookedSlots();
-  });
+  }, [loadBookedSlots]);
 
-  return () => unsubscribe();
-}, [turf, selectedSport, selectedCourt, selectedDate]);
+  // Listen for real-time updates
+  useEffect(() => {
+    const unsubscribe = onSlotUpdate(() => {
+      console.log("🔄 [SlotDetails] Refreshing after booking/cancellation");
+      loadBookedSlots();
+    });
 
-// Extract loadBookedSlots into a separate function
-const loadBookedSlots = async () => {
-  if (!turf || !selectedSport || !selectedDate) return;
+    return () => unsubscribe();
+  }, [loadBookedSlots]);
 
-  const dateString = selectedDate
-    .toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    })
-    .replace(/ /g, "-");
+  // Timing info for chosen sport
+  const timing = useMemo(() => {
+    if (!turf || !selectedSport) return null;
 
-  const bookedSlots = await getAllBookedSlots(
-    turf.turf_id,
-    dateString,
-    selectedSport,
-    `court ${selectedCourt}`
-  );
+    const t = turf.sport_specific_timing?.[selectedSport];
+    if (!t) return null;
 
-  const set = new Set(
-    bookedSlots.map((s) => {
-      const raw = s.slot_start_time || "";
-      return convertTo24Hour(raw) || raw;
-    })
-  );
+    // ✅ Use normalizeTimeTo24 for all times
+    const opening24 = normalizeTimeTo24(t.opening_time);
+    const closing24 = normalizeTimeTo24(t.closing_time);
 
-  console.log("🔴 Booked Slots (24h):", set);
-  setBookedSlotSet(set);
-};
+    if (!opening24 || !closing24) return null;
 
-// Update the existing useEffect
-useEffect(() => {
-  loadBookedSlots();
-}, [turf, selectedSport, selectedCourt, selectedDate]);
+    let openingMin = toMinutes(opening24);
+    let closingMin = toMinutes(closing24);
 
-  // -------- Timing info for chosen sport --------
-const timing = useMemo(() => {
-  if (!turf || !selectedSport) return null;
+    // Handle overnight (closing after midnight)
+    if (closingMin <= openingMin) {
+      closingMin += 24 * 60;
+    }
 
-  const t = turf.sport_specific_timing?.[selectedSport];
-  if (!t) return null;
+    const fixRange = (start?: string | null, end?: string | null) => {
+      if (!start || !end) return { start: null, end: null };
+      const s24 = normalizeTimeTo24(start);
+      const e24 = normalizeTimeTo24(end);
+      if (!s24 || !e24) return { start: null, end: null };
+      
+      let s = toMinutes(s24);
+      let e = toMinutes(e24);
+      if (e <= s) e += 24 * 60;
+      return { start: s, end: e };
+    };
 
-  const opening24 = convertTo24Hour(t.opening_time);
-  const closing24 = convertTo24Hour(t.closing_time);
+    const day = fixRange(t.day_start_time, t.day_end_time);
+    const night = fixRange(t.night_start_time, t.night_end_time);
 
-  if (!opening24 || !closing24) return null;
-
-  let openingMin = toMinutes(opening24);
-  let closingMin = toMinutes(closing24);
-
-  // 🔥 HANDLE OVERNIGHT (closing after midnight)
-  if (closingMin <= openingMin) {
-    closingMin += 24 * 60; // move closing to next day
-  }
-
-  const fixRange = (start?: string | null, end?: string | null) => {
-    if (!start || !end) return { start: null, end: null };
-    let s = toMinutes(convertTo24Hour(start)!);
-    let e = toMinutes(convertTo24Hour(end)!);
-    if (e <= s) e += 24 * 60;
-    return { start: s, end: e };
-  };
-
-  const day = fixRange(t.day_start_time, t.day_end_time);
-  const night = fixRange(t.night_start_time, t.night_end_time);
-
-  return {
-    openingMin,
-    closingMin,
-    dayStartMin: day.start,
-    dayEndMin: day.end,
-    nightStartMin: night.start,
-    nightEndMin: night.end,
-    courtCount: t.court_count ?? 1,
-  };
-}, [turf, selectedSport]);
+    return {
+      openingMin,
+      closingMin,
+      dayStartMin: day.start,
+      dayEndMin: day.end,
+      nightStartMin: night.start,
+      nightEndMin: night.end,
+      courtCount: t.court_count ?? 1,
+    };
+  }, [turf, selectedSport]);
 
   // Ensure court selection stays in range
   useEffect(() => {
@@ -309,32 +279,32 @@ const timing = useMemo(() => {
     }
   }, [timing, selectedCourt]);
 
-  // -------- All 1-hour slots across 24h (filtered by opening/closing) --------
-const allSlots = useMemo<Slot[]>(() => {
-  if (!timing) return [];
+  // All 1-hour slots
+  const allSlots = useMemo<Slot[]>(() => {
+    if (!timing) return [];
 
-  const slots: Slot[] = [];
+    const slots: Slot[] = [];
 
-  for (let min = timing.openingMin; min < timing.closingMin; min += 60) {
-    const hour24 = Math.floor(min / 60) % 24;
-    const endMin = min + 60;
+    for (let min = timing.openingMin; min < timing.closingMin; min += 60) {
+      const hour24 = Math.floor(min / 60) % 24;
+      const endMin = min + 60;
 
-    const startLabel = formatToAmPm(`${hour24.toString().padStart(2, "0")}:00`);
-    const endHour24 = Math.floor(endMin / 60) % 24;
-    const endLabel = formatToAmPm(`${endHour24.toString().padStart(2, "0")}:00`);
+      const startLabel = formatToAmPm(`${hour24.toString().padStart(2, "0")}:00`);
+      const endHour24 = Math.floor(endMin / 60) % 24;
+      const endLabel = formatToAmPm(`${endHour24.toString().padStart(2, "0")}:00`);
 
-    slots.push({
-      startLabel,
-      endLabel,
-      startMin: min,
-      endMin,
-    });
-  }
+      slots.push({
+        startLabel,
+        endLabel,
+        startMin: min,
+        endMin,
+      });
+    }
 
-  return slots;
-}, [timing]);
+    return slots;
+  }, [timing]);
 
-  // -------- Filter slots by Twilight / Morning / Noon / Evening --------
+  // Filter slots by segment
   const filteredSlots = useMemo<Slot[]>(() => {
     if (!timing) return [];
 
@@ -360,22 +330,18 @@ const allSlots = useMemo<Slot[]>(() => {
     );
   }, [allSlots, selectedSegment, timing]);
 
-
-
-
-  // Split into 2 "timeline" rows
   const [row1Slots, row2Slots] = useMemo(() => {
     const mid = Math.ceil(filteredSlots.length / 2);
     return [filteredSlots.slice(0, mid), filteredSlots.slice(mid)];
   }, [filteredSlots]);
 
-  // -------- Price table for selected sport --------
+  // Price table
   const priceTable = useMemo(() => {
     if (!turf || !selectedSport) return null;
     return turf.sport_specific_price?.[selectedSport] ?? null;
   }, [turf, selectedSport]);
 
-  // Calculate price for a single slot from timing + price table
+  // Calculate price for a slot
   const calculatePriceForSlot = useCallback(
     (slot: Slot): number | null => {
       if (!timing || !priceTable) return null;
@@ -410,7 +376,7 @@ const allSlots = useMemo<Slot[]>(() => {
     [priceTable, timing, selectedDayKey]
   );
 
-  // Total price = sum of each selected slot price
+  // Total price
   const totalPrice = useMemo(() => {
     if (selectedSlots.length === 0) return null;
     let total = 0;
@@ -425,7 +391,7 @@ const allSlots = useMemo<Slot[]>(() => {
     return hasAny ? total : null;
   }, [selectedSlots, calculatePriceForSlot]);
 
-  // -------- UI helpers --------
+  // UI helpers
   const formatDateLabel = (d: Date) =>
     d.toLocaleDateString("en-IN", {
       day: "numeric",
@@ -437,31 +403,21 @@ const allSlots = useMemo<Slot[]>(() => {
 
   const segmentLabel = (seg: Segment) => {
     switch (seg) {
-      case "twilight":
-        return "Twilight";
-      case "morning":
-        return "Morning";
-      case "noon":
-        return "Noon";
-      case "evening":
-        return "Evening";
-      default:
-        return seg;
+      case "twilight": return "Twilight";
+      case "morning": return "Morning";
+      case "noon": return "Noon";
+      case "evening": return "Evening";
+      default: return seg;
     }
   };
 
   const segmentHoursText = (seg: Segment) => {
     switch (seg) {
-      case "twilight":
-        return "12:00 AM – 6:00 AM";
-      case "morning":
-        return "6:00 AM – 12:00 PM";
-      case "noon":
-        return "12:00 PM – 6:00 PM";
-      case "evening":
-        return "6:00 PM – 12:00 AM";
-      default:
-        return "";
+      case "twilight": return "12:00 AM – 6:00 AM";
+      case "morning": return "6:00 AM – 12:00 PM";
+      case "noon": return "12:00 PM – 6:00 PM";
+      case "evening": return "6:00 PM – 12:00 AM";
+      default: return "";
     }
   };
 
@@ -480,158 +436,114 @@ const allSlots = useMemo<Slot[]>(() => {
           (s) => !(s.startMin === slot.startMin && s.endMin === slot.endMin)
         );
       }
-      // add & sort by time
       const next = [...prev, slot];
       next.sort((a, b) => a.startMin - b.startMin);
       return next;
     });
   };
 
-  // Map each segment to EXACT 8 hours → 4 in row1, 4 in row2
-function getSegmentHours(segment: Segment) {
-  switch (segment) {
-    case "twilight": // 12am–6am
-      return {
-        row1: [0, 1, 2, 3],
-        row2: [3, 4, 5, 6],
-      };
-    case "morning": // 6am–12pm
-      return {
-        row1: [6, 7, 8, 9],
-        row2: [9, 10, 11, 12],
-      };
-    case "noon": // 12pm–6pm
-      return {
-        row1: [12, 13, 14, 15],
-        row2: [15, 16, 17, 18],
-      };
-    case "evening": // 6pm–12am
-      return {
-        row1: [18, 19, 20, 21],
-        row2: [21, 22, 23, 24], // 24 → 12 AM next day
-      };
-    default:
-      return { row1: [], row2: [] };
+  function getSegmentHours(segment: Segment) {
+    switch (segment) {
+      case "twilight":
+        return { row1: [0, 1, 2, 3], row2: [3, 4, 5, 6] };
+      case "morning":
+        return { row1: [6, 7, 8, 9], row2: [9, 10, 11, 12] };
+      case "noon":
+        return { row1: [12, 13, 14, 15], row2: [15, 16, 17, 18] };
+      case "evening":
+        return { row1: [18, 19, 20, 21], row2: [21, 22, 23, 24] };
+      default:
+        return { row1: [], row2: [] };
+    }
   }
-}
 
+  async function handleBooking() {
+    if (!turf || !selectedSport || !totalPrice || selectedSlots.length === 0) return;
 
-async function handleBooking() {
-  if (!turf || !selectedSport || !totalPrice || selectedSlots.length === 0) return;
+    navigate("/user/advancepayment", {
+      state: {
+        turf,
+        selectedSport,
+        selectedCourt,
+        selectedSlots,
+        selectedDate,
+        totalPrice,
+      },
+    });
+  }
 
-  navigate("/user/advancepayment", {
-    state: {
-      turf,
-      selectedSport,
-      selectedCourt,
-      selectedSlots,
-      selectedDate,
-      totalPrice,
-    },
-  });
-}
+  const now = new Date();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const isToday = selectedDate.toDateString() === new Date().toDateString();
 
-
-
-const now = new Date();
-const nowMinutes = now.getHours() * 60 + now.getMinutes();
-
-const isToday =
-  selectedDate.toDateString() === new Date().toDateString();
-
-  const isPastSlot = (slot: Slot) => {
-  if (!selectedDate) return false;
-
-  const today = new Date();
-  const isToday =
-    selectedDate.toDateString() === today.toDateString();
-
-  if (!isToday) return false;
-
-  return slot.startMin <= nowMinutes;
-};
-
-function renderTimelineRow(hours: number[]) {
-  return (
-    <>
-      {/* Top Hour Labels */}
-      <div
-        className="d-flex justify-content-between px-3 text-muted small mb-1"
-        style={{ maxWidth: "900px", margin: "0 auto" }}
-      >
-        {hours.map((h, idx) => (
-          <div key={idx} style={{ width: `${100 / hours.length}%` }}>
-            {formatToAmPm(`${(h % 24).toString().padStart(2, "0")}:00`)}
-          </div>
-        ))}
-      </div>
-
-      {/* Timeline Bar */}
-      <div
-        className="rounded-pill border border-success d-flex mx-auto mb-4"
-        style={{ height: "44px", maxWidth: "900px", overflow: "hidden" }}
-      >
-        {hours.map((h, idx) => {
-          const realHour = h % 24;
-          const startMin = realHour * 60;
-          const slot = allSlots.find((s) => s.startMin === startMin);
-          const price = slot ? calculatePriceForSlot(slot) : null;
-
-const slotKey24 = `${realHour.toString().padStart(2, "0")}:00`;
-const isBooked = bookedSlotSet.has(slotKey24);
-
-
-const disabled =
-  (isToday && startMin <= nowMinutes) || // past slots today
-  isBooked ||                           // already booked
-  !slot;                                // slot not inside opening hours
-
-
-              // 🔒 already booked
-
-          const selected = selectedSlots.some(
-            (s) => s.startMin === startMin
-          );
-
-          return (
-            <div
-              key={idx}
-            className={`flex-grow-1 d-flex align-items-center justify-content-center ${
-  isBooked
-    ? "bg-danger text-black"   // 🔴 BOOKED
-    : disabled
-    ? "bg-secondary bg-opacity-50"
-    : selected
-    ? "bg-success text-white"
-    : "bg-white"
-}`}
-
-              style={{
-                borderRight:
-    idx !== hours.length - 1 ? "1px solid #ccc" : "none",
-  cursor: disabled ? "not-allowed" : "pointer",
-                backgroundColor: disabled
-                  ? "repeating-linear-gradient(45deg,#ddd,#ddd 4px,#eee 4px,#eee 8px)"
-                  : "none",
-              }}
-onClick={() => {
-  if (!disabled && slot) toggleSlot(slot);
-}}
-            >
-              {formatToAmPm(
-                `${realHour.toString().padStart(2, "0")}:00`
-              )}
+  function renderTimelineRow(hours: number[]) {
+    return (
+      <>
+        <div
+          className="d-flex justify-content-between px-3 text-muted small mb-1"
+          style={{ maxWidth: "900px", margin: "0 auto" }}
+        >
+          {hours.map((h, idx) => (
+            <div key={idx} style={{ width: `${100 / hours.length}%` }}>
+              {formatToAmPm(`${(h % 24).toString().padStart(2, "0")}:00`)}
             </div>
-          );
-        })}
-      </div>
-    </>
-  );
-}
+          ))}
+        </div>
 
+        <div
+          className="rounded-pill border border-success d-flex mx-auto mb-4"
+          style={{ height: "44px", maxWidth: "900px", overflow: "hidden" }}
+        >
+          {hours.map((h, idx) => {
+            const realHour = h % 24;
+            const startMin = realHour * 60;
+            const slot = allSlots.find((s) => s.startMin === startMin);
 
+            // ✅ Check if slot is booked using normalized 24h format
+            const slotKey24 = `${realHour.toString().padStart(2, "0")}:00`;
+            const isBooked = bookedSlotSet.has(slotKey24);
 
-  // -------- Render --------
+            const disabled =
+              (isToday && startMin <= nowMinutes) ||
+              isBooked ||
+              !slot;
+
+            const selected = selectedSlots.some(
+              (s) => s.startMin === startMin
+            );
+
+            return (
+              <div
+                key={idx}
+                className={`flex-grow-1 d-flex align-items-center justify-content-center ${
+                  isBooked
+                    ? "bg-danger text-white"
+                    : disabled
+                    ? "bg-secondary bg-opacity-50"
+                    : selected
+                    ? "bg-success text-white"
+                    : "bg-white"
+                }`}
+                style={{
+                  borderRight: idx !== hours.length - 1 ? "1px solid #ccc" : "none",
+                  cursor: disabled ? "not-allowed" : "pointer",
+                  backgroundColor: disabled && !isBooked
+                    ? "repeating-linear-gradient(45deg,#ddd,#ddd 4px,#eee 4px,#eee 8px)"
+                    : undefined,
+                }}
+                onClick={() => {
+                  if (!disabled && slot) toggleSlot(slot);
+                }}
+              >
+                {formatToAmPm(`${realHour.toString().padStart(2, "0")}:00`)}
+              </div>
+            );
+          })}
+        </div>
+      </>
+    );
+  }
+
   if (loading || !turf || !selectedSport || !timing) {
     return (
       <div className="container-fluid py-5 d-flex justify-content-center">
@@ -649,7 +561,6 @@ onClick={() => {
   return (
     <div className="container-fluid py-5 mt-5">
       <div className="mx-auto" style={{ maxWidth: "1100px" }}>
-        {/* Header */}
         <div className="d-flex align-items-center mb-4">
           <button
             className="btn btn-link text-success px-0 me-3"
@@ -660,15 +571,11 @@ onClick={() => {
           <h2 className="mb-0 fw-bold text-success">{turf.turf_name}</h2>
         </div>
 
-        {/* Main card */}
         <div className="card border-0 shadow-sm rounded-4">
           <div className="card-body px-4 px-md-5 py-4">
-            {/* FORMAT + COURT */}
             <div className="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3">
               <div>
-                <div className="text-uppercase text-muted small mb-2">
-                  Format
-                </div>
+                <div className="text-uppercase text-muted small mb-2">Format</div>
                 <div className="d-flex flex-wrap gap-2">
                   {sports.map((s) => (
                     <button
@@ -691,9 +598,7 @@ onClick={() => {
               </div>
 
               <div>
-                <div className="text-uppercase text-muted small mb-2">
-                  No. of Courts
-                </div>
+                <div className="text-uppercase text-muted small mb-2">No. of Courts</div>
                 <select
                   className="form-select form-select-sm"
                   style={{ width: "120px" }}
@@ -701,23 +606,18 @@ onClick={() => {
                   onChange={(e) => setSelectedCourt(Number(e.target.value))}
                 >
                   {courts.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
+                    <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
               </div>
             </div>
 
-            {/* DATE STRIP */}
             <div className="d-flex align-items-center justify-content-between mb-3">
               <button
                 className="btn btn-outline-secondary btn-sm rounded-circle"
                 style={{ width: "32px", height: "32px" }}
                 disabled={visibleStartIndex === 0}
-                onClick={() =>
-                  setVisibleStartIndex((prev) => Math.max(0, prev - 6))
-                }
+                onClick={() => setVisibleStartIndex((prev) => Math.max(0, prev - 6))}
               >
                 ‹
               </button>
@@ -731,9 +631,7 @@ onClick={() => {
                       key={d.toISOString()}
                       className={
                         "btn rounded-4 px-3 py-2 d-flex flex-column align-items-center " +
-                        (isSelected
-                          ? "btn-success text-white"
-                          : "btn-light border")
+                        (isSelected ? "btn-success text-white" : "btn-light border")
                       }
                       style={{ minWidth: "90px" }}
                       onClick={() => {
@@ -741,14 +639,8 @@ onClick={() => {
                         setSelectedSlots([]);
                       }}
                     >
-                      <span className="fw-semibold">
-                        {formatDayLabel(d)}
-                      </span>
-                      <span
-                        className={
-                          isSelected ? "text-white-50" : "text-muted"
-                        }
-                      >
+                      <span className="fw-semibold">{formatDayLabel(d)}</span>
+                      <span className={isSelected ? "text-white-50" : "text-muted"}>
                         {formatDateLabel(d)}
                       </span>
                     </button>
@@ -770,70 +662,59 @@ onClick={() => {
               </button>
             </div>
 
-            {/* SEGMENT TABS */}
             <div className="d-flex justify-content-center gap-4 mb-3">
-              {(["twilight", "morning", "noon", "evening"] as Segment[]).map(
-                (seg) => (
-                  <button
-                    key={seg}
-                    className="btn btn-link text-decoration-none px-2"
-                    onClick={() => {
-                      setSelectedSegment(seg);
-                      setSelectedSlots([]);
-                    }}
+              {(["twilight", "morning", "noon", "evening"] as Segment[]).map((seg) => (
+                <button
+                  key={seg}
+                  className="btn btn-link text-decoration-none px-2"
+                  onClick={() => {
+                    setSelectedSegment(seg);
+                    setSelectedSlots([]);
+                  }}
+                >
+                  <div
+                    className={
+                      "fw-semibold " +
+                      (selectedSegment === seg ? "text-success" : "text-muted")
+                    }
                   >
+                    {segmentLabel(seg)}
+                  </div>
+                  {selectedSegment === seg && (
                     <div
-                      className={
-                        "fw-semibold " +
-                        (selectedSegment === seg
-                          ? "text-success"
-                          : "text-muted")
-                      }
-                    >
-                      {segmentLabel(seg)}
-                    </div>
-                    {selectedSegment === seg && (
-                      <div
-                        className="mt-1"
-                        style={{
-                          height: "3px",
-                          borderRadius: "999px",
-                          backgroundColor: "#198754",
-                        }}
-                      />
-                    )}
-                  </button>
-                )
-              )}
+                      className="mt-1"
+                      style={{
+                        height: "3px",
+                        borderRadius: "999px",
+                        backgroundColor: "#198754",
+                      }}
+                    />
+                  )}
+                </button>
+              ))}
             </div>
 
             <div className="text-center text-muted small mb-3">
               {segmentHoursText(selectedSegment)}
             </div>
 
-            {/* TIMELINE ROWS */}
             <div className="mb-4">
-              {/* SEGMENT-BASED TWO-ROW TIMELINE */}
-{(() => {
-  const { row1, row2 } = getSegmentHours(selectedSegment);
-  return (
-    <>
-      {renderTimelineRow(row1)}
-      {renderTimelineRow(row2)}
-    </>
-  );
-})()}
-
+              {(() => {
+                const { row1, row2 } = getSegmentHours(selectedSegment);
+                return (
+                  <>
+                    {renderTimelineRow(row1)}
+                    {renderTimelineRow(row2)}
+                  </>
+                );
+              })()}
             </div>
 
-            {/* SUMMARY / BOOK BUTTON */}
             <div className="border-top pt-3 mt-2 text-center">
               {selectedSlots.length > 0 && totalPrice !== null ? (
                 <div className="d-flex flex-column flex-md-row align-items-center justify-content-between gap-3">
                   <div className="text-start">
-                    <div className="text-muted small mb-1">
-                      Selected slots
-                    </div>
+                    <div className="text-muted small mb-1">Selected slots</div>
                     {selectedSlots.map((s) => (
                       <div key={s.startMin} className="small">
                         {s.startLabel} – {s.endLabel}

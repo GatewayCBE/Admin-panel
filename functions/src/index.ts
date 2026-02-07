@@ -23,11 +23,9 @@ const gmailTransporter = nodemailer.createTransport({
 /* ================= SEND SMS via Fast2SMS ================= */
 async function sendSMS(phone: string, message: string) {
   try {
-    // Clean phone number - remove country code and keep last 10 digits
     let cleanPhone = phone.replace(/\D/g, "");
-    if (cleanPhone.startsWith("91")) {
-      cleanPhone = cleanPhone.slice(2);
-    }
+
+    // ✅ Always force last 10 digits (India safe)
     cleanPhone = cleanPhone.slice(-10);
 
     logger.info(`📱 Sending SMS to: ${cleanPhone}`);
@@ -40,7 +38,7 @@ async function sendSMS(phone: string, message: string) {
       },
       body: JSON.stringify({
         route: "q",
-        message: message,
+        message,
         language: "english",
         flash: 0,
         numbers: cleanPhone,
@@ -48,20 +46,19 @@ async function sendSMS(phone: string, message: string) {
     });
 
     const data = await res.json();
-    logger.info("✅ SMS API Response:", data);
+    logger.info("📨 Fast2SMS response:", data);
 
-    // Fast2SMS returns success even with errors sometimes, check carefully
-    if (data.return === false || data.return === "false") {
-      logger.error("❌ SMS sending failed:", data);
-      throw new Error(data.message || "SMS API returned error");
+    if (!data.return) {
+      throw new Error(data.message || "Fast2SMS failed");
     }
 
     return data;
   } catch (error: any) {
-    logger.error("❌ SMS Error:", error);
-    throw new Error(`SMS Error: ${error.message}`);
+    logger.error("❌ SMS failed:", error.message);
+    throw error;
   }
 }
+
 
 /* ================= SEND EMAIL via Gmail SMTP ================= */
 async function sendEmailViaGmail(
@@ -132,11 +129,7 @@ function convertTextToHTML(textMessage: string): string {
 
 /* ========== MAIN BOOKING NOTIFICATION FUNCTION ========== */
 export const sendBookingNotifications = onRequest(
-  {
-    region: "asia-south1",
-    cors: true,
-    timeoutSeconds: 60,
-  },
+  { region: "asia-south1", cors: true, timeoutSeconds: 60 },
   async (req, res) => {
     corsHandler(req, res, async () => {
       try {
@@ -151,25 +144,30 @@ export const sendBookingNotifications = onRequest(
           emailMessage,
         } = data;
 
+        logger.info("📦 Notification Payload:", data);
+
         const results: any[] = [];
+        let successCount = 0;
 
         // ===== USER SMS =====
         if (userPhone && smsMessage) {
           try {
             await sendSMS(userPhone, smsMessage);
             results.push({ type: "SMS_USER", status: "success" });
+            successCount++;
           } catch (e: any) {
             results.push({ type: "SMS_USER", status: "failed", error: e.message });
           }
         }
 
-        // ===== PARTNER SMS =====
+        // ===== OWNER SMS =====
         if (partnerPhone && smsMessage && partnerPhone !== userPhone) {
           try {
             await sendSMS(partnerPhone, smsMessage);
-            results.push({ type: "SMS_PARTNER", status: "success" });
+            results.push({ type: "SMS_OWNER", status: "success" });
+            successCount++;
           } catch (e: any) {
-            results.push({ type: "SMS_PARTNER", status: "failed", error: e.message });
+            results.push({ type: "SMS_OWNER", status: "failed", error: e.message });
           }
         }
 
@@ -183,12 +181,13 @@ export const sendBookingNotifications = onRequest(
               convertTextToHTML(emailMessage)
             );
             results.push({ type: "EMAIL_USER", status: "success" });
+            successCount++;
           } catch (e: any) {
             results.push({ type: "EMAIL_USER", status: "failed", error: e.message });
           }
         }
 
-        // ===== PARTNER EMAIL =====
+        // ===== OWNER EMAIL =====
         if (partnerEmail && emailMessage && partnerEmail !== userEmail) {
           try {
             await sendEmailViaGmail(
@@ -197,10 +196,19 @@ export const sendBookingNotifications = onRequest(
               emailMessage,
               convertTextToHTML(emailMessage)
             );
-            results.push({ type: "EMAIL_PARTNER", status: "success" });
+            results.push({ type: "EMAIL_OWNER", status: "success" });
+            successCount++;
           } catch (e: any) {
-            results.push({ type: "EMAIL_PARTNER", status: "failed", error: e.message });
+            results.push({ type: "EMAIL_OWNER", status: "failed", error: e.message });
           }
+        }
+
+        if (successCount === 0) {
+          return res.status(500).json({
+            success: false,
+            message: "All notifications failed",
+            results,
+          });
         }
 
         return res.status(200).json({
@@ -208,14 +216,13 @@ export const sendBookingNotifications = onRequest(
           results,
         });
       } catch (err: any) {
-        return res.status(500).json({
-          success: false,
-          error: err.message,
-        });
+        logger.error("❌ Notification crash:", err);
+        return res.status(500).json({ success: false, error: err.message });
       }
     });
   }
 );
+
 
 
 

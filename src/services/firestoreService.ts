@@ -257,10 +257,34 @@ export const getTurfById = async (turfId: string): Promise<Turf | null> => {
   }
 };
 
-export const getOwnerById = async (ownerId: string) => {
-  const ownerRef = doc(db, "environment", "testing", "owners", ownerId);
-  const snapshot = await getDoc(ownerRef);
-  return snapshot.exists() ? snapshot.data() : null;
+// export const getOwnerById = async (ownerId: string) => {
+//   const ownerRef = doc(db, "environment", "testing", "owners", ownerId);
+//   const snapshot = await getDoc(ownerRef);
+//   return snapshot.exists() ? snapshot.data() : null;
+// };
+
+export const getOwnerById = async (
+  ownerId: string
+): Promise<Owner | null> => {
+  if (!ownerId) return null;
+
+  const ownersRef = collection(db, "environment", "testing", "owners");
+  const q = query(ownersRef, where("owner_id", "==", ownerId));
+  const snapshot = await getDocs(q);
+
+  if (snapshot.empty) return null;
+
+  const docSnap = snapshot.docs[0];
+  const data = docSnap.data();
+
+  return {
+    doc_id: docSnap.id, // ✅ phone number
+    owner_id: data.owner_id,
+    owner_name: data.owner_name,
+    owner_mobile_number: data.owner_mobile_number,
+    owner_email: data.owner_email,
+    owner_profile_image: data.owner_profile_image,
+  };
 };
 
 export const getTurfsByOwner = async (ownerId: string) => {

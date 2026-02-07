@@ -64,3 +64,49 @@ export const hour12ToMinutes = (time12: string) => {
 };
 
 // 🔥 SAME as Add Turf
+
+/**
+ * Converts ANY reasonable time format into 24-hour "HH:mm"
+ * Returns null if input is invalid
+ */
+export function normalizeTimeTo24(
+  time: string | null | undefined
+): string | null {
+  if (!time) return null;
+
+  let t = time.trim().toUpperCase().replace(/\s+/g, " ");
+
+  // HH:mm (24h)
+  if (/^\d{1,2}:\d{2}$/.test(t) && !t.includes("AM") && !t.includes("PM")) {
+    const [h, m] = t.split(":").map(Number);
+    if (h >= 0 && h < 24 && m >= 0 && m < 60) {
+      return `${h.toString().padStart(2, "0")}:${m
+        .toString()
+        .padStart(2, "0")}`;
+    }
+  }
+
+  // 6 PM, 6:00 PM
+  const ampm = t.match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)$/);
+  if (ampm) {
+    let h = Number(ampm[1]);
+    let m = Number(ampm[2] ?? 0);
+    if (ampm[3] === "PM" && h !== 12) h += 12;
+    if (ampm[3] === "AM" && h === 12) h = 0;
+
+    return `${h.toString().padStart(2, "0")}:${m
+      .toString()
+      .padStart(2, "0")}`;
+  }
+
+  // "6", "18"
+  if (/^\d{1,2}$/.test(t)) {
+    const h = Number(t);
+    if (h >= 0 && h < 24) {
+      return `${h.toString().padStart(2, "0")}:00`;
+    }
+  }
+
+  return null;
+}
+
