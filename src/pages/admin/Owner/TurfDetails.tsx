@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "../../../firebase";
-import { getTurfById, getOwnerByOwnerId } from "../../../services/firestoreService";
+import { getTurfById, getOwnerByOwnerId, deleteTurf } from "../../../services/firestoreService";
 import AdminNavbar from "../Analytics/AdminNavbar";
 import "bootstrap/dist/css/bootstrap.min.css";
 import badmintonImg from "../../../assets/badminton.png";
@@ -51,6 +51,8 @@ const TurfDetails: React.FC = () => {
   const [owner, setOwner] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showOwnerModal, setShowOwnerModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const navigate = useNavigate();
 
@@ -102,6 +104,23 @@ const TurfDetails: React.FC = () => {
     } catch (error) {
       console.error("Error approving turf:", error);
       alert("Failed to approve turf");
+    }
+  };
+
+  const handleDeleteTurf = async () => {
+    if (!turfId) return;
+    
+    setIsDeleting(true);
+    try {
+      await deleteTurf(turfId);
+      alert("Turf deleted successfully!");
+      setShowDeleteModal(false);
+      navigate("/dashboard/turfs");
+    } catch (error) {
+      console.error("Error deleting turf:", error);
+      alert("Failed to delete turf. Please try again.");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -233,22 +252,29 @@ const TurfDetails: React.FC = () => {
             >
               Owner Details
             </button>
-             <button
-        className="btn btn-outline-warning btn-lg px-5 py-3 fw-semibold"
-        onClick={() => navigate(`/dashboard/owners/${turf.owner_id}/turfs/${turfId}/edit`)}
-      >
-        Edit Turf
-      </button>
+            <button
+              className="btn btn-outline-warning btn-lg px-5 py-3 fw-semibold"
+              onClick={() => navigate(`/dashboard/owners/${turf.owner_id}/turfs/${turfId}/edit`)}
+            >
+              Edit Turf
+            </button>
 
-      <button
-        className={`btn btn-lg px-5 py-3 fw-bold ${
-          turf.turf_active_status ? "btn-success" : "btn-danger"
-        }`}
-        onClick={handleApproveTurf}
-        disabled={turf.turf_active_status}
-      >
-        {turf.turf_active_status ? "Approved" : "Approve Turf"}
-      </button>
+            <button
+              className={`btn btn-lg px-5 py-3 fw-bold ${
+                turf.turf_active_status ? "btn-success" : "btn-danger"
+              }`}
+              onClick={handleApproveTurf}
+              disabled={turf.turf_active_status}
+            >
+              {turf.turf_active_status ? "Approved" : "Approve Turf"}
+            </button>
+
+            <button
+              className="btn btn-outline-danger btn-lg px-5 py-3 fw-semibold"
+              onClick={() => setShowDeleteModal(true)}
+            >
+               Delete Turf
+            </button>
           </div>
         </div>
 
@@ -694,6 +720,78 @@ const TurfDetails: React.FC = () => {
         </>
       )}
 
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <>
+          <div
+            className="modal-backdrop fade show"
+            style={{ zIndex: 1040 }}
+            onClick={() => !isDeleting && setShowDeleteModal(false)}
+          />
+          <div className="modal fade show d-block" style={{ zIndex: 1050 }} tabIndex={-1}>
+            <div className="modal-dialog modal-dialog-centered mx-3 mx-sm-auto">
+              <div className="modal-content border-0 shadow-lg" style={{ borderRadius: "16px" }}>
+                <div className="modal-header bg-danger text-white">
+                  <h5 className="modal-title fw-bold" style={{ fontSize: "clamp(1rem, 2.5vw, 1.25rem)" }}>
+                    ⚠️ Confirm Delete
+                  </h5>
+                  <button
+                    type="button"
+                    className="btn-close btn-close-white"
+                    onClick={() => setShowDeleteModal(false)}
+                    disabled={isDeleting}
+                  />
+                </div>
+                <div className="modal-body p-3 p-md-4">
+                  <div className="text-center py-3">
+                    <div className="mb-3">
+                      <i className="bi bi-exclamation-triangle-fill text-danger" style={{ fontSize: "3rem" }}></i>
+                    </div>
+                    <h5 className="fw-bold mb-3">Are you sure you want to delete this turf?</h5>
+                    <p className="text-muted mb-2">
+                      <strong>Turf Name:</strong> {turf.turf_name || "Unnamed Turf"}
+                    </p>
+                    <p className="text-muted mb-4">
+                      This action cannot be undone. All turf data including bookings, pricing, and images will be permanently deleted.
+                    </p>
+                    <div className="alert alert-warning" role="alert">
+                      <i className="bi bi-info-circle-fill me-2"></i>
+                      <small>Please confirm that you want to proceed with this deletion.</small>
+                    </div>
+                  </div>
+                </div>
+                <div className="modal-footer bg-light">
+                  <button 
+                    className="btn btn-secondary px-3 px-md-4" 
+                    onClick={() => setShowDeleteModal(false)}
+                    disabled={isDeleting}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    className="btn btn-danger px-3 px-md-4 d-flex align-items-center gap-2" 
+                    onClick={handleDeleteTurf}
+                    disabled={isDeleting}
+                  >
+                    {isDeleting ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        <span>Deleting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <i className="bi bi-trash-fill"></i>
+                        <span>Yes, Delete Turf</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
       <style>{`
         /* Responsive utilities */
         .min-width-0 {
@@ -779,6 +877,12 @@ const TurfDetails: React.FC = () => {
           .modal-dialog {
             margin: 0.5rem;
           }
+        }
+
+        /* Delete button hover effect */
+        .btn-outline-danger:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
         }
       `}</style>
     </div>

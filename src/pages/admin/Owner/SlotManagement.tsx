@@ -7,6 +7,7 @@ import pickleballImg from "../../../assets/PickleImg.png";
 import badmintonImg from "../../../assets/badminton.png";
 import boxcricketImg from "../../../assets/boxcricket_football.png";
 import { useNavigate } from "react-router-dom";
+import { normalizeTimeTo24 } from "../../../utils/dateUtils";
 
 interface TimeSlot {
   id: string;
@@ -44,6 +45,22 @@ const SlotManagement: React.FC = () => {
     new Date().toISOString().split("T")[0]
   );
   
+  const formatDateForFirestore = (dateStr: string): string => {
+  return new Date(dateStr)
+    .toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    })
+    .replace(/ /g, "-");
+};
+
+
+const convertTo24 = (time12h: string) => {
+  // ✅ Use your normalizeTimeTo24 helper
+  const normalized = normalizeTimeTo24(time12h);
+  return normalized || "00:00";
+};
   // ✅ Changed to array for multiple slot selection
   const [selectedTimeSlots, setSelectedTimeSlots] = useState<string[]>([]);
 
@@ -87,12 +104,12 @@ const SlotManagement: React.FC = () => {
     });
 
 const timingData = selectedTurf.sport_specific_timing?.[sportKey];
-
 const courtCount = Math.max(1, timingData?.court_count ?? 1);
 
+// ✅ Generate courts in lowercase format to match database
 const courtList = Array.from(
   { length: courtCount },
-  (_, i) => `Court ${i + 1}`
+  (_, i) => `court ${i + 1}` // ← lowercase "court"
 );
 
 setCourts(courtList);
@@ -103,64 +120,57 @@ if (courtList.length > 0) setSelectedCourt(courtList[0]);
     generateSlots(timing.opening_time, timing.closing_time);
   }, [selectedSport, selectedTurf]);
 
-  const convertTo24 = (time12h: string) => {
-    if (!time12h) return "00:00";
 
-    const clean = time12h.trim().toUpperCase().replace(/\s+/g, " ");
-    const parts = clean.split(" ");
-    let time = parts[0];
-    let modifier = parts[1] || null;
 
-    let [hours, minutes] = time.split(":").map(Number);
+const generateSlots = (open: string, close: string) => {
+  if (!open || !close) return;
 
-    if (isNaN(hours)) hours = 0;
-    if (isNaN(minutes)) minutes = 0;
+  // ✅ Use normalizeTimeTo24 to convert times
+  const open24 = normalizeTimeTo24(open);
+  const close24 = normalizeTimeTo24(close);
 
-    if (modifier === "PM" && hours !== 12) hours += 12;
-    if (modifier === "AM" && hours === 12) hours = 0;
+  if (!open24 || !close24) {
+    console.warn("Could not normalize opening/closing times:", { open, close });
+    return;
+  }
 
-    return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
-  };
+  const start = new Date(`1970-01-01T${open24}:00`);
+  let end = new Date(`1970-01-01T${close24}:00`);
+  
+  if (end <= start) {
+    end.setDate(end.getDate() + 1); // Handle overnight
+  }
 
-  const generateSlots = (open: string, close: string) => {
-    if (!open || !close) return;
+  const tempSlots: TimeSlot[] = [];
 
-    const open24 = convertTo24(open);
-    const close24 = convertTo24(close);
+  while (start < end) {
+    const next = new Date(start.getTime() + 60 * 60 * 1000);
 
-    const start = new Date(`1970-01-01T${open24}:00`);
-    let end = new Date(`1970-01-01T${close24}:00`);
-    if (end <= start) end.setDate(end.getDate() + 1);
+    const startLabel = start.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+    const endLabel = next.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
 
-    const tempSlots: TimeSlot[] = [];
+    tempSlots.push({
+      id: `${startLabel}-${selectedCourt}`,
+      startTime: startLabel,
+      endTime: endLabel,
+      label: `${startLabel} - ${endLabel}`,
+      isBooked: false,
+    });
 
-    while (start < end) {
-      const next = new Date(start.getTime() + 60 * 60 * 1000);
+    start.setHours(start.getHours() + 1);
+  }
 
-      const startLabel = start.toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
-      });
-      const endLabel = next.toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
-      });
-
-      tempSlots.push({
-        id: `${startLabel}-${selectedCourt}`,
-        startTime: startLabel,
-        endTime: endLabel,
-        label: `${startLabel} - ${endLabel}`,
-        isBooked: false,
-      });
-
-      start.setHours(start.getHours() + 1);
-    }
-
-    setSlots(tempSlots);
-  };
+  console.log(`[SLOTS] Generated ${tempSlots.length} slots from ${open} to ${close}`);
+  setSlots(tempSlots);
+};
 
   const loadBooked = async () => {
   if (!selectedTurf?.turf_id || !selectedSport || !selectedCourt || !bookingDate) {
@@ -206,6 +216,31 @@ if (courtList.length > 0) setSelectedCourt(courtList[0]);
   }
 };
 
+useEffect(() => {
+  // Early return if selection incomplete
+  if (!selectedTurf?.turf_id || !selectedSport || !selectedCourt || !bookingDate) {
+    console.log("[BOOKED] ⏭️ Clearing slots - incomplete selection");
+    setSlots(prev => prev.map(s => ({ ...s, isBooked: false })));
+    return;
+  }
+
+  console.log("[BOOKED] 🎯 Dependencies changed, loading booked slots...");
+  loadBooked();
+
+  // ✅ Listen for updates from other pages (user bookings, cancellations, etc.)
+  const handleSlotUpdate = () => {
+    console.log("[BOOKED] 🔄 External update detected, refreshing slots");
+    loadBooked();
+  };
+
+  window.addEventListener("slotsUpdated", handleSlotUpdate);
+
+  return () => {
+    console.log("[BOOKED] 🧹 Cleaning up event listener");
+    window.removeEventListener("slotsUpdated", handleSlotUpdate);
+  };
+}, [selectedTurf?.turf_id, bookingDate, selectedSport, selectedCourt]);
+
   // Fetch booked slots – improved version with better logging
   useEffect(() => {
   // Early return – prevent unnecessary runs
@@ -221,47 +256,95 @@ if (courtList.length > 0) setSelectedCourt(courtList[0]);
     return;
   }
 
-  const loadBooked = async () => {
-    console.log("[BOOKED] Starting fetch with CURRENT values:", {
-      turfId: selectedTurf.turf_id,
-      date: bookingDate,
-      sport: selectedSport,
-      court: selectedCourt,                // ← must show correct court here
+  
+ const loadBooked = async () => {
+  if (!selectedTurf?.turf_id || !selectedSport || !selectedCourt || !bookingDate) {
+    console.log("[BOOKED] ⏭️ Skipping – incomplete selection");
+    setSlots(prev => prev.map(s => ({ ...s, isBooked: false })));
+    return;
+  }
+
+  // ✅ Convert input date (YYYY-MM-DD) to Firestore format (DD-MMM-YYYY)
+  const firestoreDate = formatDateForFirestore(bookingDate);
+
+  console.log("[BOOKED] 🔄 Loading with:", {
+    turfId: selectedTurf.turf_id,
+    inputDate: bookingDate,         // "2026-02-08"
+    firestoreDate: firestoreDate,   // "08-Feb-2026" ← This matches database
+    sport: selectedSport,
+    court: selectedCourt,            // "court 1"
+  });
+
+  try {
+    const booked = await getAllBookedSlots(
+      selectedTurf.turf_id,
+      firestoreDate,  // ✅ Use Firestore format
+      selectedSport,
+      selectedCourt
+    );
+
+    console.log(`[BOOKED] 📦 Received ${booked.length} total bookings`);
+
+    // ✅ Filter only ACTIVE bookings (exclude cancelled)
+    const activeBookings = booked.filter((b: any) => {
+      const status = (b.paymentStatus || b.payment_status || "").toUpperCase();
+      const isCancelled = b.cancelledAt || b.cancelled_at;
+      const isActive = status !== "CANCELLED" && !isCancelled;
+      
+      if (!isActive) {
+        console.log(`[BOOKED] ❌ Filtered out cancelled booking:`, b.id);
+      }
+      
+      return isActive;
     });
 
-    try {
-      const booked = await getAllBookedSlots(
-        selectedTurf.turf_id,
-        bookingDate,
-        selectedSport,
-        selectedCourt                        // ← pass the current value
-      );
+    console.log(`[BOOKED] ✅ ${activeBookings.length} active bookings after filtering`);
 
-      console.log(`[BOOKED] Received ${booked.length} docs for ${selectedCourt}`);
+    // ✅ Extract and normalize slot times using your helper
+    const bookedStartTimes = activeBookings
+      .map((b: any) => {
+        const rawTime = b.slotStartTime || b.slot_start_time || "";
+        
+        // ✅ Use normalizeTimeTo24 to handle all time formats
+        const normalized = normalizeTimeTo24(rawTime);
+        
+        if (normalized) {
+          console.log(`[BOOKED]   Blocking: ${rawTime} → ${normalized}`);
+        } else {
+          console.warn(`[BOOKED]   ⚠️ Could not normalize: "${rawTime}"`);
+        }
+        
+        return normalized;
+      })
+      .filter(Boolean) as string[]; // Remove nulls
 
-      const activeBookings = booked.filter((b: any) => {
-        const status = (b.paymentStatus || b.payment_status || "").toUpperCase();
-        return status !== "CANCELLED" && !b.cancelledAt;
-      });
+    console.log("[BOOKED] 🚫 Final blocked times:", bookedStartTimes);
 
-      console.log(`[BOOKED] ${activeBookings.length} active after filter`);
-
-      const bookedStartTimes = activeBookings
-        .map((b: any) => (b.slotStartTime || b.slot_start_time || "").trim())
-        .filter(Boolean);
-
-      console.log("[BOOKED] Blocked start times:", bookedStartTimes);
-
-      setSlots(prev =>
-        prev.map(slot => ({
+    // ✅ Update slots - mark as booked if time matches
+    setSlots(prev =>
+      prev.map(slot => {
+        // Normalize the slot's start time too
+        const slotTime24 = normalizeTimeTo24(slot.startTime);
+        const isBooked = slotTime24 ? bookedStartTimes.includes(slotTime24) : false;
+        
+        if (isBooked) {
+          console.log(`[BOOKED] 🔴 Marking ${slot.startTime} as booked`);
+        }
+        
+        return {
           ...slot,
-          isBooked: bookedStartTimes.includes(slot.startTime.trim()),
-        }))
-      );
-    } catch (err) {
-      console.error("[BOOKED] Fetch failed:", err);
-    }
-  };
+          isBooked,
+        };
+      })
+    );
+
+    console.log("[BOOKED] ✅ Slot states updated successfully");
+  } catch (err) {
+    console.error("[BOOKED] ❌ Failed to load booked slots:", err);
+    setSlots(prev => prev.map(s => ({ ...s, isBooked: false })));
+  }
+};
+
 
   loadBooked();
 
@@ -275,41 +358,48 @@ if (courtList.length > 0) setSelectedCourt(courtList[0]);
   // The rest of the file remains unchanged
   // ────────────────────────────────────────────────
 
-  const isPastSlot = (slotStart: string) => {
-    const today = new Date();
-    const todayStr = today.toISOString().split("T")[0];
+const isPastSlot = (slotStart: string) => {
+  const today = new Date();
+  const todayStr = today.toISOString().split("T")[0];
 
-    if (bookingDate !== todayStr) return false;
+  // Only check past slots for today
+  if (bookingDate !== todayStr) return false;
 
-    const slot24 = convertTo24(slotStart);
-    const [slotHour, slotMinute] = slot24.split(":").map(Number);
+  // ✅ Use normalizeTimeTo24
+  const slot24 = normalizeTimeTo24(slotStart);
+  if (!slot24) return false;
 
-    const open24 = convertTo24(operatingHours.open);
-    const close24 = convertTo24(operatingHours.close);
-    const [openHour] = open24.split(":").map(Number);
-    const [closeHour] = close24.split(":").map(Number);
+  const [slotHour, slotMinute] = slot24.split(":").map(Number);
 
-    const isNextDaySlot = closeHour < openHour && slotHour < openHour;
+  const open24 = normalizeTimeTo24(operatingHours.open);
+  const close24 = normalizeTimeTo24(operatingHours.close);
+  
+  if (!open24 || !close24) return false;
 
-    const now = new Date();
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
+  const [openHour] = open24.split(":").map(Number);
+  const [closeHour] = close24.split(":").map(Number);
 
-    if (isNextDaySlot) {
-      if (currentHour < openHour) {
-        return (
-          currentHour > slotHour ||
-          (currentHour === slotHour && currentMinute > slotMinute)
-        );
-      }
-      return false;
+  const isNextDaySlot = closeHour < openHour && slotHour < openHour;
+
+  const now = new Date();
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+
+  if (isNextDaySlot) {
+    if (currentHour < openHour) {
+      return (
+        currentHour > slotHour ||
+        (currentHour === slotHour && currentMinute > slotMinute)
+      );
     }
+    return false;
+  }
 
-    return (
-      currentHour > slotHour ||
-      (currentHour === slotHour && currentMinute > slotMinute)
-    );
-  };
+  return (
+    currentHour > slotHour ||
+    (currentHour === slotHour && currentMinute > slotMinute)
+  );
+};
 
   const handleSlotClick = (slot: TimeSlot) => {
     if (!selectedTurf || !selectedSport || !selectedCourt) return;
@@ -402,23 +492,30 @@ if (courtList.length > 0) setSelectedCourt(courtList[0]);
     return "";
   };
 
-  const getSlotPrice = (slotStart: string) => {
-    if (!selectedTurf || !selectedSport) return 0;
 
-    const sportKey = selectedSport.toLowerCase();
-    const prices = selectedTurf.sport_specific_price?.[sportKey];
-    if (!prices) return 0;
+const getSlotPrice = (slotStart: string) => {
+  if (!selectedTurf || !selectedSport) return 0;
 
-    const dayName = new Date(bookingDate)
-      .toLocaleDateString("en-US", { weekday: "long" })
-      .toLowerCase();
+  const sportKey = selectedSport.toLowerCase();
+  const prices = selectedTurf.sport_specific_price?.[sportKey];
+  if (!prices) return 0;
 
-    const hour = parseInt(convertTo24(slotStart).split(":")[0]);
-    const nightStartHour = parseInt(convertTo24(operatingHours.nightStart).split(":")[0]);
-    const isNight = hour >= nightStartHour;
+  const dayName = new Date(bookingDate)
+    .toLocaleDateString("en-US", { weekday: "long" })
+    .toLowerCase();
 
-    return isNight ? prices[dayName]?.night || 0 : prices[dayName]?.day || 0;
-  };
+  // ✅ Use normalizeTimeTo24
+  const slot24 = normalizeTimeTo24(slotStart);
+  const nightStart24 = normalizeTimeTo24(operatingHours.nightStart);
+  
+  if (!slot24 || !nightStart24) return 0;
+
+  const hour = parseInt(slot24.split(":")[0]);
+  const nightStartHour = parseInt(nightStart24.split(":")[0]);
+  const isNight = hour >= nightStartHour;
+
+  return isNight ? prices[dayName]?.night || 0 : prices[dayName]?.day || 0;
+};
 
   // ✅ Calculate total price for selected slots
   const getTotalPrice = () => {
@@ -521,19 +618,20 @@ if (courtList.length > 0) setSelectedCourt(courtList[0]);
         <div className="mb-4">
           <h2 className="fw-bold mb-4">Choose Court</h2>
           <div className="row g-3">
-            {courts.slice(0, 10).map((court) => (
-              <div key={court} className="col-6 col-md-4 col-lg-2">
-                <button
-                  type="button"
-                  className={`btn w-100 py-3 fs-6 fw-semibold rounded-4 shadow-sm ${
-                    selectedCourt === court ? "btn-success" : "btn-outline-success"
-                  }`}
-                  onClick={() => setSelectedCourt(court)}
-                >
-                  {court}
-                </button>
-              </div>
-            ))}
+       {courts.slice(0, 10).map((court) => (
+  <div key={court} className="col-6 col-md-4 col-lg-2">
+    <button
+      type="button"
+      className={`btn w-100 py-3 fs-6 fw-semibold rounded-4 shadow-sm ${
+        selectedCourt === court ? "btn-success" : "btn-outline-success"
+      }`}
+      onClick={() => setSelectedCourt(court)}
+    >
+      {/* ✅ Capitalize first letter for display */}
+      {court.charAt(0).toUpperCase() + court.slice(1)}
+    </button>
+  </div>
+))}
           </div>
         </div>
 

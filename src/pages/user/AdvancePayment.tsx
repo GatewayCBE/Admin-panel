@@ -35,12 +35,9 @@ useEffect(() => {
       return;
     }
 
-    localStorage.setItem("owner_name", owner.owner_name || "");
+    localStorage.setItem("owner_name", owner.owner_name);
     localStorage.setItem("owner_email", owner.owner_email || "");
-    localStorage.setItem(
-      "owner_mobile",
-      owner.owner_mobile_number || ""
-    );
+    localStorage.setItem("owner_mobile", owner.owner_mobile_number);
 
     console.log("✅ Stored owner data in localStorage:", {
       name: owner.owner_name,

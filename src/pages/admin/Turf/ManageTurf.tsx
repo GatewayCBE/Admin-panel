@@ -5,6 +5,7 @@ import AdminNavbar from "../Analytics/AdminNavbar";
 import { uploadTurfImages } from "../../../services/storageService";
 import { getAuth } from "firebase/auth"; 
 import { useAuth } from "./useAuth";
+import * as XLSX from "xlsx";
 
 const ManageTurf: React.FC = () => {
   const { turfs } = useTurf();
@@ -84,6 +85,206 @@ const ManageTurf: React.FC = () => {
       )
     )
   ).sort();
+
+  // --- EXPORT TO EXCEL LOGIC ---
+  const handleExportToExcel = () => {
+    // Create workbook
+    const workbook = XLSX.utils.book_new();
+
+    // 1. MAIN TURF DATA SHEET
+    const mainData = turfs.map((turf, index) => ({
+      'S.No': index + 1,
+      'Turf ID': turf.id || turf.turf_id || '',
+      'Turf Name': turf.turf_name || '',
+      'Active Status': turf.turf_active_status ? 'Active' : 'Inactive',
+      'Booking Type': turf.booking_type || '',
+      
+      // Location & Contact
+      'Location': turf.turf_location || '',
+      'Turf Mobile': turf.turf_mobile_number || '',
+      
+      // Timing
+      'Opening Hour': turf.turf_opening_hour || '',
+      'Closing Hour': turf.turf_closing_hour || '',
+      
+      // Dimensions
+      'Length': turf.turf_length || '',
+      'Breadth': turf.turf_breadth || '',
+      'Height': turf.turf_height || '',
+      
+      // Owner Details
+      'Owner ID': turf.owner_id || '',
+      'Owner Name': turf.owner_name || '',
+      'Owner Mobile': turf.owner_mobile_number || '',
+      'Owner Email': turf.owner_email || '',
+      
+      // Sports & Amenities
+      'Available Sports': turf.available_sports_list?.join(", ") || '',
+      'Amenities': turf.amenities?.join(", ") || '',
+      
+      // Description & Images
+      'Description': turf.turf_description || '',
+      'Total Images': turf.turf_images?.length || 0,
+      'Primary Image URL': turf.turf_images?.[0] || turf.turf_image_url || '',
+    }));
+
+    const mainSheet = XLSX.utils.json_to_sheet(mainData);
+    mainSheet['!cols'] = [
+      { wch: 6 },  // S.No
+      { wch: 25 }, // Turf ID
+      { wch: 25 }, // Turf Name
+      { wch: 12 }, // Active Status
+      { wch: 12 }, // Booking Type
+      { wch: 40 }, // Location
+      { wch: 15 }, // Turf Mobile
+      { wch: 12 }, // Opening Hour
+      { wch: 12 }, // Closing Hour
+      { wch: 10 }, // Length
+      { wch: 10 }, // Breadth
+      { wch: 10 }, // Height
+      { wch: 25 }, // Owner ID
+      { wch: 20 }, // Owner Name
+      { wch: 15 }, // Owner Mobile
+      { wch: 25 }, // Owner Email
+      { wch: 30 }, // Available Sports
+      { wch: 30 }, // Amenities
+      { wch: 50 }, // Description
+      { wch: 12 }, // Total Images
+      { wch: 50 }, // Primary Image URL
+    ];
+    XLSX.utils.book_append_sheet(workbook, mainSheet, "Main Data");
+
+    // 2. SPORT PRICING SHEET
+    const pricingData: any[] = [];
+    turfs.forEach((turf) => {
+      if (turf.sport_specific_price) {
+        Object.entries(turf.sport_specific_price).forEach(([sport, days]) => {
+          Object.entries(days).forEach(([day, prices]) => {
+            pricingData.push({
+              'Turf ID': turf.id || turf.turf_id,
+              'Turf Name': turf.turf_name,
+              'Sport': sport,
+              'Day': day,
+              'Day Price': prices.day || '',
+              'Night Price': prices.night || '',
+            });
+          });
+        });
+      }
+    });
+
+    if (pricingData.length > 0) {
+      const pricingSheet = XLSX.utils.json_to_sheet(pricingData);
+      pricingSheet['!cols'] = [
+        { wch: 25 }, // Turf ID
+        { wch: 25 }, // Turf Name
+        { wch: 15 }, // Sport
+        { wch: 12 }, // Day
+        { wch: 12 }, // Day Price
+        { wch: 12 }, // Night Price
+      ];
+      XLSX.utils.book_append_sheet(workbook, pricingSheet, "Sport Pricing");
+    }
+
+    // 3. SPORT TIMING SHEET
+    const timingData: any[] = [];
+    turfs.forEach((turf) => {
+      if (turf.sport_specific_timing) {
+        Object.entries(turf.sport_specific_timing).forEach(([sport, timing]) => {
+          timingData.push({
+            'Turf ID': turf.id || turf.turf_id,
+            'Turf Name': turf.turf_name,
+            'Sport': sport,
+            'Opening Time': timing.opening_time || '',
+            'Closing Time': timing.closing_time || '',
+            'Day Start': timing.day_start_time || '',
+            'Day End': timing.day_end_time || '',
+            'Night Start': timing.night_start_time || '',
+            'Night End': timing.night_end_time || '',
+            'Available': timing.sport_available ? 'Yes' : 'No',
+            'Court Count': timing.court_count || '',
+          });
+        });
+      }
+    });
+
+    if (timingData.length > 0) {
+      const timingSheet = XLSX.utils.json_to_sheet(timingData);
+      timingSheet['!cols'] = [
+        { wch: 25 }, // Turf ID
+        { wch: 25 }, // Turf Name
+        { wch: 15 }, // Sport
+        { wch: 12 }, // Opening Time
+        { wch: 12 }, // Closing Time
+        { wch: 12 }, // Day Start
+        { wch: 12 }, // Day End
+        { wch: 12 }, // Night Start
+        { wch: 12 }, // Night End
+        { wch: 10 }, // Available
+        { wch: 12 }, // Court Count
+      ];
+      XLSX.utils.book_append_sheet(workbook, timingSheet, "Sport Timing");
+    }
+
+    // 4. PERSON COUNT SHEET
+    const personCountData: any[] = [];
+    turfs.forEach((turf) => {
+      if (turf.sports_specific_person_count) {
+        Object.entries(turf.sports_specific_person_count).forEach(([sport, count]) => {
+          personCountData.push({
+            'Turf ID': turf.id || turf.turf_id,
+            'Turf Name': turf.turf_name,
+            'Sport': sport,
+            'Person Count': count,
+          });
+        });
+      }
+    });
+
+    if (personCountData.length > 0) {
+      const personCountSheet = XLSX.utils.json_to_sheet(personCountData);
+      personCountSheet['!cols'] = [
+        { wch: 25 }, // Turf ID
+        { wch: 25 }, // Turf Name
+        { wch: 15 }, // Sport
+        { wch: 12 }, // Person Count
+      ];
+      XLSX.utils.book_append_sheet(workbook, personCountSheet, "Person Count");
+    }
+
+    // 5. ALL IMAGES SHEET
+    const imagesData: any[] = [];
+    turfs.forEach((turf) => {
+      if (turf.turf_images && turf.turf_images.length > 0) {
+        turf.turf_images.forEach((imageUrl, index) => {
+          imagesData.push({
+            'Turf ID': turf.id || turf.turf_id,
+            'Turf Name': turf.turf_name,
+            'Image Number': index + 1,
+            'Image URL': imageUrl,
+          });
+        });
+      }
+    });
+
+    if (imagesData.length > 0) {
+      const imagesSheet = XLSX.utils.json_to_sheet(imagesData);
+      imagesSheet['!cols'] = [
+        { wch: 25 }, // Turf ID
+        { wch: 25 }, // Turf Name
+        { wch: 12 }, // Image Number
+        { wch: 60 }, // Image URL
+      ];
+      XLSX.utils.book_append_sheet(workbook, imagesSheet, "All Images");
+    }
+
+    // Generate filename with current date
+    const date = new Date();
+    const filename = `Turfs_Complete_Data_${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}.xlsx`;
+
+    // Export file
+    XLSX.writeFile(workbook, filename);
+  };
 
   // --- DELETE LOGIC ---
   const handleDelete = async (turfId: string, name: string) => {
@@ -276,6 +477,57 @@ const ManageTurf: React.FC = () => {
           }
         }
 
+        /* Header Right Section */
+        .header-right {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+          align-items: stretch;
+        }
+
+        @media (min-width: 576px) {
+          .header-right {
+            flex-direction: row;
+            align-items: center;
+          }
+        }
+
+        /* Export Button */
+        .export-button {
+          background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
+          color: white;
+          border: none;
+          border-radius: 2rem;
+          padding: 0.875rem 1.5rem;
+          font-weight: 600;
+          font-size: 0.875rem;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          box-shadow: 0 4px 12px rgba(13, 110, 253, 0.2);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+          white-space: nowrap;
+        }
+
+        .export-button:hover {
+          background: linear-gradient(135deg, #0b5ed7 0%, #0a58ca 100%);
+          transform: translateY(-2px);
+          box-shadow: 0 6px 16px rgba(13, 110, 253, 0.3);
+        }
+
+        .export-button:active {
+          transform: translateY(0);
+        }
+
+        @media (min-width: 992px) {
+          .export-button {
+            padding: 1rem 1.75rem;
+            font-size: 0.95rem;
+          }
+        }
+
         /* Total Count Badge */
         .total-badge {
           background: linear-gradient(135deg, #198754 0%, #157347 100%);
@@ -284,14 +536,7 @@ const ManageTurf: React.FC = () => {
           padding: 1rem 1.5rem;
           box-shadow: 0 4px 12px rgba(25, 135, 84, 0.2);
           text-align: center;
-          max-width: 200px;
-          margin: 0 auto;
-        }
-
-        @media (min-width: 992px) {
-          .total-badge {
-            margin: 0 0 0 auto;
-          }
+          min-width: 150px;
         }
 
         .total-badge-label {
@@ -302,6 +547,14 @@ const ManageTurf: React.FC = () => {
           font-weight: 600;
           display: block;
           margin-bottom: 0.25rem;
+        }
+           .excel-badge-label {
+          font-size: 30px;
+          text-transform: uppercase;
+          opacity: 0.9
+          padding-left: 15px;
+          font-weight: 600;
+          display: block;
         }
 
         .total-badge-count {
@@ -998,9 +1251,13 @@ const ManageTurf: React.FC = () => {
               <p>View, edit, or remove turfs from the main database</p>
             </div>
             
-            <div className="total-badge">
-              <span className="total-badge-label">Total Turfs</span>
-              <h2 className="total-badge-count">{turfs.length}</h2>
+            <div className="header-right">
+            
+              
+              <div className="total-badge">
+                <span className="total-badge-label">Total Turfs</span>
+                <h2 className="total-badge-count">{turfs.length}</h2>
+              </div>
             </div>
           </div>
 
@@ -1056,6 +1313,9 @@ const ManageTurf: React.FC = () => {
                 ))}
               </div>
             </div>
+              <button className="btn btn-success " onClick={handleExportToExcel}>
+                <span className="excel-badge-label"><i className="fa-solid fa-file-excel"></i></span>
+              </button>
           </div>
 
           {/* Results Count */}
@@ -1089,11 +1349,6 @@ const ManageTurf: React.FC = () => {
                           <span>{sport}</span>
                         </div>
                       ))}
-                      {/* {turf.available_sports_list?.length > 3 && (
-                        <div className="sport-badge">
-                          +{turf.available_sports_list.length - 3}
-                        </div>
-                      )} */}
                     </div>
 
                     <div 
@@ -1105,7 +1360,7 @@ const ManageTurf: React.FC = () => {
                       <span>{turf.turf_location}</span>
                     </div>
 
-                    <div className="turf-card-actions">
+                    {/* <div className="turf-card-actions">
                       <button
                         className="action-button action-button-modify"
                         onClick={() => handleModify(turf)}
@@ -1120,7 +1375,7 @@ const ManageTurf: React.FC = () => {
                         <span>🗑️</span>
                         <span>Delete</span>
                       </button>
-                    </div>
+                    </div> */}
                   </div>
                 </div>
               ))}

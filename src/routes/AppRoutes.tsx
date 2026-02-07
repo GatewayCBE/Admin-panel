@@ -45,7 +45,7 @@ const AppRoutes: React.FC = () => {
   return (
     <Routes>
       {/* 🌍 Public pages */}
-    <Route element={<PublicLayout />}>
+  <Route element={<PublicLayout />}>
   <Route path="/" element={<Home />} />
   <Route path="/about" element={<About />} />
   <Route path="/games" element={<Games />} />
@@ -70,7 +70,6 @@ const AppRoutes: React.FC = () => {
   <Route path="/user/razorpay" element={<RazorpayPage />} />
   <Route path="/user/profile" element={<UserProfile />} />
   <Route path="/ugames" element={<UGames/>} />
-
   <Route path="/user/bookinghistory" element={<UserBookingHistoryPage />} />
 </Route>
 
@@ -103,7 +102,8 @@ const AppRoutes: React.FC = () => {
   <Route path="/dashboard/manageturf" element={<ManageTurf />} />
   <Route path="/dashboard/owners" element={<Owner />} />
   <Route path="/dashboard/owners/:ownerId" element={<Turfowner />} />
-    <Route path="/dashboard/owners/:ownerId/turfs/:turfId" element={<TurfDetails />} />
+  <Route path="/dashboard/owners/:ownerId/turfs/:turfId" element={<TurfDetails />} />
+    <Route path="/dashboard/owners/:ownerId/:turfId" element={<TurfDetails />} />
   <Route path="/dashboard/owners/:ownerId/turfs/:turfId/edit" element={<EditTurf />} />
   <Route path="/dashboard/owners/:ownerId/:turfId/slots" element={<TurfBookingsPage />} />
   <Route path="/admin/reportspanel" element={<ReportsPanel />} />

@@ -185,7 +185,7 @@ const UserProfile: React.FC = () => {
 
             {!isEditing && (
               <button
-                className="btn btn-outline-primary btn-sm mt-3"
+                className="btn btn-outline-success btn-sm mt-3"
                 onClick={() => setIsEditing(true)}
               >
                 ✏️ Edit Profile

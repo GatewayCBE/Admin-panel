@@ -859,7 +859,7 @@ const renderStep1 = () => (
     <div className="mt-2 text-end">
       <button
         type="button"
-        className="btn btn-sm btn-outline-primary"
+        className="btn btn-sm btn-outline-success"
         onClick={() => {
           const encodedAddress = encodeURIComponent(formData.turfAddress);
           const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
