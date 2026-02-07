@@ -1,19 +1,59 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { getOwnerById } from "../../services/firestoreService";
 
-// const SERVICE_FEE_PER_SLOT = 10;
 const ADVANCE_PER_SLOT = 1;
 
 const AdvancePayment: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // ✅ ALWAYS declare hooks first
   const [paymentType, setPaymentType] =
     useState<"advance" | "full">("advance");
 
-  const state = location.state as any;
+  // ✅ Safe access to state
+  const state = location.state as any | null;
 
-  if (!state) {
+  const turf = state?.turf;
+  console.log('turfs',turf);
+  
+  const selectedSlots = state?.selectedSlots || [];
+  const selectedDate = state?.selectedDate;
+  const totalPrice = state?.totalPrice || 0;
+
+  // ✅ STORE OWNER DATA (SAFE)
+
+useEffect(() => {
+  if (!turf?.owner_id) return;
+
+  const loadOwner = async () => {
+    const owner = await getOwnerById(turf.owner_id);
+
+    if (!owner) {
+      console.warn("⚠️ Owner not found for turf:", turf.turf_name);
+      return;
+    }
+
+    localStorage.setItem("owner_name", owner.owner_name || "");
+    localStorage.setItem("owner_email", owner.owner_email || "");
+    localStorage.setItem(
+      "owner_mobile",
+      owner.owner_mobile_number || ""
+    );
+
+    console.log("✅ Stored owner data in localStorage:", {
+      name: owner.owner_name,
+      email: owner.owner_email,
+      mobile: owner.owner_mobile_number,
+    });
+  };
+
+  loadOwner();
+}, [turf]);
+
+  // ✅ NOW conditional UI is allowed
+  if (!state || !turf || !selectedDate) {
     return (
       <div className="text-center mt-5 text-danger">
         Invalid payment session
@@ -21,20 +61,8 @@ const AdvancePayment: React.FC = () => {
     );
   }
 
-  const {
-    turf,
-    selectedSlots,
-    selectedDate,
-    totalPrice,
-  } = state;
-
   const slotCount = selectedSlots.length;
-
-  /* ===============================
-     💰 Price Calculations
-     =============================== */
-  // const serviceFee = SERVICE_FEE_PER_SLOT * slotCount;
-  const fullAmount = totalPrice ;
+  const fullAmount = totalPrice;
   const advanceAmount = ADVANCE_PER_SLOT * slotCount;
 
   const payableAmount =
@@ -42,10 +70,7 @@ const AdvancePayment: React.FC = () => {
 
   return (
     <div className="container min-vh-100 d-flex justify-content-center align-items-center mt-5 pt-5">
-      <div
-        className="card shadow-sm border-0 rounded-4 p-4"
-        style={{ width: 420 }}
-      >
+      <div className="card shadow-sm border-0 rounded-4 p-4" style={{ width: 420 }}>
         {/* Header */}
         <div className="mb-3">
           <h5 className="fw-bold text-success mb-1">
@@ -68,13 +93,6 @@ const AdvancePayment: React.FC = () => {
           <span className="text-muted">Slot Cost</span>
           <span>₹{totalPrice}</span>
         </div>
-
-        {/* <div className="d-flex justify-content-between mb-2">
-          <span className="text-muted">
-            Service Fee (₹{SERVICE_FEE_PER_SLOT} × {slotCount})
-          </span>
-          <span>₹{serviceFee}</span>
-        </div> */}
 
         <div className="d-flex justify-content-between fw-bold mt-2">
           <span>Total</span>
@@ -118,13 +136,6 @@ const AdvancePayment: React.FC = () => {
 
         <hr />
 
-        {/* Cancellation Policy */}
-        <h6 className="fw-semibold">Cancellation Policy</h6>
-        <p className="text-muted small mb-4">
-          Safe cancellation has expired for this game.
-          If you cancel, the paid amount will not be refunded.
-        </p>
-
         {/* Footer */}
         <div className="d-flex justify-content-between align-items-center">
           <strong>₹{payableAmount}</strong>
@@ -136,15 +147,15 @@ const AdvancePayment: React.FC = () => {
                   amount: payableAmount,
                   paymentType,
                   bookingPayload: {
-      ...state,
-      date: new Date(state.selectedDate)
-        .toLocaleDateString("en-GB", {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-        })
-        .replace(/ /g, "-"), // ✅ "04-Jan-2026"
-    },
+                    ...state,
+                    date: new Date(selectedDate)
+                      .toLocaleDateString("en-GB", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })
+                      .replace(/ /g, "-"),
+                  },
                 },
               })
             }

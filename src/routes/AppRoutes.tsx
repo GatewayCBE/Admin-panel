@@ -54,7 +54,7 @@ const AppRoutes: React.FC = () => {
 <Route path="/login" element={<Login />} />
 <Route path="/auth" element={<AuthContainer />} />
 <Route path="/register" element={<Register />} />
-<Route path="/admin" element={<AdminLogin />} />  {/* PUBLIC */}
+<Route path="/admin" element={<AdminLogin />} /> 
 
 <Route
   element={
@@ -69,6 +69,8 @@ const AppRoutes: React.FC = () => {
   <Route path="/user/advancepayment" element={<AdvancePayment />} />
   <Route path="/user/razorpay" element={<RazorpayPage />} />
   <Route path="/user/profile" element={<UserProfile />} />
+  <Route path="/ugames" element={<UGames/>} />
+
   <Route path="/user/bookinghistory" element={<UserBookingHistoryPage />} />
 </Route>
 
@@ -83,6 +85,7 @@ const AppRoutes: React.FC = () => {
   <Route path="/owner/dashboard" element={<AddTurfForm />} />
   <Route path="/owner/channelpartnerdashboard" element={<ChannelPartnerDashboard />} />
   <Route path="/owner/profile" element={<OwnerProfile />} />
+  <Route path="/owner/turf/edit/:turfId" element={<OwnerTurfEdit/>} />
   <Route path="/owner/slotmanagement" element={<SlotManagement />} />
   <Route path="/owner/booking-confirmation" element={<SlotBookingConfirmation />} />
   <Route path="/owner/viewbookings" element={<ViewBookings />} />
