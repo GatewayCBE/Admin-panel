@@ -93,6 +93,11 @@ const OwnerTurfEdit: React.FC = () => {
     const fetchTurf = async () => {
       try {
         const turfData = await getTurfById(turfId);
+        if (!turfData) {
+          alert("Turf not found");
+          navigate(-1);
+          return;
+        }
         if (turfData) {
           setTurf(turfData);
           setFormData({
@@ -112,43 +117,33 @@ const OwnerTurfEdit: React.FC = () => {
           setImagePreviews(turfData.turf_images || []);
 
           let loadedSports: Sport[] = [];
-          if (turfData.sport_specific_timing && turfData.sport_specific_price) {
-            loadedSports = Object.keys(turfData.sport_specific_timing!).map(
-              (name) => {
-                const timing = turfData.sport_specific_timing![name];
-                const prices = turfData.sport_specific_price![name] || {};
-                return {
-                  id: Date.now().toString() + name,
-                  name,
-                  openingTime: timing.opening_time || "",
-                  closingTime: timing.closing_time || "",
-                  daySlotStart: timing.day_start_time || "",
-                  daySlotEnd: timing.day_end_time || "",
-                  nightSlotStart: timing.night_start_time || "",
-                  nightSlotEnd: timing.night_end_time || "",
-                  dayPrices: daysOfWeek.reduce(
-                    (acc, day) => ({
-                      ...acc,
-                      [day]: prices[day]?.day?.toString() || "",
-                    }),
-                    {} as any,
-                  ),
-                  nightPrices: daysOfWeek.reduce(
-                    (acc, day) => ({
-                      ...acc,
-                      [day]: prices[day]?.night?.toString() || "",
-                    }),
-                    {} as any,
-                  ),
-                  maxPersons:
-                    turfData.sports_specific_person_count?.[name]?.toString() ||
-                    "",
-                  courtCount: timing.court_count?.toString() || "1",
-                };
-              },
-            );
-            setSports(loadedSports);
-          }
+        if (turfData.available_sports_list && turfData.sport_specific_timing) {
+          loadedSports = turfData.available_sports_list.map((name: string, idx: number) => {
+            const timing = turfData.sport_specific_timing?.[name.toLowerCase()] || {};
+            const prices = turfData.sport_specific_price?.[name.toLowerCase()] || {};
+            return {
+              id: `sport-${idx}`,
+              name,
+              openingTime: timing.opening_time || "",
+              closingTime: timing.closing_time || "",
+              daySlotStart: timing.day_start_time || "",
+              daySlotEnd: timing.day_end_time || "",
+              nightSlotStart: timing.night_start_time || "",
+              nightSlotEnd: timing.night_end_time || "",
+              dayPrices: daysOfWeek.reduce((acc, day) => ({
+                ...acc,
+                [day]: prices[day]?.day?.toString() || ""
+              }), {} as any),
+              nightPrices: daysOfWeek.reduce((acc, day) => ({
+                ...acc,
+                [day]: prices[day]?.night?.toString() || ""
+              }), {} as any),
+              maxPersons: turfData.sports_specific_person_count?.[name]?.toString() || "",
+              courtCount: timing.court_count?.toString() || "1",
+            };
+          });
+        }
+        setSports(loadedSports);
 
           // Detect venue type
           let detectedType: VenueType = null;
@@ -182,6 +177,14 @@ const OwnerTurfEdit: React.FC = () => {
 
           setVenueType(detectedType);
 
+          // Auto-expand sections
+        const expanded: { [key: string]: boolean } = {};
+        loadedSports.forEach(s => {
+          expanded[`${s.id}-day`] = true;
+          expanded[`${s.id}-night`] = true;
+        });
+        setExpandedSections(expanded);
+
           if (detectedType !== "turf") {
             setFormData((prev) => ({
               ...prev,
@@ -193,43 +196,33 @@ const OwnerTurfEdit: React.FC = () => {
         }
       } catch (err) {
         console.error("Error loading turf:", err);
+        alert("Failed to load turf");
+        navigate(-1);
       } finally {
         setLoading(false);
       }
     };
 
     fetchTurf();
-  }, [turfId]);
+  }, [turfId, navigate]);
 
   const validateStep1 = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.turfName.trim())
-      newErrors.turfName = "Venue name is required";
-    if (!formData.turfAddress.trim())
-      newErrors.turfAddress = "Address is required";
-    if (!formData.turfDescription.trim())
-      newErrors.turfDescription = "Description is required";
-    else if (formData.turfDescription.trim().length < 30)
-      newErrors.turfDescription = "Minimum 30 characters required";
+    if (!formData.turfName.trim()) newErrors.turfName = "Venue name is required";
+    if (!formData.turfAddress.trim()) newErrors.turfAddress = "Address is required";
+    if (!formData.turfDescription.trim()) newErrors.turfDescription = "Description is required";
+    else if (formData.turfDescription.trim().length < 30) newErrors.turfDescription = "Minimum 30 characters required";
 
-    if (imagePreviews.length === 0)
-      newErrors.images = "At least 1 image is required";
+    if (imagePreviews.length === 0) newErrors.images = "At least 1 image is required";
 
-    if (
-      formData.dimensionUnit === "feet" ||
-      formData.dimensionUnit === "meter"
-    ) {
-      if (!formData.turfLength.trim())
-        newErrors.turfLength = "Length is required";
-      if (!formData.turfBreadth.trim())
-        newErrors.turfBreadth = "Breadth is required";
-      if (!formData.turfHeight.trim())
-        newErrors.turfHeight = "Height is required";
+    if (venueType === "turf") {
+      if (!formData.turfLength.trim()) newErrors.turfLength = "Turf Length is required";
+      if (!formData.turfBreadth.trim()) newErrors.turfBreadth = "Turf Breadth is required";
+      if (!formData.turfHeight.trim()) newErrors.turfHeight = "Turf Height is required";
     }
 
-    if (formData.facilities.length === 0)
-      newErrors.facilities = "At least one facility is required";
+    if (formData.facilities.length === 0) newErrors.facilities = "At least one facility is required";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -238,100 +231,70 @@ const OwnerTurfEdit: React.FC = () => {
   const validateStep2 = () => {
     const newErrors: Record<string, string> = {};
 
-    if (sports.length === 0) {
-      newErrors.sports = "At least one sport is required";
-    }
+    if (sports.length === 0) newErrors.sports = "At least one sport is required";
 
     sports.forEach((sport, index) => {
-      if (!sport.name.trim())
-        newErrors[`sportName-${index}`] = "Sport name is required";
+      if (!sport.openingTime) newErrors[`openingTime-${index}`] = "Opening Time is required";
+      if (!sport.closingTime) newErrors[`closingTime-${index}`] = "Closing Time is required";
+      if (!sport.daySlotStart) newErrors[`dayStart-${index}`] = "Day Start is required";
+      if (!sport.daySlotEnd) newErrors[`dayEnd-${index}`] = "Day End is required";
+      if (!sport.nightSlotStart) newErrors[`nightStart-${index}`] = "Night Start is required";
+      if (!sport.nightSlotEnd) newErrors[`nightEnd-${index}`] = "Night End is required";
 
-      // Time validations (reuse your logic)
-      if (!sport.openingTime)
-        newErrors[`openingTime-${index}`] = "Opening time required";
-      if (!sport.closingTime)
-        newErrors[`closingTime-${index}`] = "Closing time required";
-      if (!sport.daySlotStart)
-        newErrors[`dayStart-${index}`] = "Day start required";
-      if (!sport.daySlotEnd) newErrors[`dayEnd-${index}`] = "Day end required";
-      if (!sport.nightSlotStart)
-        newErrors[`nightStart-${index}`] = "Night start required";
-      if (!sport.nightSlotEnd)
-        newErrors[`nightEnd-${index}`] = "Night end required";
-
-      // Prices
-      daysOfWeek.forEach((day) => {
-        if (!sport.dayPrices[day]?.trim())
-          newErrors[`dayPrice-${day}-${index}`] = `${day} day price required`;
-        if (!sport.nightPrices[day]?.trim())
-          newErrors[`nightPrice-${day}-${index}`] =
-            `${day} night price required`;
+      daysOfWeek.forEach(day => {
+        if (!sport.dayPrices[day]?.trim()) newErrors[`dayPrice-${day}-${index}`] = "Price required";
+        if (!sport.nightPrices[day]?.trim()) newErrors[`nightPrice-${day}-${index}`] = "Price required";
       });
 
-      if (!sport.maxPersons.trim())
-        newErrors[`maxPersons-${index}`] = "Max persons required";
-      if (!sport.courtCount.trim())
-        newErrors[`courtCount-${index}`] = "Court count required";
+      if (!sport.maxPersons.trim()) newErrors[`maxPersons-${index}`] = "Max persons is required";
+      if (!sport.courtCount.trim()) newErrors[`courtCount-${index}`] = "Court count is required";
     });
 
-    setErrors((prev) => ({ ...prev, ...newErrors }));
+    setErrors(prev => ({ ...prev, ...newErrors }));
     return Object.keys(newErrors).length === 0;
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length + imagePreviews.length > 5) {
-      setErrors((prev) => ({ ...prev, images: "Maximum 5 images allowed" }));
+      setErrors(prev => ({ ...prev, images: "Maximum 5 images allowed" }));
       return;
     }
 
-    const newPreviews = files.map((file) => URL.createObjectURL(file));
-    setImagePreviews((prev) => [...prev, ...newPreviews]);
-    setSelectedImages((prev) => [...prev, ...files]);
+    const newPreviews = files.map(file => URL.createObjectURL(file));
+    setImagePreviews(prev => [...prev, ...newPreviews]);
+    setSelectedImages(prev => [...prev, ...files]);
   };
 
   const removeImage = (index: number) => {
-    setImagePreviews((prev) => prev.filter((_, i) => i !== index));
-    setSelectedImages((prev) => prev.filter((_, i) => i !== index));
+    setImagePreviews(prev => prev.filter((_, i) => i !== index));
+    setSelectedImages(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleFacilityToggle = (facility: string) => {
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
       facilities: prev.facilities.includes(facility)
-        ? prev.facilities.filter((f) => f !== facility)
-        : [...prev.facilities, facility],
+        ? prev.facilities.filter(f => f !== facility)
+        : [...prev.facilities, facility]
     }));
   };
 
-  const updateSportPrice = (
-    sportId: string,
-    type: "dayPrices" | "nightPrices",
-    day: string,
-    value: string,
-  ) => {
-    setSports(
-      sports.map((s) =>
-        s.id === sportId ? { ...s, [type]: { ...s[type], [day]: value } } : s,
-      ),
-    );
+  const updateSportField = (sportId: string, field: keyof Sport, value: any) => {
+    setSports(sports.map(s => s.id === sportId ? { ...s, [field]: value } : s));
+  };
+
+  const updateSportPrice = (sportId: string, type: 'dayPrices' | 'nightPrices', day: string, value: string) => {
+    setSports(sports.map(s =>
+      s.id === sportId ? { ...s, [type]: { ...s[type], [day]: value } } : s
+    ));
   };
 
   const toggleSection = (sportId: string, section: string) => {
-    setExpandedSections((prev) => ({
+    setExpandedSections(prev => ({
       ...prev,
-      [`${sportId}-${section}`]: !prev[`${sportId}-${section}`],
+      [`${sportId}-${section}`]: !prev[`${sportId}-${section}`]
     }));
-  };
-
-  const updateSportField = (
-    sportId: string,
-    field: keyof Sport,
-    value: any,
-  ) => {
-    setSports(
-      sports.map((s) => (s.id === sportId ? { ...s, [field]: value } : s)),
-    );
   };
 
   const handleUpdate = async () => {
@@ -340,7 +303,7 @@ const OwnerTurfEdit: React.FC = () => {
     setSaving(true);
 
     try {
-      let finalImages = imagePreviews.filter((url) => !url.startsWith("blob:")); // keep existing URLs
+      let finalImages = imagePreviews.filter(url => !url.startsWith("blob:"));
 
       if (selectedImages.length > 0) {
         const ownerId = localStorage.getItem("user_id") || "";
@@ -358,14 +321,14 @@ const OwnerTurfEdit: React.FC = () => {
         turf_height: formData.turfHeight,
         turf_images: finalImages.length > 0 ? finalImages : [],
         updated_at: new Date(),
-        // You can add sports update logic here if needed
+        // Add sports update if needed (similar to add form)
       };
 
       const turfRef = doc(db, "environment", "testing", "turfs", turfId);
       await updateDoc(turfRef, updateData);
 
       alert("Turf updated successfully!");
-      navigate(-1); // or to your turfs list page
+      navigate(-1);
     } catch (err) {
       console.error("Update failed:", err);
       alert("Failed to update turf");
@@ -374,36 +337,253 @@ const OwnerTurfEdit: React.FC = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="text-center mt-5 pt-5">
-        <div className="spinner-border text-success" role="status" />
-        <p className="mt-3">Loading turf details...</p>
+  const renderStep1 = () => (
+    <div className="step-container mt-5">
+      <button
+        className="btn-back"
+        onClick={() => navigate(-1)}
+      >
+        <svg width="26" height="26" fill="black" viewBox="0 0 16 16">
+          <path fillRule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H3.707l4.147-4.146a.5.5 0 1 0-.708-.708l-5 5a.5.5 0 0 0 0 .708l5 5a.5.5 0 0 0 .708-.708L3.707 8.5H14.5A.5.5 0 0 0 15 8z" />
+        </svg>
+      </button>
+
+      <h1 className="header-title fw-bold fs-3 text-success text-center">
+        Edit {venueType ? venueType.charAt(0).toUpperCase() + venueType.slice(1) : ""} Venue
+      </h1>
+
+      {/* Images */}
+      <div className="mb-4">
+        <label className="form-label text-muted">
+          Venue Images (existing + new)
+          <span className="text-danger">*</span>
+        </label>
+        <div className="d-flex justify-content-center mb-3">
+          <label htmlFor="imageUpload" style={{ cursor: "pointer" }}>
+            <div className="image-upload-box">
+              <div className="d-flex flex-column align-items-center justify-content-center h-100">
+                <svg width="40" height="40" fill="#999" viewBox="0 0 16 16">
+                  <path d="M6.002 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z" />
+                  <path d="M2.002 1a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2h-12zm12 1a1 1 0 0 1 1 1v6.5l-3.777-1.947a.5.5 0 0 0-.577.093l-3.71 3.71-2.66-1.772a.5.5 0 0 0-.63.062L1.002 12V3a1 1 0 0 1 1-1h12z" />
+                </svg>
+                <small className="text-muted mt-2">Add New Photos</small>
+              </div>
+            </div>
+          </label>
+          <input
+            id="imageUpload"
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleImageUpload}
+            style={{ display: "none" }}
+          />
+        </div>
+
+        {imagePreviews.length > 0 && (
+          <div className="row g-2 mb-4">
+            {imagePreviews.map((src, i) => (
+              <div key={i} className="col-4 col-md-3 position-relative">
+                <img
+                  src={src}
+                  alt="preview"
+                  className="img-fluid rounded shadow-sm"
+                  style={{ height: "120px", objectFit: "cover" }}
+                />
+                <button
+                  type="button"
+                  className="btn btn-sm btn-danger position-absolute top-0 end-0"
+                  onClick={() => removeImage(i)}
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        {errors.images && <small className="text-danger d-block mt-1">{errors.images}</small>}
       </div>
-    );
-  }
+
+      {/* Venue Name */}
+      <div className="mb-3">
+        <input
+          type="text"
+          className={`form-control custom-input ${errors.turfName ? "is-invalid" : ""}`}
+          placeholder="Venue Name *"
+          value={formData.turfName}
+          onChange={e => {
+            setFormData(prev => ({ ...prev, turfName: e.target.value }));
+            if (e.target.value.trim()) setErrors(prev => ({ ...prev, turfName: "" }));
+            else setErrors(prev => ({ ...prev, turfName: "Venue name is required" }));
+          }}
+        />
+        {errors.turfName && <small className="text-danger d-block mt-1">{errors.turfName}</small>}
+      </div>
+
+      {/* Venue Address */}
+      <div className="mb-3">
+        <input
+          type="text"
+          className={`form-control custom-input ${errors.turfAddress ? "is-invalid" : ""}`}
+          placeholder="Enter City *"
+          value={formData.turfAddress}
+          onChange={e => {
+            setFormData(prev => ({ ...prev, turfAddress: e.target.value }));
+            if (e.target.value.trim()) setErrors(prev => ({ ...prev, turfAddress: "" }));
+            else setErrors(prev => ({ ...prev, turfAddress: "City is required" }));
+          }}
+        />
+        {errors.turfAddress && <small className="text-danger d-block mt-1">{errors.turfAddress}</small>}
+      </div>
+
+      {/* Description */}
+      <div className="mb-4">
+        <textarea
+          className={`form-control custom-input ${errors.turfDescription ? "is-invalid" : ""}`}
+          placeholder={venueType === "turf" ? "Turf Description & Achievements *" : "Description & Achievements *"}
+          value={formData.turfDescription}
+          onChange={e => {
+            setFormData(prev => ({ ...prev, turfDescription: e.target.value }));
+            if (e.target.value.trim().length >= 30) setErrors(prev => ({ ...prev, turfDescription: "" }));
+            else setErrors(prev => ({ ...prev, turfDescription: e.target.value.trim() ? "Minimum 30 characters required" : "Description is required" }));
+          }}
+          rows={6}
+        />
+        {errors.turfDescription && <small className="text-danger d-block mt-1">{errors.turfDescription}</small>}
+      </div>
+
+      {/* Dimensions - only for turf */}
+      {venueType === "turf" && (
+        <div className="mb-3">
+          <h6 className="mb-3">Turf Dimensions <span className="text-danger">*</span></h6>
+          <div className="d-flex gap-4 mb-3">
+            <div className="form-check">
+              <input
+                className="form-check-input"
+                type="radio"
+                name="dimensionUnit"
+                id="feet"
+                checked={formData.dimensionUnit === "feet"}
+                onChange={() => setFormData(prev => ({ ...prev, dimensionUnit: "feet" }))}
+              />
+              <label className="form-check-label" htmlFor="feet"><strong>Feet</strong></label>
+            </div>
+            <div className="form-check">
+              <input
+                className="form-check-input"
+                type="radio"
+                name="dimensionUnit"
+                id="meter"
+                checked={formData.dimensionUnit === "meter"}
+                onChange={() => setFormData(prev => ({ ...prev, dimensionUnit: "meter" }))}
+              />
+              <label className="form-check-label" htmlFor="meter"><strong>Meter</strong></label>
+            </div>
+          </div>
+
+          <div className="row mb-3">
+            <div className="col-6">
+              <input
+                type="number"
+                className={`form-control custom-input ${errors.turfLength ? "is-invalid" : ""}`}
+                placeholder="Turf Length *"
+                value={formData.turfLength}
+                onChange={e => {
+                  setFormData(prev => ({ ...prev, turfLength: e.target.value }));
+                  if (e.target.value.trim()) setErrors(prev => ({ ...prev, turfLength: "" }));
+                  else setErrors(prev => ({ ...prev, turfLength: "Turf Length is required" }));
+                }}
+              />
+              {errors.turfLength && <small className="text-danger d-block mt-1">{errors.turfLength}</small>}
+            </div>
+
+            <div className="col-6">
+              <input
+                type="number"
+                className={`form-control custom-input ${errors.turfBreadth ? "is-invalid" : ""}`}
+                placeholder="Turf Breadth *"
+                value={formData.turfBreadth}
+                onChange={e => {
+                  setFormData(prev => ({ ...prev, turfBreadth: e.target.value }));
+                  if (e.target.value.trim()) setErrors(prev => ({ ...prev, turfBreadth: "" }));
+                  else setErrors(prev => ({ ...prev, turfBreadth: "Turf Breadth is required" }));
+                }}
+              />
+              {errors.turfBreadth && <small className="text-danger d-block mt-1">{errors.turfBreadth}</small>}
+            </div>
+          </div>
+
+          <div className="mb-3">
+            <input
+              type="number"
+              className={`form-control custom-input ${errors.turfHeight ? "is-invalid" : ""}`}
+              placeholder="Turf Height *"
+              value={formData.turfHeight}
+              onChange={e => {
+                setFormData(prev => ({ ...prev, turfHeight: e.target.value }));
+                if (e.target.value.trim()) setErrors(prev => ({ ...prev, turfHeight: "" }));
+                else setErrors(prev => ({ ...prev, turfHeight: "Turf Height is required" }));
+              }}
+            />
+            {errors.turfHeight && <small className="text-danger d-block mt-1">{errors.turfHeight}</small>}
+          </div>
+        </div>
+      )}
+
+      {/* Facilities */}
+      <div className="mb-4">
+        <h6 className="mb-3">Facilities <span className="text-danger">*</span></h6>
+        <div className="row">
+          {facilitiesList.map((facility, idx) => (
+            <div key={facility} className="col-6 mb-3">
+              <div className="form-check">
+                <input
+                  className="form-check-input"
+                  type="checkbox"
+                  id={`facility-${idx}`}
+                  checked={formData.facilities.includes(facility)}
+                  onChange={() => handleFacilityToggle(facility)}
+                />
+                <label className="form-check-label facility-label" htmlFor={`facility-${idx}`}>
+                  {facility}
+                </label>
+              </div>
+            </div>
+          ))}
+        </div>
+        {errors.facilities && <small className="text-danger d-block mt-2">{errors.facilities}</small>}
+      </div>
+
+      {/* Next Button */}
+      <div className="text-center">
+        <button
+          className="btn btn-next"
+          onClick={() => {
+            if (validateStep1()) {
+              setStep(2);
+            }
+          }}
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  );
 
   const renderStep2 = () => (
     <>
       <button className="btn-back" onClick={() => setStep(1)}>
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="26"
-          height="26"
-          fill="black"
-          viewBox="0 0 16 16"
-        >
-          <path
-            fillRule="evenodd"
-            d="M15 8a.5.5 0 0 0-.5-.5H3.707l4.147-4.146a.5.5 0 1 0-.708-.708l-5 5a.5.5 0 0 0 0 .708l5 5a.5.5 0 0 0 .708-.708L3.707 8.5H14.5A.5.5 0 0 0 15 8z"
-          />
+        <svg width="26" height="26" fill="black" viewBox="0 0 16 16">
+          <path fillRule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H3.707l4.147-4.146a.5.5 0 1 0-.708-.708l-5 5a.5.5 0 0 0 0 .708l5 5a.5.5 0 0 0 .708-.708L3.707 8.5H14.5A.5.5 0 0 0 15 8z" />
         </svg>
       </button>
 
       <div className="step-container">
         <div className="mb-4">
           <div className="d-flex gap-2 align-items-center mb-4">
-            <h3 className="text-capitalize">Sports & Pricing</h3>
+            <h3 className="text-capitalize">
+              {venueType === "turf" ? "Football & Boxcricket" : venueType}
+            </h3>
           </div>
 
           {sports.map((sport, index) => (
@@ -718,364 +898,19 @@ const OwnerTurfEdit: React.FC = () => {
     </>
   );
 
-  return (
-    <div className="app-container mt-5 pt-4">
-      <div className="header">
-        <button className="btn-back" onClick={() => navigate(-1)}>
-          <svg width="24" height="24" fill="white" viewBox="0 0 16 16">
-            <path
-              fillRule="evenodd"
-              d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8z"
-            />
-          </svg>
-        </button>
-        <h1 className="header-title fw-bold fs-3 text-center">
-      {step === 1 && venueType === 'turf' && 'Edit Turf Venue'}
-      {step === 1 && venueType === 'badminton' && 'Edit Badminton Venue'}
-      {step === 1 && venueType === 'pickleball' && 'Edit Pickleball Venue'}
-    </h1>
+  if (loading) {
+    return (
+      <div className="text-center mt-5 pt-5">
+        <div className="spinner-border text-success" role="status" />
+        <p className="mt-3">Loading turf details...</p>
       </div>
+    );
+  }
 
+  return (
+    <div>
       <div className="content">
-        {step === 1 ? (
-          <>
-            {/* Step 1 content - same as your EditTurf */}
-            <div className="step-container mt-5">
-              {/* Images */}
-              <div className="mb-4">
-                <label className="form-label text-muted">
-                  Venue Images (existing + new)
-                  <span className="text-danger">*</span>
-                </label>
-                <div className="d-flex justify-content-center mb-3">
-                  <label htmlFor="imageUpload" style={{ cursor: "pointer" }}>
-                    <div className="image-upload-box">
-                      <div className="d-flex flex-column align-items-center justify-content-center h-100">
-                        <svg
-                          width="40"
-                          height="40"
-                          fill="#999"
-                          viewBox="0 0 16 16"
-                        >
-                          <path d="M6.002 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z" />
-                          <path d="M2.002 1a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2h-12zm12 1a1 1 0 0 1 1 1v6.5l-3.777-1.947a.5.5 0 0 0-.577.093l-3.71 3.71-2.66-1.772a.5.5 0 0 0-.63.062L1.002 12V3a1 1 0 0 1 1-1h12z" />
-                        </svg>
-                        <small className="text-muted mt-2">
-                          Add New Photos
-                        </small>
-                      </div>
-                    </div>
-                  </label>
-                  <input
-                    id="imageUpload"
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={(e) => {
-                      const files = Array.from(e.target.files || []);
-                      const newPreviews = files.map((f) =>
-                        URL.createObjectURL(f),
-                      );
-                      setImagePreviews((prev) => [...prev, ...newPreviews]);
-                      setSelectedImages((prev) => [...prev, ...files]);
-                    }}
-                    style={{ display: "none" }}
-                  />
-                </div>
-
-                {imagePreviews.length > 0 && (
-                  <div className="row g-2 mb-4">
-                    {imagePreviews.map((src, i) => (
-                      <div key={i} className="col-4 col-md-3 position-relative">
-                        <img
-                          src={src}
-                          alt="preview"
-                          className="img-fluid rounded shadow-sm"
-                          style={{ height: "120px", objectFit: "cover" }}
-                        />
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-danger position-absolute top-0 end-0"
-                          onClick={() => {
-                            setImagePreviews((prev) =>
-                              prev.filter((_, idx) => idx !== i),
-                            );
-                            setSelectedImages((prev) =>
-                              prev.filter((_, idx) => idx !== i),
-                            );
-                          }}
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="mb-3">
-                <input
-                  type="text"
-                  className={`form-control custom-input ${errors.turfName ? "is-invalid" : ""}`}
-                  placeholder="Venue Name *"
-                  name="turfName"
-                  value={formData.turfName}
-                  onChange={(e) => {
-                    setFormData((prev) => ({
-                      ...prev,
-                      turfName: e.target.value,
-                    }));
-                    if (e.target.value.trim())
-                      setErrors((prev) => ({ ...prev, turfName: "" }));
-                    else
-                      setErrors((prev) => ({
-                        ...prev,
-                        turfName: "Venue name is required",
-                      }));
-                  }}
-                />
-                {errors.turfName && (
-                  <small className="text-danger">{errors.turfName}</small>
-                )}
-              </div>
-
-              <div className="mb-3 position-relative">
-                <input
-                  type="text"
-                  className={`form-control custom-input ${errors.turfAddress ? "is-invalid" : ""}`}
-                  placeholder="Enter City *"
-                  name="turfAddress"
-                  value={formData.turfAddress}
-                  onChange={(e) => {
-                    setFormData((prev) => ({
-                      ...prev,
-                      turfAddress: e.target.value,
-                    }));
-                    if (e.target.value.trim())
-                      setErrors((prev) => ({ ...prev, turfAddress: "" }));
-                    else
-                      setErrors((prev) => ({
-                        ...prev,
-                        turfAddress: "City is required",
-                      }));
-                  }}
-                />
-                {errors.turfAddress && (
-                  <small className="text-danger">{errors.turfAddress}</small>
-                )}
-              </div>
-
-              <div className="mb-4">
-                <textarea
-                  className={`form-control custom-input ${errors.turfDescription ? "is-invalid" : ""}`}
-                  placeholder={
-                    venueType === "turf"
-                      ? "Turf Description & Achievements *"
-                      : "Description & Achievements *"
-                  }
-                  name="turfDescription"
-                  value={formData.turfDescription}
-                  onChange={(e) => {
-                    setFormData((prev) => ({
-                      ...prev,
-                      turfDescription: e.target.value,
-                    }));
-                    if (e.target.value.trim().length >= 30)
-                      setErrors((prev) => ({ ...prev, turfDescription: "" }));
-                    else
-                      setErrors((prev) => ({
-                        ...prev,
-                        turfDescription: e.target.value.trim()
-                          ? "Minimum 30 characters required"
-                          : "Description is required",
-                      }));
-                  }}
-                  rows={6}
-                />
-                {errors.turfDescription && (
-                  <small className="text-danger">
-                    {errors.turfDescription}
-                  </small>
-                )}
-              </div>
-
-              {venueType === "turf" && (
-                <div className="mb-3">
-                  <h6 className="mb-3">Turf Dimensions *</h6>
-                  <div className="d-flex gap-4 mb-3">
-                    <div className="form-check">
-                      <input
-                        className="form-check-input"
-                        type="radio"
-                        name="dimensionUnit"
-                        id="feet"
-                        checked={formData.dimensionUnit === "feet"}
-                        onChange={() =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            dimensionUnit: "feet",
-                          }))
-                        }
-                      />
-                      <label className="form-check-label" htmlFor="feet">
-                        Feet
-                      </label>
-                    </div>
-                    <div className="form-check">
-                      <input
-                        className="form-check-input"
-                        type="radio"
-                        name="dimensionUnit"
-                        id="meter"
-                        checked={formData.dimensionUnit === "meter"}
-                        onChange={() =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            dimensionUnit: "meter",
-                          }))
-                        }
-                      />
-                      <label className="form-check-label" htmlFor="meter">
-                        Meter
-                      </label>
-                    </div>
-                  </div>
-                  <div className="row mb-3">
-                    <div className="col-6">
-                      <input
-                        type="number"
-                        className={`form-control custom-input ${errors.turfLength ? "is-invalid" : ""}`}
-                        placeholder="Turf Length *"
-                        name="turfLength"
-                        value={formData.turfLength}
-                        onChange={(e) => {
-                          setFormData((prev) => ({
-                            ...prev,
-                            turfLength: e.target.value,
-                          }));
-                          if (e.target.value.trim())
-                            setErrors((prev) => ({ ...prev, turfLength: "" }));
-                          else
-                            setErrors((prev) => ({
-                              ...prev,
-                              turfLength: "Turf length is required",
-                            }));
-                        }}
-                      />
-                      {errors.turfLength && (
-                        <small className="text-danger">
-                          {errors.turfLength}
-                        </small>
-                      )}
-                    </div>
-                    <div className="col-6">
-                      <input
-                        type="number"
-                        className={`form-control custom-input ${errors.turfBreadth ? "is-invalid" : ""}`}
-                        placeholder="Turf Breadth *"
-                        name="turfBreadth"
-                        value={formData.turfBreadth}
-                        onChange={(e) => {
-                          setFormData((prev) => ({
-                            ...prev,
-                            turfBreadth: e.target.value,
-                          }));
-                          if (e.target.value.trim())
-                            setErrors((prev) => ({ ...prev, turfBreadth: "" }));
-                          else
-                            setErrors((prev) => ({
-                              ...prev,
-                              turfBreadth: "Turf breadth is required",
-                            }));
-                        }}
-                      />
-                      {errors.turfBreadth && (
-                        <small className="text-danger">
-                          {errors.turfBreadth}
-                        </small>
-                      )}
-                    </div>
-                  </div>
-                  <div className="mb-3">
-                    <input
-                      type="number"
-                      className={`form-control custom-input ${errors.turfHeight ? "is-invalid" : ""}`}
-                      placeholder="Turf Height *"
-                      name="turfHeight"
-                      value={formData.turfHeight}
-                      onChange={(e) => {
-                        setFormData((prev) => ({
-                          ...prev,
-                          turfHeight: e.target.value,
-                        }));
-                        if (e.target.value.trim())
-                          setErrors((prev) => ({ ...prev, turfHeight: "" }));
-                        else
-                          setErrors((prev) => ({
-                            ...prev,
-                            turfHeight: "Turf height is required",
-                          }));
-                      }}
-                    />
-                    {errors.turfHeight && (
-                      <small className="text-danger">{errors.turfHeight}</small>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              <div className="mb-4">
-                <h6 className="mb-3">Facilities *</h6>
-                <div className="row">
-                  {facilitiesList.map((facility, index) => (
-                    <div key={facility} className="col-6 mb-3">
-                      <div className="form-check">
-                        <input
-                          className="form-check-input"
-                          id={`facility-${index}`}
-                          type="checkbox"
-                          checked={formData.facilities.includes(facility)}
-                          onChange={() => handleFacilityToggle(facility)}
-                        />
-                        <label
-                          className="form-check-label facility-label"
-                          htmlFor={`facility-${index}`}
-                        >
-                          {facility}
-                        </label>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                {errors.facilities && (
-                  <small className="text-danger d-block mt-2">
-                    {errors.facilities}
-                  </small>
-                )}
-              </div>
-
-              <div className="text-center">
-                <button
-                  className="btn btn-next"
-                  onClick={() => {
-                    if (!validateStep1()) return;
-                    const sportName =
-                      venueType === "turf"
-                        ? "Football & Boxcricket"
-                        : venueType === "badminton"
-                          ? "Badminton"
-                          : "Pickleball";
-                    setStep(2);
-                  }}
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          </>
-        ) : (
-          renderStep2()
-        )}
+        {step === 1 ? renderStep1() : renderStep2()}
       </div>
 
       <style>{`
