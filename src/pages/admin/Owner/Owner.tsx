@@ -46,6 +46,9 @@ const Owner: React.FC = () => {
               </span>
             </div>
           </div>
+          <button className="btn btn-success btn-lg w-50">
+              Total Channel Partners: {ownersList.length}
+            </button>
         </div>
 
         {/* OWNER LIST */}

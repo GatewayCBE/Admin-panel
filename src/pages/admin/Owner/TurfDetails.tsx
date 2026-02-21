@@ -8,6 +8,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import badmintonImg from "../../../assets/badminton.png";
 import cricketImg from "../../../assets/boxcricket_football.png";
 import pickleImg from "../../../assets/PickleImg.png"
+import { useAuth } from "../Turf/useAuth";
 
 interface TurfData {
   turf_id: string;
@@ -47,8 +48,10 @@ const isCurrentlyOpen = (openStr: string, closeStr: string): boolean => {
 
 const TurfDetails: React.FC = () => {
   const { turfId } = useParams<{ turfId: string }>();
+   const { role } = useAuth();
   const [turf, setTurf] = useState<any>(null);
   const [owner, setOwner] = useState<any>(null);
+  const [selectedSport, setSelectedSport] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [showOwnerModal, setShowOwnerModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -162,6 +165,17 @@ const TurfDetails: React.FC = () => {
     "pickleball": pickleImg,
   };
 
+  const getMaxPlayers = () => {
+  if (!turf) return null;
+
+  const sport =
+    selectedSport ||
+    turf.available_sports_list?.[0];
+
+  return turf.sports_specific_person_count?.[sport] || null;
+};
+
+const maxPlayers = getMaxPlayers();
   return (
     <div style={{ fontFamily: "Poppins, sans-serif", backgroundColor: "#f8f9fa" }}>
       <AdminNavbar />
@@ -252,14 +266,17 @@ const TurfDetails: React.FC = () => {
             >
               Owner Details
             </button>
+            {role === "admin" ||role === "super_admin" ? (
             <button
               className="btn btn-outline-warning btn-lg px-5 py-3 fw-semibold"
               onClick={() => navigate(`/dashboard/owners/${turf.owner_id}/turfs/${turfId}/edit`)}
             >
               Edit Turf
             </button>
+            ) : null}
 
-            <button
+            {role === "super_admin" && (
+              <button
               className={`btn btn-lg px-5 py-3 fw-bold ${
                 turf.turf_active_status ? "btn-success" : "btn-danger"
               }`}
@@ -268,13 +285,16 @@ const TurfDetails: React.FC = () => {
             >
               {turf.turf_active_status ? "Approved" : "Approve Turf"}
             </button>
-
+            )}
+            
+            {role === "super_admin" && (
             <button
               className="btn btn-outline-danger btn-lg px-5 py-3 fw-semibold"
               onClick={() => setShowDeleteModal(true)}
             >
                Delete Turf
             </button>
+            )}
           </div>
         </div>
 
@@ -307,7 +327,9 @@ const TurfDetails: React.FC = () => {
           <div className="col-12 col-sm-6 col-md-4">
             <div className="card shadow-sm p-3 h-100">
               <h6 className="text-muted mb-1" style={{ fontSize: "clamp(0.75rem, 2vw, 0.875rem)" }}>Max Players</h6>
-              <h4 className="fw-bold text-success mb-0" style={{ fontSize: "clamp(1.25rem, 3vw, 1.75rem)" }}>10+</h4>
+              <h4 className="fw-bold text-success mb-0" style={{ fontSize: "clamp(1.25rem, 3vw, 1.75rem)" }}>
+                {maxPlayers ? `${maxPlayers}+` : "—"}
+              </h4>
             </div>
           </div>
           <div className="col-12 col-sm-6 col-md-4">

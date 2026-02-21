@@ -5,6 +5,9 @@ import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "../../../firebase"; // adjust your firebase config path
 import { uploadTurfImages } from "../../../services/storageService";
 import { getTurfById } from "../../../services/firestoreService";
+// import { hour12ToMinutes } from '../../../utils/dateUtils';
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
 interface Sport {
   id: string;
@@ -86,6 +89,49 @@ const OwnerTurfEdit: React.FC = () => {
     "sunday",
   ];
 
+  const timeStringToDate = (time: string | null) => {
+  if (!time) return null;
+
+  const [hoursStr, minutesStr] = time.split(':');
+
+  const date = new Date();
+  date.setHours(parseInt(hoursStr));
+  date.setMinutes(parseInt(minutesStr));
+  date.setSeconds(0);
+  date.setMilliseconds(0);
+
+  return date;
+};
+
+const dateToTimeString = (date: Date | null) => {
+  if (!date) return '';
+
+  const hours = date.getHours(); // no padStart (removes leading zero)
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+
+  return `${hours}:${minutes}`;
+};
+
+
+
+
+const convert12To24 = (time: string): string => {
+  if (!time) return '';
+
+  const match = time.match(/^(0?[1-9]|1[0-2]):([0-5][0-9])\s?(AM|PM)$/i);
+  if (!match) return time;
+
+  let hours = parseInt(match[1]);
+  const minutes = match[2];
+  const period = match[3].toUpperCase();
+
+  if (period === 'PM' && hours !== 12) hours += 12;
+  if (period === 'AM' && hours === 12) hours = 0;
+
+  return `${hours.toString().padStart(2, '0')}:${minutes}`;
+};
+
+
   // Fetch existing turf data
   useEffect(() => {
     if (!turfId) return;
@@ -124,12 +170,12 @@ const OwnerTurfEdit: React.FC = () => {
             return {
               id: `sport-${idx}`,
               name,
-              openingTime: timing.opening_time || "",
-              closingTime: timing.closing_time || "",
-              daySlotStart: timing.day_start_time || "",
-              daySlotEnd: timing.day_end_time || "",
-              nightSlotStart: timing.night_start_time || "",
-              nightSlotEnd: timing.night_end_time || "",
+              openingTime: convert12To24(timing.opening_time || ''),
+                closingTime: convert12To24(timing.closing_time || ''),
+                daySlotStart: convert12To24(timing.day_start_time || ''),
+                daySlotEnd: convert12To24(timing.day_end_time || ''),
+                nightSlotStart: convert12To24(timing.night_start_time || ''),
+                nightSlotEnd: convert12To24(timing.night_end_time || ''),
               dayPrices: daysOfWeek.reduce((acc, day) => ({
                 ...acc,
                 [day]: prices[day]?.day?.toString() || ""
@@ -206,6 +252,51 @@ const OwnerTurfEdit: React.FC = () => {
     fetchTurf();
   }, [turfId, navigate]);
 
+  const timeToMinutes = (time: string): number | null => {
+  if (!time) return null;
+  // const [hours, minutes] = time.split(':');
+  const [hours, minutes] = time.split(':');
+
+  return parseInt(hours) * 60 + parseInt(minutes);
+};
+
+const validateSportTimes = (sport: Sport, index: number) => {
+    const errors: Record<string, string> = {};
+
+const open = timeToMinutes(sport.openingTime);
+const close = timeToMinutes(sport.closingTime);
+const dayStart = timeToMinutes(sport.daySlotStart);
+const dayEnd = timeToMinutes(sport.daySlotEnd);
+const nightStart = timeToMinutes(sport.nightSlotStart);
+let nightEnd = timeToMinutes(sport.nightSlotEnd);
+
+
+    if (!sport.openingTime) errors[`openingTime-${index}`] = "Opening time is required";
+    if (!sport.closingTime) errors[`closingTime-${index}`] = "Closing time is required";
+    if (open == null || close == null) return errors;
+
+    // if (close <= open) errors[`closingTime-${index}`] = "Closing must be after opening";
+    // if (dayStart != null && dayStart < open) errors[`dayStart-${index}`] = "Day start cannot be before opening";
+    // if (dayEnd != null && dayEnd > close) errors[`dayEnd-${index}`] = "Day end cannot be after closing";
+    // if (dayStart != null && dayEnd != null && dayEnd <= dayStart) errors[`dayEnd-${index}`] = "Day end must be after day start";
+    // if (nightStart != null && nightStart < open) errors[`nightStart-${index}`] = "Night start cannot be before opening";
+    // if (nightEnd != null) {
+    //   if (nightEnd < nightStart!) nightEnd += 1440;
+    //   if (nightEnd > close) errors[`nightEnd-${index}`] = "Night end cannot be after closing";
+    // }
+    // if (dayEnd != null && nightStart != null && nightStart < dayEnd) errors[`nightStart-${index}`] = "Night must start after day ends";
+
+    return errors;
+  };
+
+  const validatePrice = (value: string) => {
+    if (!value.trim()) return "Price required";
+    const num = Number(value);
+    if (isNaN(num) || num <= 0) return "Invalid price";
+    if (num > 99999) return "Price cannot exceed ₹99999";
+    return "";
+  };
+
   const validateStep1 = () => {
     const newErrors: Record<string, string> = {};
 
@@ -229,21 +320,23 @@ const OwnerTurfEdit: React.FC = () => {
   };
 
   const validateStep2 = () => {
-    const newErrors: Record<string, string> = {};
+    let newErrors: Record<string, string> = {};
 
     if (sports.length === 0) newErrors.sports = "At least one sport is required";
 
     sports.forEach((sport, index) => {
-      if (!sport.openingTime) newErrors[`openingTime-${index}`] = "Opening Time is required";
-      if (!sport.closingTime) newErrors[`closingTime-${index}`] = "Closing Time is required";
-      if (!sport.daySlotStart) newErrors[`dayStart-${index}`] = "Day Start is required";
-      if (!sport.daySlotEnd) newErrors[`dayEnd-${index}`] = "Day End is required";
-      if (!sport.nightSlotStart) newErrors[`nightStart-${index}`] = "Night Start is required";
-      if (!sport.nightSlotEnd) newErrors[`nightEnd-${index}`] = "Night End is required";
+      if (!sport.name.trim()) newErrors[`sportName-${index}`] = "Sport name is required";
 
-      daysOfWeek.forEach(day => {
-        if (!sport.dayPrices[day]?.trim()) newErrors[`dayPrice-${day}-${index}`] = "Price required";
-        if (!sport.nightPrices[day]?.trim()) newErrors[`nightPrice-${day}-${index}`] = "Price required";
+      newErrors = { ...newErrors, ...validateSportTimes(sport, index) };
+
+      Object.entries(sport.dayPrices).forEach(([day, price]) => {
+        const err = validatePrice(price);
+        if (err) newErrors[`dayPrice-${day}-${index}`] = err;
+      });
+
+      Object.entries(sport.nightPrices).forEach(([day, price]) => {
+        const err = validatePrice(price);
+        if (err) newErrors[`nightPrice-${day}-${index}`] = err;
       });
 
       if (!sport.maxPersons.trim()) newErrors[`maxPersons-${index}`] = "Max persons is required";
