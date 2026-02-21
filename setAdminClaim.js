@@ -7,29 +7,30 @@ admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
 
-async function setAdmin(uid) {
+async function setAdmin(uid, role) {
   try {
     await admin.auth().setCustomUserClaims(uid, {
       admin: true,
+      role: "super_admin",
     });
 
-    console.log(`Admin claim set successfully for UID: ${uid}`);
+    console.log(`Admin claim set successfully for UID: ${uid} → ${role}`);
   } catch (err) {
     console.error(`Failed for ${uid}:`, err.message);
   }
 }
 
 const ADMIN_UID = [
-  "coGUbxu4mLZVpJhDmAl2aqG8zsj2",
-  "bVvLILbnsSPJBQEhUiztgMQ5Cre2",
-  "zGWf5MR0k6bCgFE7zWoK8Gtu0lI3",
+  {uid: "coGUbxu4mLZVpJhDmAl2aqG8zsj2", role: "super_admin"},
+  {uid: "bVvLILbnsSPJBQEhUiztgMQ5Cre2", role: "admin"},
+  {uid: "zGWf5MR0k6bCgFE7zWoK8Gtu0lI3", role: "admin"},
 ];
 
 async function makeAllAdmins() {
   for (const uid of ADMIN_UID) {
-    await setAdmin(uid);
+    await setAdmin(uid.uid, uid.role);
   }
-  console.log("All done.");
+  console.log("All claims updated.");
   process.exit(0);
 }
 

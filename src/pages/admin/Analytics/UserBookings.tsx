@@ -34,6 +34,7 @@ const UserBookings: React.FC = () => {
         setLoading(true);
         const data = await getUserBookings();
         setBookings(data);
+        console.log("data", data);
       } catch (err: any) {
         console.error("Failed to load user bookings:", err);
         setError(err.message || "Failed to load bookings");
