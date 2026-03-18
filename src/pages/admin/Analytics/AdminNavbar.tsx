@@ -60,11 +60,11 @@ const AdminNavbar: React.FC = () => {
           
           {/* CENTER LINKS */}
           <ul className="navbar-nav mx-auto text-center text-lg-start gap-lg-3">
-            <li className="nav-item">
+            {/* <li className="nav-item">
               <Link className="nav-link text-white fs-6 fw-bold" to="/" onClick={closeMenu}>
                 HOME
               </Link>
-            </li>
+            </li> */}
             <li className="nav-item">
               <Link className="nav-link text-white fs-6 fw-bold" to="/dashboard" onClick={closeMenu}>
                 

@@ -28,7 +28,7 @@ interface AllReportsProps {
 }
 
 type FilterPeriod = "day" | "week" | "month" | "custom";
-type ReportType = "all" | "turf" | "user" | "owner";
+type ReportType = "all" | "turf" | "user" | "owner" | "bookingDate" | "slotDate" | "turfId";
 
 const AllReports: React.FC<AllReportsProps> = ({ bookings }) => {
   const [filterPeriod, setFilterPeriod] = useState<FilterPeriod>("day");
@@ -45,6 +45,7 @@ const AllReports: React.FC<AllReportsProps> = ({ bookings }) => {
   const [selectedOwner, setSelectedOwner] = useState<string>("all");
   const [selectedTurf, setSelectedTurf] = useState<string>("all");
   const [selectedUser, setSelectedUser] = useState<string>("all");
+  const [bookingIdSearch, setBookingIdSearch] = useState<string>("");
 
   // Helper: Check if slot is day (6AM-6PM) or night
   const isNightSlot = (time: string): boolean => {
@@ -81,7 +82,6 @@ const AllReports: React.FC<AllReportsProps> = ({ bookings }) => {
   // Get turfs belonging to selected owner
   const ownerTurfs = useMemo(() => {
     if (reportType !== "owner" || selectedOwner === "all") return [];
-    
     const turfMap = new Map();
     bookings
       .filter((b) => b.ownerId === selectedOwner)
@@ -144,6 +144,21 @@ const AllReports: React.FC<AllReportsProps> = ({ bookings }) => {
         if (selectedTurf !== "all" && booking.turfId !== selectedTurf) return false;
       } else if (reportType === "user") {
         if (selectedUser !== "all" && booking.userId !== selectedUser) return false;
+      } else if (reportType === "bookingDate") {
+        if (!booking.bookingDate) return false;
+        const bookingCreatedDate = parseBookingDate(booking.bookingDate);
+        if (filterPeriod === "day") {
+          const selected = new Date(selectedDate);
+          if (bookingCreatedDate.toDateString() !== selected.toDateString()) return false;
+        } else {
+          const start = new Date(startDate);
+          const end = new Date(endDate);
+          if (bookingCreatedDate < start || bookingCreatedDate > end) return false;
+        }
+      } else if (reportType === "slotDate") {
+        // Slot date is already handled by the main date filter above
+      } else if (reportType === "turfId") {
+        if (selectedTurf !== "all" && booking.turfId !== selectedTurf) return false;
       }
       
       return true;
@@ -288,6 +303,7 @@ const AllReports: React.FC<AllReportsProps> = ({ bookings }) => {
         owner: selectedOwner !== "all" ? selectedOwner : "All",
         turf: selectedTurf !== "all" ? selectedTurf : "All",
         user: selectedUser !== "all" ? selectedUser : "All",
+        reportType: reportType,
       },
       metrics,
       bookings: bookingList,
@@ -451,6 +467,9 @@ const AllReports: React.FC<AllReportsProps> = ({ bookings }) => {
                 <option value="turf">By Turf</option>
                 <option value="user">By User</option>
                 <option value="owner">By Owner</option>
+                <option value="bookingDate">By Booking Date</option>
+                <option value="slotDate">By Slot Date</option>
+                <option value="turfId">By Turf ID</option>
               </select>
             </div>
 
@@ -497,7 +516,7 @@ const AllReports: React.FC<AllReportsProps> = ({ bookings }) => {
               </div>
             )}
 
-            {/* Turf Selector */}
+            {/* Turf Selector for By Turf */}
             {reportType === "turf" && (
               <div className="col-md-3">
                 <label className="form-label fw-semibold">Select Turf</label>
@@ -531,6 +550,26 @@ const AllReports: React.FC<AllReportsProps> = ({ bookings }) => {
                   {users.map((user) => (
                     <option key={user.id} value={user.id}>
                       {user.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Turf Selector for By Turf ID */}
+            {reportType === "turfId" && (
+              <div className="col-md-3">
+                <label className="form-label fw-semibold">Select Turf</label>
+                <select
+                  className="form-select"
+                  value={selectedTurf}
+                  onChange={(e) => setSelectedTurf(e.target.value)}
+                  style={{ borderRadius: "10px" }}
+                >
+                  <option value="all">All Turfs</option>
+                  {turfs.map((turf) => (
+                    <option key={turf.id} value={turf.id}>
+                      {turf.name} ({turf.id})
                     </option>
                   ))}
                 </select>
@@ -856,6 +895,43 @@ const AllReports: React.FC<AllReportsProps> = ({ bookings }) => {
         background: "rgba(255, 255, 255, 0.95)"
       }}>
         <div className="card-body p-4">
+
+          {/* Booking ID Search Bar */}
+          <div className="mb-4">
+            <label className="form-label fw-semibold">🔍 Search by Booking ID</label>
+            <div className="input-group">
+              <span className="input-group-text" style={{ borderRadius: "10px 0 0 10px", background: "#f8f9fa" }}>
+                🔍
+              </span>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Enter Booking ID to search..."
+                value={bookingIdSearch}
+                onChange={(e) => setBookingIdSearch(e.target.value)}
+                style={{ borderRadius: "0 10px 10px 0" }}
+              />
+              {bookingIdSearch && (
+                <button
+                  className="btn btn-outline-secondary"
+                  onClick={() => setBookingIdSearch("")}
+                  style={{ borderRadius: "0 10px 10px 0", marginLeft: "4px" }}
+                  title="Clear search"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+            {bookingIdSearch && (
+              <small className="text-muted mt-1 d-block">
+                {filteredBookings.filter(b =>
+                  (b.bookingId || b.id || "").toLowerCase().includes(bookingIdSearch.toLowerCase())
+                ).length === 0
+                  ? "No booking found with this ID."
+                  : `Showing result for Booking ID: "${bookingIdSearch}"`}
+              </small>
+            )}
+          </div>
           <ul className="nav nav-tabs mb-4" role="tablist">
             <li className="nav-item" role="presentation">
               <button 
@@ -892,17 +968,32 @@ const AllReports: React.FC<AllReportsProps> = ({ bookings }) => {
           <div className="tab-content">
             {/* All Bookings Table */}
             <div className="tab-pane fade show active" id="all-tab">
-              <BookingTable bookings={filteredBookings} isNightSlot={isNightSlot} />
+              <BookingTable
+                bookings={bookingIdSearch
+                  ? filteredBookings.filter(b => (b.bookingId || b.id || "").toLowerCase().includes(bookingIdSearch.toLowerCase()))
+                  : filteredBookings}
+                isNightSlot={isNightSlot}
+              />
             </div>
 
             {/* Day Bookings Table */}
             <div className="tab-pane fade" id="day-tab">
-              <BookingTable bookings={dayBookings} isNightSlot={isNightSlot} />
+              <BookingTable
+                bookings={bookingIdSearch
+                  ? dayBookings.filter(b => (b.bookingId || b.id || "").toLowerCase().includes(bookingIdSearch.toLowerCase()))
+                  : dayBookings}
+                isNightSlot={isNightSlot}
+              />
             </div>
 
             {/* Night Bookings Table */}
             <div className="tab-pane fade" id="night-tab">
-              <BookingTable bookings={nightBookings} isNightSlot={isNightSlot} />
+              <BookingTable
+                bookings={bookingIdSearch
+                  ? nightBookings.filter(b => (b.bookingId || b.id || "").toLowerCase().includes(bookingIdSearch.toLowerCase()))
+                  : nightBookings}
+                isNightSlot={isNightSlot}
+              />
             </div>
           </div>
         </div>
