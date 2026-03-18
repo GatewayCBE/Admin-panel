@@ -13,7 +13,9 @@ const UserBookings: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
-  
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 50;
+
   // ✅ Search state
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -55,7 +57,7 @@ const UserBookings: React.FC = () => {
     try {
       setCancellingId(bookingId);
       await cancelBooking(bookingId);
-      setBookings(prev => prev.filter(b => b.id !== bookingId));
+      setBookings((prev) => prev.filter((b) => b.id !== bookingId));
     } catch (err: any) {
       alert(err.message || "Failed to cancel booking");
     } finally {
@@ -158,17 +160,29 @@ const UserBookings: React.FC = () => {
 
   // ✅ Filtered bookings based on search query
   const filteredBookings = useMemo(() => {
-    if (!searchQuery.trim()) return bookings;
+  if (!searchQuery.trim()) return bookings;
 
-    const query = searchQuery.toLowerCase();
+  const query = searchQuery.toLowerCase();
 
-    return bookings.filter((booking) => {
-      const turfName = getTurfName(booking).toLowerCase();
-      const sport = getSport(booking).toLowerCase();
+  return bookings.filter((booking) => {
+    const turfName = getTurfName(booking).toLowerCase();
+    const sport = getSport(booking).toLowerCase();
+    const bookingId = String(booking.id).toLowerCase();
 
-      return turfName.includes(query) || sport.includes(query);
-    });
-  }, [bookings, searchQuery]);
+    return (
+      turfName.includes(query) ||
+      sport.includes(query) ||
+      bookingId.includes(query)
+    );
+  });
+}, [bookings, searchQuery]);
+
+const totalPages = Math.ceil(filteredBookings.length / rowsPerPage);
+
+const paginatedBookings = useMemo(() => {
+  const start = (currentPage - 1) * rowsPerPage;
+  return filteredBookings.slice(start, start + rowsPerPage);
+}, [filteredBookings, currentPage]);
 
   if (loading) {
     return (
@@ -183,6 +197,43 @@ const UserBookings: React.FC = () => {
     return <div className="alert alert-danger text-center">{error}</div>;
   }
 
+  const exportCSV = () => {
+  const headers = [
+    "Booking ID",
+    "Turf",
+    "Sport",
+    "Court",
+    "Date",
+    "Time",
+    "Amount",
+    "Status",
+  ];
+
+  const rows = filteredBookings.map((b) => [
+    b.id,
+    getTurfName(b),
+    getSport(b),
+    b.court || "court 1",
+    formatDate(getDate(b)),
+    getTimeDisplay(b),
+    getTotal(b),
+    getStatus(b),
+  ]);
+
+  let csvContent =
+    "data:text/csv;charset=utf-8," +
+    [headers, ...rows].map((e) => e.join(",")).join("\n");
+
+  const encodedUri = encodeURI(csvContent);
+
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", "bookings.csv");
+
+  document.body.appendChild(link);
+  link.click();
+};
+
   return (
     <>
       <style>{`
@@ -192,11 +243,8 @@ const UserBookings: React.FC = () => {
           z-index: 100;
           background: white;
           padding: 1.5rem 0;
-          margin-bottom: 2rem;
           border-radius: 1rem;
         }
-
- 
 
         .search-icon {
           position: absolute;
@@ -307,11 +355,31 @@ const UserBookings: React.FC = () => {
             font-size: 1.1rem;
             left: 1rem;
           }
+          .table thead th {
+            background: #e6f4ea;
+            font-weight: 600;
+          }
+
+          .table td, .table th {
+            vertical-align: middle;
+          }
+
+          .table-hover tbody tr:hover {
+            background: #f8f9fa;
+          }
         }
       `}</style>
 
       <div className="container py-5 mt-5">
-        <h2 className="mb-4 fw-bold text-success">User Bookings</h2>
+
+  <div className="d-flex justify-content-between align-items-center">
+    <h2 className="fw-bold text-success">User Bookings</h2>
+
+    <button className="btn btn-success" onClick={exportCSV}>
+      ⬇ Download Report
+    </button>
+  </div>
+
 
         {/* ✅ Search Box */}
         <div className="search-wrapper">
@@ -378,78 +446,102 @@ const UserBookings: React.FC = () => {
 
         {/* ✅ Bookings Grid */}
         {filteredBookings.length > 0 && (
-          <div className="row g-4">
-            {filteredBookings.map((booking) => {
-              const canCancel =
-                canCancelBooking(booking) &&
-                booking.payment_status !== "CANCELLED";
+          <div className="table-responsive">
+            <table className="table table-hover align-middle">
+              <thead className="table-success">
+                <tr>
+                  <th>Booking ID</th>
+                  <th>Turf</th>
+                  <th>Sport</th>
+                  <th>Court</th>
+                  <th>Date</th>
+                  <th>Time</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
 
-              return (
-                <div key={booking.id} className="col-12 col-md-6 col-lg-4">
-                  <div className="card shadow-sm h-100 border-0">
-                    <div className="card-header bg-light">
-                      <h6 className="mb-0 text-capitalize">
-                        Turf: <strong>{getTurfName(booking)}</strong>
-                      </h6>
-                    </div>
-                    <div className="card-body">
-                      <div className="mb-2">
-                        <strong>Date:</strong> {formatDate(getDate(booking))}
-                      </div>
-                      <div className="mb-2">
-                        <strong>Sport:</strong> {getSport(booking)}
-                      </div>
-                      <div className="mb-2">
-                        <strong>Court:</strong>{" "}
-                        {booking.court || booking.Court || "court 1"}
-                      </div>
-                      <div className="mb-2">
-                        <strong>Time:</strong> {getTimeDisplay(booking)}
-                      </div>
-                      <div className="mb-2">
-                        <strong>Amount:</strong> ₹{getTotal(booking)}
+              <tbody>
+                {paginatedBookings.map((booking) => {
+                  const canCancel =
+                    canCancelBooking(booking) &&
+                    booking.payment_status !== "CANCELLED";
+
+                  return (
+                    <tr key={booking.id}>
+                      <td>{booking.id}</td>
+                      <td>{getTurfName(booking)}</td>
+
+                      <td>{getSport(booking)}</td>
+
+                      <td>{booking.court || "court 1"}</td>
+
+                      <td>{formatDate(getDate(booking))}</td>
+
+                      <td>{getTimeDisplay(booking)}</td>
+
+                      <td>
+                        ₹{getTotal(booking)}
                         {booking.unpaid_amount > 0 && (
                           <small className="text-danger ms-2">
                             (₹{booking.unpaid_amount} pending)
                           </small>
                         )}
-                      </div>
-                      <div className="mb-3">
-                        <strong>Status:</strong>{" "}
-                        {getStatusBadge(getStatus(booking))}
-                      </div>
+                      </td>
 
-                      {canCancel && (
-                        <button
-                          className="btn btn-outline-danger btn-sm w-100"
-                          onClick={() => handleCancel(booking.id)}
-                          disabled={cancellingId === booking.id}
-                        >
-                          {cancellingId === booking.id ? (
-                            <>
-                              <span className="spinner-border spinner-border-sm me-2" />
-                              Cancelling...
-                            </>
-                          ) : (
-                            "Cancel Booking"
-                          )}
-                        </button>
-                      )}
+                      <td>{getStatusBadge(getStatus(booking))}</td>
 
-                      {!canCancel &&
-                        booking.payment_status !== "CANCELLED" && (
-                          <small className="text-muted d-block text-center mt-2">
-                            Cancellation not allowed (past start time or
-                            already cancelled)
-                          </small>
+                      <td>
+                        {canCancel ? (
+                          <button
+                            className="btn btn-sm btn-outline-danger"
+                            onClick={() => handleCancel(booking.id)}
+                            disabled={cancellingId === booking.id}
+                          >
+                            {cancellingId === booking.id ? (
+                              <>
+                                <span className="spinner-border spinner-border-sm me-1" />
+                                Cancelling
+                              </>
+                            ) : (
+                              "Cancel"
+                            )}
+                          </button>
+                        ) : (
+                          <p className="text-muted small">Not allowed</p>
                         )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
+        <div className="d-flex justify-content-between align-items-center mt-3">
+  <div>
+    Page {currentPage} of {totalPages}
+  </div>
+
+  <div className="btn-group">
+    <button
+      className="btn btn-outline-secondary btn-sm"
+      disabled={currentPage === 1}
+      onClick={() => setCurrentPage((p) => p - 1)}
+    >
+      Previous
+    </button>
+
+    <button
+      className="btn btn-outline-secondary btn-sm"
+      disabled={currentPage === totalPages}
+      onClick={() => setCurrentPage((p) => p + 1)}
+    >
+      Next
+    </button>
+  </div>
+</div>
       </div>
     </>
   );

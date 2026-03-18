@@ -255,8 +255,8 @@ let nightEnd = timeToMinutes(sport.nightSlotEnd);
 
     if (!formData.turfName.trim()) newErrors.turfName = "Venue name is required";
     if (!formData.turfAddress.trim()) newErrors.turfAddress = "Address is required";
-    if (!formData.turfDescription.trim()) newErrors.turfDescription = "Description is required";
-    else if (formData.turfDescription.trim().length < 30) newErrors.turfDescription = "Minimum 30 characters required";
+    // if (!formData.turfDescription.trim()) newErrors.turfDescription = "Description is required";
+    // else if (formData.turfDescription.trim().length < 30) newErrors.turfDescription = "Minimum 30 characters required";
 
     if (imagePreviews.length === 0) newErrors.images = "At least 1 image required";
 
