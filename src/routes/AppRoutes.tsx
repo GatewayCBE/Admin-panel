@@ -40,6 +40,9 @@ import ReportsPanel from "../pages/admin/All Reports/ReportsPanel";
 import ProtectedRoute from "./ProtectedRoutes";
 import OwnerTurfs from "../pages/admin/Owner/OwnerTurfs";
 import OwnerTurfEdit from "../pages/admin/Owner/OwnerTurfEdit";
+import PrivacyPolicy from "../components/Footer/PrivacyPolicy";
+import TermsAndConditions from "../components/Footer/T&C";
+import ChannelPartnerBookings from "../pages/admin/Analytics/ChannelPartnerBookings";
 
 const AppRoutes: React.FC = () => {
   return (
@@ -49,6 +52,8 @@ const AppRoutes: React.FC = () => {
   <Route path="/" element={<Home />} />
   <Route path="/about" element={<About />} />
   <Route path="/games" element={<Games />} />
+        <Route path="/privacy" element={<PrivacyPolicy/>} />
+        <Route path="/terms" element={<TermsAndConditions/>} />
 </Route>
 
 <Route path="/login" element={<Login />} />
@@ -92,7 +97,7 @@ const AppRoutes: React.FC = () => {
 
 <Route
   element={
-    <ProtectedRoute allowedRoles={["admin"]}>
+    <ProtectedRoute allowedRoles={["super_admin", "edit", "accounting"]}>
       <AdminLayout />
     </ProtectedRoute>
   }
@@ -103,11 +108,13 @@ const AppRoutes: React.FC = () => {
   <Route path="/dashboard/owners" element={<Owner />} />
   <Route path="/dashboard/owners/:ownerId" element={<Turfowner />} />
   <Route path="/dashboard/owners/:ownerId/turfs/:turfId" element={<TurfDetails />} />
-    <Route path="/dashboard/owners/:ownerId/:turfId" element={<TurfDetails />} />
+  <Route path="/dashboard/owners/:ownerId/:turfId" element={<TurfDetails />} />
   <Route path="/dashboard/owners/:ownerId/turfs/:turfId/edit" element={<EditTurf />} />
   <Route path="/dashboard/owners/:ownerId/:turfId/slots" element={<TurfBookingsPage />} />
   <Route path="/admin/reportspanel" element={<ReportsPanel />} />
   <Route path="/admin/userbookings" element={<UserBookings />} />
+  <Route path="/admin/channelpartnerbookings" element={<ChannelPartnerBookings/>} />
+
 </Route>
     </Routes>
   );

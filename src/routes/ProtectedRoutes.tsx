@@ -34,12 +34,20 @@ const ProtectedRoute: React.FC<Props> = ({ children, allowedRoles }) => {
   }
 
   // WRONG ROLE
-  if (!allowedRoles.includes(role)) {
-    if (role === "admin") return <Navigate to="/dashboard" replace />;
-    if (role === "owner")
-      return <Navigate to="/owner/channelpartnerdashboard" replace />;
-    return <Navigate to="/user/turfs" replace />;
+const ADMIN_ROLES = ["super_admin", "accounting", "edit"];
+
+// WRONG ROLE
+if (!allowedRoles.includes(role)) {
+  if (ADMIN_ROLES.includes(role)) {
+    return <Navigate to="/dashboard" replace />;
   }
+
+  if (role === "owner") {
+    return <Navigate to="/owner/channelpartnerdashboard" replace />;
+  }
+
+  return <Navigate to="/user/turfs" replace />;
+}
 
   return <>{children}</>;
 };
