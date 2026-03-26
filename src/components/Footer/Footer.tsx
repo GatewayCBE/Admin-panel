@@ -1,33 +1,49 @@
 import React from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
+import { Link } from "react-router-dom";
 
 const Footer: React.FC = () => {
   return (
     <>
-   
-
       {/* Bottom Footer */}
       <footer
         className="container-fluid text-white py-2"
         style={{ backgroundColor: "#1b4332" }}
       >
-        <div className="container d-flex justify-content-between align-items-center">
+        <div className="container d-flex justify-content-between align-items-center flex-wrap">
           {/* Left: Copyright */}
-         <p className="mb-0">
-  © {new Date().getFullYear()}{" "}
-  <span
-    style={{
-      fontFamily: "BalloonFont",
-      fontStyle:"italic",
-      fontSize: "15px",
-      fontWeight:'bold'
-    }}
-  >
-    NOTTAM INFOTECH PRIVATE LIMITED
-  </span>
-    <span>  All rights reserved.</span> 
-</p>
+          <p className="mb-0">
+            © {new Date().getFullYear()}{" "}
+            <span
+              style={{
+                fontFamily: "BalloonFont",
+                fontStyle: "italic",
+                fontSize: "15px",
+                fontWeight: "bold",
+              }}
+            >
+              NOTTAM INFOTECH PRIVATE LIMITED
+            </span>
+            <span> All rights reserved.</span>
 
+            {" | "}
+            <Link
+              to="/terms"
+              className="text-white text-decoration-none"
+              style={{ cursor: "pointer", fontSize: "12px" }}
+            >
+              Terms & Conditions
+            </Link>
+
+            {" | "}
+            <Link
+              to="/privacy"
+              className="text-white text-decoration-none"
+              style={{ cursor: "pointer", fontSize: "12px" }}
+            >
+              Privacy Policy
+            </Link>
+          </p>
 
           {/* Right: Social Icons */}
           <div className="d-flex gap-3">

@@ -10,8 +10,8 @@ admin.initializeApp({
 async function setAdmin(uid, role) {
   try {
     await admin.auth().setCustomUserClaims(uid, {
-      admin: true,
-      role: "super_admin",
+      admin: true,  
+      role: role,
     });
 
     console.log(`Admin claim set successfully for UID: ${uid} → ${role}`);
@@ -22,8 +22,8 @@ async function setAdmin(uid, role) {
 
 const ADMIN_UID = [
   {uid: "coGUbxu4mLZVpJhDmAl2aqG8zsj2", role: "super_admin"},
-  {uid: "bVvLILbnsSPJBQEhUiztgMQ5Cre2", role: "admin"},
-  {uid: "zGWf5MR0k6bCgFE7zWoK8Gtu0lI3", role: "admin"},
+  {uid: "bVvLILbnsSPJBQEhUiztgMQ5Cre2", role: "accounting"},
+  {uid: "zGWf5MR0k6bCgFE7zWoK8Gtu0lI3", role: "edit"},
 ];
 
 async function makeAllAdmins() {

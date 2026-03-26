@@ -39,9 +39,16 @@ const decryptAES = async (encrypted: string) => {
   return new TextDecoder().decode(decrypted);
 };
 
+// ✅ Admin email → role map (single source of truth, same as AdminLogin.tsx)
+const ADMIN_MAP: Record<string, string> = {
+  "admin@bookyourturf.net": "super_admin",
+  "admin@balaji.com": "accounting",
+  "admin@azhagar.com": "edit",
+};
+
 const Login: React.FC = () => {
   const navigate = useNavigate();
-const location = useLocation();
+  const location = useLocation();
 
   const { state } = useLocation();
   const role: "user" | "owner" = state?.role || "user";
@@ -50,166 +57,147 @@ const location = useLocation();
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-const [passwordError, setPasswordError] = useState("");
-const [showPassword, setShowPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
-const normalizeMobile = (value: string) => {
-  const digits = value.replace(/\D/g, "");
-  return digits.slice(-10);
-};
-const from = (location.state as any)?.from?.pathname;
+  const normalizeMobile = (value: string) => {
+    const digits = value.replace(/\D/g, "");
+    return digits.slice(-10);
+  };
 
+  const from = (location.state as any)?.from?.pathname;
 
-const handleLogin = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setLoading(true);
-  setError("");
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
 
-  try {
-   const input = email.trim();
-   const normalizedMobile = normalizeMobile(input);
-   const isMobileLogin = /^\d{10}$/.test(normalizedMobile);
+    try {
+      const input = email.trim().toLowerCase();
+      const normalizedMobile = normalizeMobile(input);
+      const isMobileLogin = /^\d{10}$/.test(normalizedMobile);
 
-    let account: any = null;
+      // ✅ STEP 1: Admin check FIRST — before any Firestore lookup.
+      // Admin emails do not exist in Firestore. If we let the code
+      // continue, account = null → "No account found" error, and
+      // the admin block is never reached.
+      if (ADMIN_MAP[input]) {
+        localStorage.setItem("user_email",   input);
+        localStorage.setItem("user_role",    ADMIN_MAP[input]); // "super_admin" | "accounting" | "edit"
+        localStorage.setItem("is_logged_in", "true");
+        localStorage.setItem("auth_token",   "admin_logged_in");
+        navigate("/dashboard", { replace: true });
+        return; // ← stop here, do not continue to Firestore lookup
+      }
 
-    if (role === "user") {
-      account = isMobileLogin
-        ? await getUserDocByMobile(normalizedMobile)
-        : await getUserDocByEmail(input.toLowerCase());
-    } else {
-      account = isMobileLogin
-        ? await getOwnerDocByMobile(normalizedMobile)
-        : await getOwnerDocByEmail(input.toLowerCase());
-    }
+      // ✅ STEP 2: Normal user / owner — fetch from Firestore
+      let account: any = null;
 
-    if (!account) {
-      setError("No account found with this email or mobile number");
+      if (role === "user") {
+        account = isMobileLogin
+          ? await getUserDocByMobile(normalizedMobile)
+          : await getUserDocByEmail(input);
+      } else {
+        account = isMobileLogin
+          ? await getOwnerDocByMobile(normalizedMobile)
+          : await getOwnerDocByEmail(input);
+      }
+
+      if (!account) {
+        setError("No account found with this email or mobile number");
+        setLoading(false);
+        return;
+      }
+
+      // ✅ STEP 3: Validate password
+      const encryptedPassword =
+        role === "user" ? account.user_password : account.owner_password;
+
+      const plain = await decryptAES(encryptedPassword);
+
+      if (plain !== password) {
+        setError("Incorrect password");
+        setLoading(false);
+        return;
+      }
+
+      // ✅ STEP 4: Normal user / owner login
+      localStorage.setItem("user_id",            role === "user" ? account.user_id            : account.owner_id);
+      localStorage.setItem("user_name",          role === "user" ? account.user_name          : account.owner_name);
+      localStorage.setItem("user_email",         role === "user" ? account.user_email         : account.owner_email);
+      localStorage.setItem("user_mobile_number", role === "user" ? account.user_mobile_number : account.owner_mobile_number);
+      localStorage.setItem("user_role",    role);
+      localStorage.setItem("is_logged_in", "true");
+      localStorage.setItem("auth_token",   "logged_in");
+
+      await registerFcmToken(
+        role === "user" ? account.user_id : account.owner_id,
+        role
+      );
+
+      const fallbackPath =
+        role === "owner" ? "/owner/channelpartnerdashboard" : "/user/turfs";
+
+      navigate(from || fallbackPath, { replace: true });
+
+    } catch (err: any) {
+      console.error("Login error:", err);
+      setError("Login failed. Please try again.");
+    } finally {
       setLoading(false);
-      return;
     }
+  };
 
-    const encryptedPassword =
-      role === "user" ? account.user_password : account.owner_password;
+  const handleGoogleLogin = async () => {
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const googleEmail = result.user.email;
+      if (!googleEmail) return;
 
-    const plain = await decryptAES(encryptedPassword);
+      const account =
+        role === "user"
+          ? await getUserDocByEmail(googleEmail)
+          : await getOwnerDocByEmail(googleEmail);
 
-    if (plain !== password) {
-      setError("Incorrect password");
-      setLoading(false);
-      return;
+      if (!account) {
+        setError("No account found. Please register first.");
+        return;
+      }
+
+      localStorage.setItem("user_id",    role === "user" ? account.user_id    : account.owner_id);
+      localStorage.setItem("user_name",  role === "user" ? account.user_name  : account.owner_name);
+      localStorage.setItem("user_email", role === "user" ? account.user_email : account.owner_email);
+      localStorage.setItem("user_role",    role);
+      localStorage.setItem("is_logged_in", "true");
+      localStorage.setItem("auth_token",   "logged_in");
+
+      await registerFcmToken(
+        role === "user" ? account.user_id : account.owner_id,
+        role
+      );
+
+      const fallbackPath =
+        role === "owner" ? "/owner/channelpartnerdashboard" : "/user/turfs";
+
+      navigate(from || fallbackPath, { replace: true });
+
+    } catch (err) {
+      setError("Google login failed");
     }
-
-   
-    localStorage.setItem(
-      "user_id",
-      role === "user" ? account.user_id : account.owner_id
-    );
-
-    localStorage.setItem(
-      "user_name",
-      role === "user" ? account.user_name : account.owner_name
-    );
-
-    localStorage.setItem(
-      "user_email",
-      role === "user" ? account.user_email : account.owner_email
-    );
-
-    localStorage.setItem(
-      "user_mobile_number",
-      role === "user"
-        ? account.user_mobile_number
-        : account.owner_mobile_number
-    );
-
-    localStorage.setItem("user_role", role);
-    localStorage.setItem("is_logged_in", "true");
-localStorage.setItem("auth_token", "logged_in");
-
-    // 🔔 Register FCM
-    await registerFcmToken(
-      role === "user" ? account.user_id : account.owner_id,
-      role
-    );
-
-    // 🚀 REDIRECT
-  // 🚀 SMART REDIRECT
-const fallbackPath =
-  role === "owner"
-    ? "/owner/channelpartnerdashboard"
-    : "/user/turfs";
-
-navigate(from || fallbackPath, { replace: true });
-
-
-  } catch (err: any) {
-    console.error("Login error:", err);
-    setError("Login failed. Please try again.");
-  } finally {
-    setLoading(false);
-  }
-};
-
-
- const handleGoogleLogin = async () => {
-  try {
-    const result = await signInWithPopup(auth, googleProvider);
-    const email = result.user.email;
-    if (!email) return;
-
-    const account =
-      role === "user"
-        ? await getUserDocByEmail(email)
-        : await getOwnerDocByEmail(email);
-
-    if (!account) {
-      setError("No account found. Please register first.");
-      return;
-    }
-
-    localStorage.setItem(
-      "user_id",
-      role === "user" ? account.user_id : account.owner_id
-    );
-    localStorage.setItem(
-      "user_name",
-      role === "user" ? account.user_name : account.owner_name
-    );
-    localStorage.setItem(
-      "user_email",
-      role === "user" ? account.user_email : account.owner_email
-    );
-    localStorage.setItem("user_role", role);
-    localStorage.setItem("is_logged_in", "true");
-localStorage.setItem("auth_token", "logged_in"); // dummy token for route guard
-
-    await registerFcmToken(
-      role === "user" ? account.user_id : account.owner_id,
-      role
-    );
-
-const fallbackPath =
-  role === "owner"
-    ? "/owner/channelpartnerdashboard"
-    : "/user/turfs";
-
-navigate(from || fallbackPath, { replace: true });
-  } catch (err) {
-    setError("Google login failed");
-  }
-};
+  };
 
   return (
     <div className="min-vh-100 d-flex justify-content-center align-items-center bg-light">
-      <div className="card shadow-lg border-0 px-5 py-5" style={{ maxWidth: 450,
-           width: '90vw', height:'500px',
-                    borderRadius: '30px',
-                backgroundImage: `url(${BgImg})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                backgroundRepeat: 'no-repeat',
-              
-       }}>
+      <div className="card shadow-lg border-0 px-5 py-5" style={{
+        maxWidth: 450,
+        width: '90vw',
+        height: '500px',
+        borderRadius: '30px',
+        backgroundImage: `url(${BgImg})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+      }}>
         <h3 className="text-center text-gray fw-bold mb-5">
           Login as {role === "user" ? "User" : "Channel Partner"}
         </h3>
@@ -225,32 +213,29 @@ navigate(from || fallbackPath, { replace: true });
             required
           />
           <div className="input-group mb-1">
-
-     <input
-    type={showPassword ? "text" : "password"}
-    className={`form-control form-control-lg ${passwordError ? "is-invalid" : ""}`}
-    value={password}
-    onChange={(e) => {
-      const val = e.target.value;
-      setPassword(val);
-
-      if (val.length < 7)
-        setPasswordError("Password must be at least 7 characters");
-      else if (val.length > 15)
-        setPasswordError("Password cannot exceed 15 characters");
-      else setPasswordError("");
-    }}
-    placeholder="Create Password"
-  />
-  <span
-    className="input-group-text bg-white"
-    style={{ cursor: "pointer" }}
-    onClick={() => setShowPassword(!showPassword)}
-  >
-    <i className={`bi ${showPassword ? "bi-eye-slash" : "bi-eye"}`}></i>
-  </span>
-            
-       </div>   
+            <input
+              type={showPassword ? "text" : "password"}
+              className={`form-control form-control-lg ${passwordError ? "is-invalid" : ""}`}
+              value={password}
+              onChange={(e) => {
+                const val = e.target.value;
+                setPassword(val);
+                if (val.length < 7)
+                  setPasswordError("Password must be at least 7 characters");
+                else if (val.length > 15)
+                  setPasswordError("Password cannot exceed 15 characters");
+                else setPasswordError("");
+              }}
+              placeholder="Create Password"
+            />
+            <span
+              className="input-group-text bg-white"
+              style={{ cursor: "pointer" }}
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              <i className={`bi ${showPassword ? "bi-eye-slash" : "bi-eye"}`}></i>
+            </span>
+          </div>
 
           <button className="btn btn-success w-100" disabled={loading}>
             Login
@@ -259,21 +244,18 @@ navigate(from || fallbackPath, { replace: true });
 
         <hr />
 
-        <button
-          className="btn btn-danger w-100"
-          onClick={handleGoogleLogin}
-        >
+        <button className="btn btn-danger w-100" onClick={handleGoogleLogin}>
           Login with Google
         </button>
 
         <div className="text-center mt-3">
-  <button
-    className="btn text-white"
-    onClick={() => navigate("/register", { state: { role } })}
-  >
-    Don't have an account? <strong>Register</strong>
-  </button>
-</div>
+          <button
+            className="btn text-white"
+            onClick={() => navigate("/register", { state: { role } })}
+          >
+            Don't have an account? <strong>Register</strong>
+          </button>
+        </div>
       </div>
     </div>
   );

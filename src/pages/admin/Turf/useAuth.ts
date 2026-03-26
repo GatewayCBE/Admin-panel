@@ -5,7 +5,7 @@ interface AuthState {
   user: User | null;
   loading: boolean;
   isAdmin: boolean;
-  role: string | null;          // ✅ NEW
+  role: string | null;
   claims: { [key: string]: any } | null;
 }
 
@@ -13,7 +13,7 @@ export function useAuth(): AuthState {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [role, setRole] = useState<string | null>(null);   // ✅ NEW
+  const [role, setRole] = useState<string | null>(null);
   const [claims, setClaims] = useState<{ [key: string]: any } | null>(null);
 
   useEffect(() => {
@@ -23,19 +23,25 @@ export function useAuth(): AuthState {
       setUser(u);
 
       if (u) {
-        try {
-          // 🔄 Force refresh → ensures latest claims
-          const tokenResult: IdTokenResult =
-            await u.getIdTokenResult(true);
+        // ✅ PRIMARY: Read role from localStorage (set by AdminLogin.tsx on login)
+        const storedRole = localStorage.getItem("user_role");
 
+        if (storedRole) {
+          setRole(storedRole);
+          setIsAdmin(true);
+          setClaims({ role: storedRole, admin: true });
+          setLoading(false);
+          return;
+        }
+
+        // ✅ FALLBACK: Try Firebase custom claims (if setAdmin script was run)
+        try {
+          const tokenResult: IdTokenResult = await u.getIdTokenResult(true);
           console.log("Refreshed ID token claims:", tokenResult.claims);
 
           const userClaims = tokenResult.claims;
-
           setClaims(userClaims);
           setIsAdmin(!!userClaims.admin);
-
-          // ✅ Extract role
           setRole((userClaims.role as string) || null);
 
         } catch (err) {
@@ -45,6 +51,7 @@ export function useAuth(): AuthState {
           setRole(null);
         }
       } else {
+        // ✅ User signed out — clear everything
         setClaims(null);
         setIsAdmin(false);
         setRole(null);

@@ -266,14 +266,15 @@ const maxPlayers = getMaxPlayers();
             >
               Owner Details
             </button>
-            {role === "admin" ||role === "super_admin" ? (
-            <button
-              className="btn btn-outline-warning btn-lg px-5 py-3 fw-semibold"
-              onClick={() => navigate(`/dashboard/owners/${turf.owner_id}/turfs/${turfId}/edit`)}
-            >
-              Edit Turf
-            </button>
-            ) : null}
+            
+{(role === "edit" || role === "super_admin") ? (
+  <button
+    className="btn btn-outline-warning btn-lg px-5 py-3 fw-semibold"
+    onClick={() => navigate(`/dashboard/owners/${turf.owner_id}/turfs/${turfId}/edit`)}
+  >
+    Edit Turf
+  </button>
+) : null}
 
             {role === "super_admin" && (
               <button
