@@ -155,7 +155,7 @@ const PrivacyPolicy: React.FC = () => {
       </p>
       <p>However, no digital platform can guarantee 100% security.</p>
       <p>
-        <li><strong>Cookies and Tracking Technologies</strong></li>
+        <li><strong>Cookies and Session Technologies</strong></li>
         Book Your Turf may use cookies or similar technologies to:
       </p>
       <p>
