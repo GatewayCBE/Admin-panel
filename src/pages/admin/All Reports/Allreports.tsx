@@ -990,6 +990,7 @@ const BookingTable: React.FC<{ bookings: any[]; isNightSlot: (time: string) => b
             <th>Venue Name</th>
             <th>Venue ID</th>
             <th>Total Amount</th>
+            <th>Paid Amount</th>
             <th>Balance</th>
             <th>Payment Date</th>
             <th>Status</th>
@@ -1009,7 +1010,7 @@ const BookingTable: React.FC<{ bookings: any[]; isNightSlot: (time: string) => b
 
             const paymentDate = bookingDate; // fallback - improve if you have real payment date
 
-            const venueIdShort = booking.ownerId?.split("_")[1] || "N/A";
+            const venueIdShort = booking.turfId|| "N/A";
 
             return (
               <tr key={booking.bookingId || index}>
@@ -1027,6 +1028,7 @@ const BookingTable: React.FC<{ bookings: any[]; isNightSlot: (time: string) => b
                 <td>{booking.turfName || "N/A"}</td>
                 <td><small>{venueIdShort}</small></td>
                 <td className="fw-semibold">₹{booking.totalAmount || 0}</td>
+                <td className="text-success fw-semibold">₹{booking.paidAmount || 0}</td>
                 <td className="text-danger fw-semibold">₹{booking.balanceAmount || 0}</td>
                 <td>{paymentDate}</td>
                 <td>
