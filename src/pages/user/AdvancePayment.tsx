@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { getOwnerById } from "../../services/firestoreService";
 
-const ADVANCE_PER_SLOT = 1;
+const ADVANCE_PER_SLOT = 200;
 
 const AdvancePayment: React.FC = () => {
   const navigate = useNavigate();
