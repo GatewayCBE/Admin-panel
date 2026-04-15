@@ -3,11 +3,12 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import GpayImg from "../assets/Google_Pay_Logo.svg.png";
 import PhonepayImg from "../assets/PhonepeImg.png"
 import AboutImg from "../assets/AboutImg.jpg";
+import CardImg from "../assets/visa.png"
 
 const About: React.FC = () => {
   return (
     <section className="py-5" style={{ backgroundColor: "#f6f6e9" }}>
-         <style>
+      <style>
         {`
           .interactive-card {
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -87,85 +88,85 @@ const About: React.FC = () => {
 
         <div
           className="row align-items-center shadow rounded-3 mx-2 w-100 position-relative interactive-card"
-          style={{ backgroundColor: "#2d6a4f",maxWidth: "1100px" }}
+          style={{ backgroundColor: "#2d6a4f", maxWidth: "1100px" }}
         >
           {/* Image */}
-           <div className="d-none d-md-flex col-md-4 justify-content-center">
-          <div
-            className="shadow-lg overflow-hidden position-absolute"
-            style={{
-              borderRadius: "15px",
-              top: "-18px",
-              width: "250px",
-              height: "400px",
-              zIndex: "2",
-            }}
-          >
-            <img
-              src={AboutImg}
-              alt="About BookMyTurf "
-              className="img-fluid h-100 w-100 interactive-img"
-              style={{ objectFit: "cover" }}
-            />
+          <div className="d-none d-md-flex col-md-4 justify-content-center">
+            <div
+              className="shadow-lg overflow-hidden position-absolute"
+              style={{
+                borderRadius: "15px",
+                top: "-18px",
+                width: "250px",
+                height: "400px",
+                zIndex: "2",
+              }}
+            >
+              <img
+                src={AboutImg}
+                alt="About BookMyTurf "
+                className="img-fluid h-100 w-100 interactive-img"
+                style={{ objectFit: "cover" }}
+              />
+            </div>
           </div>
-        </div>
 
-        {/* Mobile Image (stacked on top, same size) */}
-        <div className="d-block d-md-none text-center mb-3">
-          <div
-            className="shadow-lg overflow-hidden mx-auto"
-            style={{
-              borderRadius: "15px",
-              width: "200px",
-              height: "350px",
-            }}
-          >
-            <img
-              src="https://images.unsplash.com/photo-1575361204480-aadea25e6e68?w=400&h=600&fit=crop"
-              alt="About BookMyTurf"
-              className="img-fluid h-100 w-100"
-              style={{ objectFit: "cover" }}
-            />
+          {/* Mobile Image (stacked on top, same size) */}
+          <div className="d-block d-md-none text-center mb-3">
+            <div
+              className="shadow-lg overflow-hidden mx-auto"
+              style={{
+                borderRadius: "15px",
+                width: "200px",
+                height: "350px",
+              }}
+            >
+              <img
+                src="https://images.unsplash.com/photo-1575361204480-aadea25e6e68?w=400&h=600&fit=crop"
+                alt="About BookMyTurf"
+                className="img-fluid h-100 w-100"
+                style={{ objectFit: "cover" }}
+              />
+            </div>
+          </div>
+          {/* Text */}
+          <div className="col-md-8 offset-md-4 text-md-start text-center p-4">
+            <h2
+              className="fw-bold mb-3"
+              style={{
+                color: "#f1faee",
+                textTransform: "uppercase",
+                fontSize: "25px",
+              }}
+            >
+              About Us
+            </h2>
+            <p className="lh-lg text-light" style={{ fontSize: "14px" }}>
+              BookYourTurf is a complete digital solution created to simplify turf
+              management and player booking. Whether it’s football, cricket,
+              badminton, or any sports arena, BookYourTurf gives users a seamless
+              experience with real-time slot availability, instant booking
+              confirmation, secure online payments, and automated notifications.
+              For turf owners, the platform eliminates manual work by automating
+              schedules, payments, daily reports, customer reminders, and revenue
+              tracking. It reduces no-shows, increases bookings, and boosts
+              profitability — all from one simple dashboard. With BookYourTurf,
+              players enjoy a smooth, one-click booking experience. Turf owners
+              enjoy stress-free management. Smart booking for smart players.
+              Simple management for smart owners.
+            </p>
+            <button
+              className="btn fw-bold shadow-sm px-4 py-2 mt-3"
+              style={{
+                backgroundColor: "#f6f6e9",
+                color: "#2d6a4f",
+                borderRadius: "8px",
+              }}
+            >
+              Join Now
+            </button>
           </div>
         </div>
-          {/* Text */}
-            <div className="col-md-8 offset-md-4 text-md-start text-center p-4">
-          <h2
-            className="fw-bold mb-3"
-            style={{
-              color: "#f1faee",
-              textTransform: "uppercase",
-              fontSize: "25px",
-            }}
-          >
-            About Us
-          </h2>
-          <p className="lh-lg text-light" style={{ fontSize: "14px" }}>
-            BookYourTurf is a complete digital solution created to simplify turf
-            management and player booking. Whether it’s football, cricket,
-            badminton, or any sports arena, BookYourTurf gives users a seamless
-            experience with real-time slot availability, instant booking
-            confirmation, secure online payments, and automated notifications.
-            For turf owners, the platform eliminates manual work by automating
-            schedules, payments, daily reports, customer reminders, and revenue
-            tracking. It reduces no-shows, increases bookings, and boosts
-            profitability — all from one simple dashboard. With BookYourTurf,
-            players enjoy a smooth, one-click booking experience. Turf owners
-            enjoy stress-free management. Smart booking for smart players.
-            Simple management for smart owners.
-          </p>
-          <button
-            className="btn fw-bold shadow-sm px-4 py-2 mt-3"
-            style={{
-              backgroundColor: "#f6f6e9",
-              color: "#2d6a4f",
-              borderRadius: "8px",
-            }}
-          >
-            Join Now
-          </button>
-        </div>
-      </div>
 
         <div
           className="row align-items-center shadow rounded-3 mx-2 w-100 p-4 interactive-card"
@@ -177,95 +178,62 @@ const About: React.FC = () => {
               ABOUT APP
             </h2>
             <p className="lh-lg text-light" style={{ fontSize: "14px" }}>
-BookYourTurf is a smart and modern sports booking app designed for players, teams, and sports enthusiasts who want quick, easy, and reliable access to nearby sports venues. The app helps you discover sports courts, grounds, turfs, and arenas around you — with real-time availability, transparent pricing, and instant online booking.
+              BookYourTurf is a smart and modern sports booking app designed for players, teams, and sports enthusiasts who want quick, easy, and reliable access to nearby sports venues. The app helps you discover sports courts, grounds, turfs, and arenas around you — with real-time availability, transparent pricing, and instant online booking.
 
-Whether you play Football, Box Cricket, Badminton, Futsal and soon Tennis, Volleyball, Basketball, Skating, Billiards, Swimming, or any other indoor/outdoor sport — BookYourTurf helps you find and book the perfect spot, slot and sports in seconds.
+              Whether you play Football, Box Cricket, Badminton, Futsal and soon Tennis, Volleyball, Basketball, Skating, Billiards, Swimming, or any other indoor/outdoor sport — BookYourTurf helps you find and book the perfect spot, slot and sports in seconds.
 
 
-To make the experience even smoother, BookYourTurf offers easy-access payment options, allowing users to pay securely and instantly using:
-<div className="d-flex flex-wrap gap-3 justify-content-md-start justify-content-center align-items-center my-3">
+              To make the experience even smoother, BookYourTurf offers easy-access payment options, allowing users to pay securely and instantly using:
+              <span className="d-flex flex-wrap gap-3 justify-content-md-center justify-content-center align-items-center my-3">
 
-  {/* Google Pay */}
-  <div className="d-flex align-items-center justify-content-center bg-white px-3 py-2 rounded-3 shadow-sm" style={{ minWidth: "140px" }}>
-    <img
-      src={GpayImg}
-      alt="Google Pay"
-      style={{ height: "26px" }}
-    />
-  </div>
+                {/* Google Pay */}
+                <span className="d-flex align-items-center justify-content-center bg-white px-3 py-2 rounded-3 shadow-sm" style={{ minWidth: "140px" }}>
+                  <img
+                    src={GpayImg}
+                    alt="Google Pay"
+                    style={{ height: "26px" }}
+                  />
+                </span>
 
-  {/* PhonePe */}
-  <div className="d-flex align-items-center gap-2 bg-white px-3 py-2 rounded-3 shadow-sm" style={{ minWidth: "140px" }}>
-    <img
-      src={PhonepayImg}
-      alt="PhonePe"
-      style={{ height: "26px" }}
-    />
-  </div>
+                {/* PhonePe */}
+                <span className="d-flex align-items-center justify-content-center gap-2 bg-white px-3 py-2 rounded-3 shadow-sm" style={{ minWidth: "140px" }}>
+                  <img
+                    src={PhonepayImg}
+                    alt="PhonePe"
+                    style={{ height: "26px" }}
+                  />
+                </span>
 
-  {/* UPI */}
-  <div className="d-flex align-items-center gap-2 bg-white px-3 py-2 rounded-3 shadow-sm" style={{ minWidth: "140px" }}>
-    <img
-      src="https://upload.wikimedia.org/wikipedia/commons/e/e1/UPI-Logo-vector.svg"
-      alt="UPI"
-      style={{ height: "26px" }}
-    />
-  </div>
+                {/* UPI */}
+                <span className="d-flex align-items-center justify-content-center gap-2 bg-white px-3 py-2 rounded-3 shadow-sm" style={{ minWidth: "140px" }}>
+                  <img
+                    src="https://upload.wikimedia.org/wikipedia/commons/e/e1/UPI-Logo-vector.svg"
+                    alt="UPI"
+                    style={{ height: "26px" }}
+                  />
+                </span>
 
-  {/* Cards (Visa + MasterCard) */}
-  <div className="d-flex align-items-center gap-3 bg-white px-3 py-2 rounded-3 shadow-sm" style={{ minWidth: "140px" }}>
-    <img
-      src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg"
-      alt="Visa"
-      style={{ height: "22px" }}
-    />
-    <img
-      src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg"
-      alt="MasterCard"
-      style={{ height: "22px" }}
-    />
-  </div>
+                {/* Cards (Visa + MasterCard) */}
+                <span className="d-flex align-items-center gap-3 bg-white px-3 py-2 rounded-3 shadow-sm" style={{ minWidth: "140px" }}>
+                  <img
+                    src={CardImg}
+                    alt="Visa"
+                    style={{ height: "22px" }}
+                  />
+                  <img
+                    src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg"
+                    alt="MasterCard"
+                    style={{ height: "22px" }}
+                  />
+                </span>
 
-  {/* UPI ID */}
-  <div className="d-flex align-items-center gap-2 bg-white px-3 py-2 rounded-3 shadow-sm" style={{ minWidth: "140px" }}>
-    <img
-      src="https://upload.wikimedia.org/wikipedia/commons/e/e1/UPI-Logo-vector.svg"
-      alt="UPI ID"
-      style={{ height: "26px" }}
-    />
-    <span className="fw-semibold text-dark" style={{ fontSize: "14px" }}>
-      UPI ID
-    </span>
-  </div>
+              </span>
 
-</div>
-
-With seamless payment integration and instant confirmation, BookYourTurf ensures a fast, convenient, and hassle-free booking experience for every player.
+              With seamless payment integration and instant confirmation, BookYourTurf ensures a fast, convenient, and hassle-free booking experience for every player.
             </p>
 
-            <button
-              className="btn fw-bold px-4 py-2 mt-3"
-              style={{
-                backgroundColor: "#f6f6e9",
-                color: "#2d6a4f",
-                borderRadius: "8px",
-              }}
-            >
-              Join Now
-            </button>
           </div>
-
-          {/* Image */}
-          {/* <div className="col-md-4 order-1 order-md-2 text-center mb-3 mb-md-0">
-            <img
-              src={p4}
-              alt="Why BookYourTurf"
-              className="img-fluid rounded-3 shadow-lg"
-              style={{ maxHeight: "400px", objectFit: "cover" }}
-            />
-          </div> */}
         </div>
-
       </div>
     </section>
   );

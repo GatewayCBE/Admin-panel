@@ -22,7 +22,7 @@
   "devDependencies": {
     "@types/nodemailer": "^7.0.9",
     "firebase-functions-test": "^3.1.0",
-    "typescript": "^5.7.3"
+    "typescript": "^5.9.3"
   },
   "private": true
 }
