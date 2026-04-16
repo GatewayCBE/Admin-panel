@@ -1181,6 +1181,7 @@ export const groupBookings = (slots: any[]) => {
     if (!grouped[key]) {
       grouped[key] = {
         id: key,
+        bookingId: s.bookingId || s.booking_id || "",
         docIds: [],
         turfId: s.turfId || s.turf_id || "",
         date,
@@ -1196,6 +1197,9 @@ export const groupBookings = (slots: any[]) => {
         createdBy: s.createdBy || "OWNER",
       };
     }
+    if (!grouped[key].bookingId) {
+  grouped[key].bookingId = s.bookingId || s.booking_id || "";
+}
 
     grouped[key].docIds.push(s.id);
 
