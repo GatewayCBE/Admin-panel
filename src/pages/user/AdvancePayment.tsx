@@ -66,103 +66,148 @@ useEffect(() => {
     paymentType === "advance" ? advanceAmount : fullAmount;
 
   return (
-    <div className="container min-vh-100 d-flex justify-content-center align-items-center mt-5 pt-5">
-      <div className="card shadow-sm border-0 rounded-4 p-4" style={{ width: 420 }}>
-        {/* Header */}
-        <div className="mb-3">
-          <h5 className="fw-bold text-success mb-1">
-            {turf.turf_name}
-          </h5>
-          <small className="text-muted">
-            {new Date(selectedDate).toDateString()}
-          </small>
-          <div className="text-muted small mt-1">
-            🎟 {slotCount} Slot(s)
-          </div>
-        </div>
+  <div className="container py-4" style={{ maxWidth: "600px" }}>
+    
+    {/* 🔙 Back */}
+    <div className="mb-3">
+      <button className="btn btn-link text-success p-0" onClick={() => navigate(-1)}>
+        ← Back
+      </button>
+    </div>
 
-        <hr />
-
-        {/* Bill Details */}
-        <h6 className="fw-semibold mb-3">Bill Details</h6>
-
-        <div className="d-flex justify-content-between mb-2">
-          <span className="text-muted">Slot Cost</span>
-          <span>₹{totalPrice}</span>
-        </div>
-
-        <div className="d-flex justify-content-between fw-bold mt-2">
-          <span>Total</span>
-          <span className="text-success">₹{fullAmount}</span>
-        </div>
-
-        <hr />
-
-        {/* Payment Options */}
-        <h6 className="fw-semibold mb-3">Payment Options</h6>
-
-        <div className="row g-2 mb-3">
-          <div className="col-6">
-            <button
-              className={`btn w-100 ${
-                paymentType === "advance"
-                  ? "btn-success"
-                  : "btn-outline-success"
-              }`}
-              onClick={() => setPaymentType("advance")}
-            >
-              Advance
-              <div className="small">₹{advanceAmount}</div>
-            </button>
-          </div>
-
-          <div className="col-6">
-            <button
-              className={`btn w-100 ${
-                paymentType === "full"
-                  ? "btn-success"
-                  : "btn-outline-success"
-              }`}
-              onClick={() => setPaymentType("full")}
-            >
-              Full Amount
-              <div className="small">₹{fullAmount}</div>
-            </button>
-          </div>
-        </div>
-
-        <hr />
-
-        {/* Footer */}
-        <div className="d-flex justify-content-between align-items-center">
-          <strong>₹{payableAmount}</strong>
-          <button
-            className="btn btn-success px-4"
-            onClick={() =>
-              navigate("/user/razorpay", {
-                state: {
-                  amount: payableAmount,
-                  paymentType,
-                  bookingPayload: {
-                    ...state,
-                    date: new Date(selectedDate)
-                      .toLocaleDateString("en-GB", {
-                        day: "2-digit",
-                        month: "short",
-                        year: "numeric",
-                      })
-                      .replace(/ /g, "-"),
-                  },
-                },
-              })
-            }
-          >
-            Pay →
-          </button>
-        </div>
+    {/* 🟢 Booked On */}
+    <div className="p-3 mb-3 rounded-4 border" style={{ background: "#f6f9f3" }}>
+      <div className="text-muted small">Booked On</div>
+      <div className="fw-bold">
+        {new Date(selectedDate).toDateString()}
       </div>
     </div>
-  );
+
+    {/* 📅 Booking Details */}
+    <div className="p-3 mb-4 rounded-4 shadow-sm border">
+      <h6 className="fw-bold mb-2">Booking Date & Time</h6>
+
+      <div className="mb-1">
+        📅 {new Date(selectedDate).toDateString()}
+      </div>
+
+      <div>
+        ⏰ {selectedSlots[0]?.startLabel} - {selectedSlots[selectedSlots.length - 1]?.endLabel}
+      </div>
+    </div>
+
+    {/* 💳 Payment Options */}
+    <div className="d-flex gap-3 mb-4">
+      
+      {/* FULL */}
+      <div
+        onClick={() => setPaymentType("full")}
+        style={{
+          flex: 1,
+          cursor: "pointer",
+          borderRadius: "16px",
+          padding: "20px",
+          textAlign: "center",
+          background:
+            paymentType === "full" ? "#7aa52c" : "#f5f5f5",
+          color: paymentType === "full" ? "#fff" : "#000",
+          boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
+        }}
+      >
+        <div className="fw-bold">Pay Full Amount</div>
+        <div className="fs-5 fw-bold">₹ {fullAmount}</div>
+        <small>(incl. ₹0 fee/slot)</small>
+      </div>
+
+      {/* ADVANCE */}
+      <div
+        onClick={() => setPaymentType("advance")}
+        style={{
+          flex: 1,
+          cursor: "pointer",
+          borderRadius: "16px",
+          padding: "20px",
+          textAlign: "center",
+          background:
+            paymentType === "advance" ? "#7aa52c" : "#f5f5f5",
+          color: paymentType === "advance" ? "#fff" : "#000",
+          boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
+        }}
+      >
+        <div className="fw-bold">Pay Advance Amount</div>
+        <div className="fs-5 fw-bold">₹ {advanceAmount}</div>
+        <small>(incl. ₹0 fee/slot)</small>
+      </div>
+    </div>
+
+    {/* 💰 Bill Breakdown */}
+    <div className="p-3 rounded-4 border mb-4">
+      <div className="d-flex justify-content-between mb-2">
+        <span>Turf Amount:</span>
+        <span>₹ {fullAmount}</span>
+      </div>
+
+      <div className="d-flex justify-content-between mb-2">
+        <span>Gateway Fee (₹0 × {slotCount} slots):</span>
+        <span>₹ 0</span>
+      </div>
+
+      <hr />
+
+      <div className="d-flex justify-content-between fw-bold">
+        <span>Total Pay Now</span>
+        <span className="text-success">₹ {payableAmount}</span>
+      </div>
+    </div>
+
+    {/* ✅ Confirm */}
+    <button
+      className="btn w-100 mb-3"
+      style={{
+        background: "#7aa52c",
+        color: "#fff",
+        padding: "12px",
+        borderRadius: "12px",
+        fontWeight: 600,
+      }}
+      onClick={() =>
+        navigate("/user/razorpay", {
+          state: {
+            amount: payableAmount,
+            paymentType,
+            bookingPayload: {
+              ...state,
+              date: new Date(selectedDate)
+                .toLocaleDateString("en-GB", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                })
+                .replace(/ /g, "-"),
+            },
+          },
+        })
+      }
+    >
+      CONFIRM BOOKING
+    </button>
+
+    {/* ❌ Cancel */}
+    <button
+      className="btn w-100"
+      style={{
+        background: "#e53935",
+        color: "#fff",
+        padding: "12px",
+        borderRadius: "12px",
+        fontWeight: 600,
+      }}
+      onClick={() => navigate(-1)}
+    >
+      CANCEL
+    </button>
+  </div>
+);
 };
 
 export default AdvancePayment;

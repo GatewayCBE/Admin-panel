@@ -108,18 +108,25 @@ export const createWebRazorpayOrder = onRequest(
             : Number(pricing.day);
         }
 
+        const ADVANCE_PER_SLOT = 200;
+
         const paidAmount =
-          payment_type === "advance" ? slots.length : totalAmount;
+          payment_type === "advance"
+            ? slots.length * ADVANCE_PER_SLOT
+            : totalAmount;
 
         const razorpay = new Razorpay({
           key_id: RAZORPAY_KEY_ID,
           key_secret: RAZORPAY_KEY_SECRET,
         });
 
+        const shortName = turf_name.split(" ")[0]; // first word
+        const receipt = `BYT_${shortName}_${Date.now()}`.slice(0, 40);
+
         const order = await razorpay.orders.create({
           amount: paidAmount * 100,
           currency: "INR",
-          receipt: `BYT_${turf_name}_${Date.now()}`,
+          receipt,
           payment_capture: true,
         });
 
@@ -199,7 +206,7 @@ export const verifyWebRazorpayPayment = onRequest(
         console.log("🆔 Generated bookingId:", bookingId);
 
         const masterRef = db.collection("environment").doc("testing");
-const txnRef = db.collection("environments").doc("testing");
+        const txnRef = db.collection("environments").doc("testing");
 
         const userRef = masterRef
           .collection("users")
@@ -223,10 +230,10 @@ const txnRef = db.collection("environments").doc("testing");
           console.log("🔄 Transaction started");
 
           const userSnap = await tx.get(userRef);
-if (!userSnap.exists) throw new Error("USER_NOT_FOUND");
+          if (!userSnap.exists) throw new Error("USER_NOT_FOUND");
 
-const turfSnap = await tx.get(turfRef);
-if (!turfSnap.exists) throw new Error("TURF_NOT_FOUND");
+          const turfSnap = await tx.get(turfRef);
+          if (!turfSnap.exists) throw new Error("TURF_NOT_FOUND");
 
           const weekday = getWeekday(date);
           const pricing =
@@ -244,77 +251,81 @@ if (!turfSnap.exists) throw new Error("TURF_NOT_FOUND");
               : Number(pricing.day);
           }
 
+          const ADVANCE_PER_SLOT = 200;
+
           const paidAmount =
-            payment_type === "advance" ? slots.length : totalAmount;
+            payment_type === "advance"
+              ? slots.length * ADVANCE_PER_SLOT
+              : totalAmount;
 
           const balanceAmount = totalAmount - paidAmount;
           const now = admin.firestore.Timestamp.now();
 
           const addOneHour = (time12h: string) => {
-  const [time, modifier] = time12h.split(" ");
-  let [hours, minutes] = time.split(":").map(Number);
+            const [time, modifier] = time12h.split(" ");
+            let [hours, minutes] = time.split(":").map(Number);
 
-  if (modifier === "PM" && hours !== 12) hours += 12;
-  if (modifier === "AM" && hours === 12) hours = 0;
+            if (modifier === "PM" && hours !== 12) hours += 12;
+            if (modifier === "AM" && hours === 12) hours = 0;
 
-  const date = new Date();
-  date.setHours(hours);
-  date.setMinutes(minutes);
-  date.setHours(date.getHours() + 1);
+            const date = new Date();
+            date.setHours(hours);
+            date.setMinutes(minutes);
+            date.setHours(date.getHours() + 1);
 
-  return date.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-};
+            return date.toLocaleTimeString("en-US", {
+              hour: "numeric",
+              minute: "2-digit",
+              hour12: true,
+            });
+          };
 
           console.log("💰 Amounts", { totalAmount, paidAmount, balanceAmount });
 
           // Write main booking document
           tx.set(bookingRef, {
             bookingId,
-  bookingType: payment_type === "advance" ? "ADVANCE" : "FULL",
-  bookingStatus: "CONFIRMED",
+            bookingType: payment_type === "advance" ? "ADVANCE" : "FULL",
+            bookingStatus: "CONFIRMED",
 
-  turfId: turf_id,
-  turfName: turf_name,
-  turfLocation: turf_location || null,
-  turfMobileNumber: turf_mobile_number || null,
+            turfId: turf_id,
+            turfName: turf_name,
+            turfLocation: turf_location || null,
+            turfMobileNumber: turf_mobile_number || null,
 
-  ownerId: owner_id,
+            ownerId: owner_id,
 
-  userId: user_id,
-  userName: user_name,
-  userMobile: user_mobile_number,
-  userEmail: user_email || null,
+            userId: user_id,
+            userName: user_name,
+            userMobile: user_mobile_number,
+            userEmail: user_email || null,
 
-  bookedSportsName: sport,
-  court,
+            bookedSportsName: sport,
+            court,
 
-  date: formattedDate,
-  selectedDate: formattedDate,
-  environment: "testing",
+            date: formattedDate,
+            selectedDate: formattedDate,
+            environment: "testing",
 
-  slots,
-  slotList: slots,
-  slotCount: slots.length,
-  isMultipleSlots: slots.length > 1,
-  displaySlots: slots.join(", "),
+            slots,
+            slotList: slots,
+            slotCount: slots.length,
+            isMultipleSlots: slots.length > 1,
+            displaySlots: slots.join(", "),
 
-  slotStartTime: slots[0],
-  slotEndTime: addOneHour(slots[slots.length - 1]),
+            slotStartTime: slots[0],
+            slotEndTime: addOneHour(slots[slots.length - 1]),
 
-  totalAmount,
-  paidAmount,
-  unpaidAmount: balanceAmount,
+            totalAmount,
+            paidAmount,
+            unpaidAmount: balanceAmount,
 
-  paymentId: razorpay_payment_id,
-  paymentMethod: "Razorpay",
-  paymentStatus: "PAID",
+            paymentId: razorpay_payment_id,
+            paymentMethod: "Razorpay",
+            paymentStatus: "PAID",
 
-  createdAt: now,
-  updatedAt: now,
+            createdAt: now,
+            updatedAt: now,
           });
 
           // Write user payment copy

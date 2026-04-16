@@ -17,6 +17,11 @@ interface TimeSlot {
   isBooked: boolean;
 }
 
+const toMinutes = (time24: string): number => {
+  const [h, m] = time24.split(":").map(Number);
+  return h * 60 + m;
+};
+
 const SlotManagement: React.FC = () => {
   const ownerId = localStorage.getItem("user_id") || "";
   const navigate = useNavigate();
@@ -186,9 +191,10 @@ const generateSlots = (open: string, close: string) => {
   });
 
   try {
+    const firestoreDate = formatDateForFirestore(bookingDate);
     const booked = await getAllBookedSlots(
       selectedTurf.turf_id,
-      bookingDate,
+      firestoreDate,
       selectedSport,
       selectedCourt
     );
@@ -199,18 +205,48 @@ const generateSlots = (open: string, close: string) => {
       return status !== "CANCELLED" && !b.cancelledAt;
     });
 
-    const blockedTimes = activeBookings
-      .map(b => (b.slotStartTime || b.slot_start_time || "").trim())
-      .filter(Boolean);
+    const expandedBlockedTimes: string[] = [];
 
-    console.log("🚫 Blocked times:", blockedTimes);
+activeBookings.forEach((b: any) => {
+  const startRaw = b.slotStartTime || b.slot_start_time || "";
+  const endRaw = b.slotEndTime || b.slot_end_time || "";
 
-    setSlots(prev =>
-      prev.map(slot => ({
-        ...slot,
-        isBooked: blockedTimes.includes(slot.startTime.trim()),
-      }))
-    );
+  const start24 = normalizeTimeTo24(startRaw);
+  const end24 = normalizeTimeTo24(endRaw);
+
+  if (!start24 || !end24) return;
+
+  let startMin = toMinutes(start24);
+  let endMin = toMinutes(end24);
+
+  // Handle overnight
+  if (endMin <= startMin) endMin += 1440;
+
+  for (let min = startMin; min < endMin; min += 60) {
+    const hour = Math.floor(min / 60) % 24;
+
+    const hourStr = hour.toString().padStart(2, "0") + ":00";
+
+    // Convert back to AM/PM to match slot.startTime
+    const date = new Date(`1970-01-01T${hourStr}:00`);
+    const label = date.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+
+    expandedBlockedTimes.push(label);
+  }
+});
+
+console.log("🚫 Expanded Blocked Times:", expandedBlockedTimes);
+
+setSlots(prev =>
+  prev.map(slot => ({
+    ...slot,
+    isBooked: expandedBlockedTimes.includes(slot.startTime.trim()),
+  }))
+);
   } catch (err) {
     console.error("❌ Failed to load booked slots:", err);
   }
@@ -238,119 +274,6 @@ useEffect(() => {
   return () => {
     console.log("[BOOKED] 🧹 Cleaning up event listener");
     window.removeEventListener("slotsUpdated", handleSlotUpdate);
-  };
-}, [selectedTurf?.turf_id, bookingDate, selectedSport, selectedCourt]);
-
-  // Fetch booked slots – improved version with better logging
-  useEffect(() => {
-  // Early return – prevent unnecessary runs
-  if (!selectedTurf?.turf_id || !selectedSport || !selectedCourt || !bookingDate) {
-    console.log("[BOOKED] Skipping – incomplete selection", {
-      turf: !!selectedTurf?.turf_id,
-      sport: !!selectedSport,
-      court: !!selectedCourt,
-      date: !!bookingDate,
-    });
-    // Optional: reset slots to all available when selection incomplete
-    setSlots(prev => prev.map(s => ({ ...s, isBooked: false })));
-    return;
-  }
-
-  
- const loadBooked = async () => {
-  if (!selectedTurf?.turf_id || !selectedSport || !selectedCourt || !bookingDate) {
-    console.log("[BOOKED] ⏭️ Skipping – incomplete selection");
-    setSlots(prev => prev.map(s => ({ ...s, isBooked: false })));
-    return;
-  }
-
-  // ✅ Convert input date (YYYY-MM-DD) to Firestore format (DD-MMM-YYYY)
-  const firestoreDate = formatDateForFirestore(bookingDate);
-
-  console.log("[BOOKED] 🔄 Loading with:", {
-    turfId: selectedTurf.turf_id,
-    inputDate: bookingDate,         // "2026-02-08"
-    firestoreDate: firestoreDate,   // "08-Feb-2026" ← This matches database
-    sport: selectedSport,
-    court: selectedCourt,            // "court 1"
-  });
-
-  try {
-    const booked = await getAllBookedSlots(
-      selectedTurf.turf_id,
-      firestoreDate,  // ✅ Use Firestore format
-      selectedSport,
-      selectedCourt
-    );
-
-    console.log(`[BOOKED] 📦 Received ${booked.length} total bookings`);
-
-    // ✅ Filter only ACTIVE bookings (exclude cancelled)
-    const activeBookings = booked.filter((b: any) => {
-      const status = (b.paymentStatus || b.payment_status || "").toUpperCase();
-      const isCancelled = b.cancelledAt || b.cancelled_at;
-      const isActive = status !== "CANCELLED" && !isCancelled;
-      
-      if (!isActive) {
-        console.log(`[BOOKED] ❌ Filtered out cancelled booking:`, b.id);
-      }
-      
-      return isActive;
-    });
-
-    console.log(`[BOOKED] ✅ ${activeBookings.length} active bookings after filtering`);
-
-    // ✅ Extract and normalize slot times using your helper
-    const bookedStartTimes = activeBookings
-      .map((b: any) => {
-        const rawTime = b.slotStartTime || b.slot_start_time || "";
-        
-        // ✅ Use normalizeTimeTo24 to handle all time formats
-        const normalized = normalizeTimeTo24(rawTime);
-        
-        if (normalized) {
-          console.log(`[BOOKED]   Blocking: ${rawTime} → ${normalized}`);
-        } else {
-          console.warn(`[BOOKED]   ⚠️ Could not normalize: "${rawTime}"`);
-        }
-        
-        return normalized;
-      })
-      .filter(Boolean) as string[]; // Remove nulls
-
-    console.log("[BOOKED] 🚫 Final blocked times:", bookedStartTimes);
-
-    // ✅ Update slots - mark as booked if time matches
-    setSlots(prev =>
-      prev.map(slot => {
-        // Normalize the slot's start time too
-        const slotTime24 = normalizeTimeTo24(slot.startTime);
-        const isBooked = slotTime24 ? bookedStartTimes.includes(slotTime24) : false;
-        
-        if (isBooked) {
-          console.log(`[BOOKED] 🔴 Marking ${slot.startTime} as booked`);
-        }
-        
-        return {
-          ...slot,
-          isBooked,
-        };
-      })
-    );
-
-    console.log("[BOOKED] ✅ Slot states updated successfully");
-  } catch (err) {
-    console.error("[BOOKED] ❌ Failed to load booked slots:", err);
-    setSlots(prev => prev.map(s => ({ ...s, isBooked: false })));
-  }
-};
-
-
-  loadBooked();
-
-  // Cleanup (optional) – reset when unmount or deps change
-  return () => {
-    console.log("[BOOKED] Cleaning up previous fetch");
   };
 }, [selectedTurf?.turf_id, bookingDate, selectedSport, selectedCourt]);
 
@@ -751,7 +674,7 @@ const getSlotPrice = (slotStart: string) => {
                 opacity: selectedTimeSlots.length > 0 ? 1 : 0.6
               }}
             >
-              Mark Unavailable ({selectedTimeSlots.length})
+              Make Selected Slots Unavailable ({selectedTimeSlots.length})
             </button>
           </div>
           <div className="col-6">
@@ -767,7 +690,7 @@ const getSlotPrice = (slotStart: string) => {
                 opacity: (selectedTimeSlots.length > 0 && bookingName && bookingMobile) ? 1 : 0.6
               }}
             >
-              Book Slots ({selectedTimeSlots.length})
+              Book Selected Slots ({selectedTimeSlots.length})
             </button>
           </div>
         </div>

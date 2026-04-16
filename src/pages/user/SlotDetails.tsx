@@ -42,7 +42,6 @@ type Slot = {
   endMin: number;
 };
 
-type Segment = "twilight" | "morning" | "noon" | "evening";
 
 // ---------- Time helpers ----------
 const toMinutes = (time24: string): number => {
@@ -100,7 +99,6 @@ const SlotDetails: React.FC = () => {
   const [visibleStartIndex, setVisibleStartIndex] = useState(0);
   const [selectedDateIndex, setSelectedDateIndex] = useState(0);
 
-  const [selectedSegment, setSelectedSegment] = useState<Segment>("evening");
   const [selectedSlots, setSelectedSlots] = useState<Slot[]>([]);
   const [bookedSlotSet, setBookedSlotSet] = useState<Set<string>>(new Set());
 
@@ -190,15 +188,25 @@ const SlotDetails: React.FC = () => {
       const set = new Set<string>();
 
       activeBookings.forEach((booking: any) => {
-        const rawTime = booking.slotStartTime || booking.slot_start_time || "";
-        
-        // ✅ Use your normalizeTimeTo24 helper
-        const normalized = normalizeTimeTo24(rawTime);
-        
-        if (normalized) {
-          set.add(normalized);
-          console.log(`  [SlotDetails] Blocked: ${rawTime} → ${normalized}`);
-        }
+        const start = normalizeTimeTo24(
+  booking.slotStartTime || booking.slot_start_time
+);
+const end = normalizeTimeTo24(
+  booking.slotEndTime || booking.slot_end_time
+);
+
+if (start && end) {
+  let startMin = toMinutes(start);
+  let endMin = toMinutes(end);
+
+  if (endMin <= startMin) endMin += 1440;
+
+  for (let min = startMin; min < endMin; min += 60) {
+    const hour = Math.floor(min / 60) % 24;
+    const key = `${hour.toString().padStart(2, "0")}:00`;
+    set.add(key);
+  }
+}
       });
 
       console.log("🔴 [SlotDetails] Final booked slots (24h):", Array.from(set));
@@ -286,7 +294,8 @@ const SlotDetails: React.FC = () => {
     const slots: Slot[] = [];
 
     for (let min = timing.openingMin; min < timing.closingMin; min += 60) {
-      const hour24 = Math.floor(min / 60) % 24;
+      const hour24Raw = Math.floor(min / 60);
+const hour24 = hour24Raw >= 24 ? hour24Raw - 24 : hour24Raw;
       const endMin = min + 60;
 
       const startLabel = formatToAmPm(`${hour24.toString().padStart(2, "0")}:00`);
@@ -303,37 +312,6 @@ const SlotDetails: React.FC = () => {
 
     return slots;
   }, [timing]);
-
-  // Filter slots by segment
-  const filteredSlots = useMemo<Slot[]>(() => {
-    if (!timing) return [];
-
-    let segStart = 0;
-    let segEnd = 24 * 60;
-
-    if (selectedSegment === "twilight") {
-      segStart = 0;
-      segEnd = 6 * 60;
-    } else if (selectedSegment === "morning") {
-      segStart = 6 * 60;
-      segEnd = 12 * 60;
-    } else if (selectedSegment === "noon") {
-      segStart = 12 * 60;
-      segEnd = 18 * 60;
-    } else if (selectedSegment === "evening") {
-      segStart = 18 * 60;
-      segEnd = 24 * 60;
-    }
-
-    return allSlots.filter(
-      (s) => s.startMin >= segStart && s.endMin <= segEnd
-    );
-  }, [allSlots, selectedSegment, timing]);
-
-  const [row1Slots, row2Slots] = useMemo(() => {
-    const mid = Math.ceil(filteredSlots.length / 2);
-    return [filteredSlots.slice(0, mid), filteredSlots.slice(mid)];
-  }, [filteredSlots]);
 
   // Price table
   const priceTable = useMemo(() => {
@@ -401,26 +379,6 @@ const SlotDetails: React.FC = () => {
   const formatDayLabel = (d: Date) =>
     d.toLocaleDateString("en-IN", { weekday: "short" });
 
-  const segmentLabel = (seg: Segment) => {
-    switch (seg) {
-      case "twilight": return "Twilight";
-      case "morning": return "Morning";
-      case "noon": return "Noon";
-      case "evening": return "Evening";
-      default: return seg;
-    }
-  };
-
-  const segmentHoursText = (seg: Segment) => {
-    switch (seg) {
-      case "twilight": return "12:00 AM – 6:00 AM";
-      case "morning": return "6:00 AM – 12:00 PM";
-      case "noon": return "12:00 PM – 6:00 PM";
-      case "evening": return "6:00 PM – 12:00 AM";
-      default: return "";
-    }
-  };
-
   const isSlotSelected = (slot: Slot) =>
     selectedSlots.some(
       (s) => s.startMin === slot.startMin && s.endMin === slot.endMin
@@ -441,21 +399,6 @@ const SlotDetails: React.FC = () => {
       return next;
     });
   };
-
-  function getSegmentHours(segment: Segment) {
-    switch (segment) {
-      case "twilight":
-        return { row1: [0, 1, 2, 3], row2: [3, 4, 5, 6] };
-      case "morning":
-        return { row1: [6, 7, 8, 9], row2: [9, 10, 11, 12] };
-      case "noon":
-        return { row1: [12, 13, 14, 15], row2: [15, 16, 17, 18] };
-      case "evening":
-        return { row1: [18, 19, 20, 21], row2: [21, 22, 23, 24] };
-      default:
-        return { row1: [], row2: [] };
-    }
-  }
 
   async function handleBooking() {
     if (!turf || !selectedSport || !totalPrice || selectedSlots.length === 0) return;
@@ -662,52 +605,52 @@ const SlotDetails: React.FC = () => {
               </button>
             </div>
 
-            <div className="d-flex justify-content-center gap-4 mb-3">
-              {(["twilight", "morning", "noon", "evening"] as Segment[]).map((seg) => (
-                <button
-                  key={seg}
-                  className="btn btn-link text-decoration-none px-2"
-                  onClick={() => {
-                    setSelectedSegment(seg);
-                    setSelectedSlots([]);
-                  }}
-                >
-                  <div
-                    className={
-                      "fw-semibold " +
-                      (selectedSegment === seg ? "text-success" : "text-muted")
-                    }
-                  >
-                    {segmentLabel(seg)}
-                  </div>
-                  {selectedSegment === seg && (
-                    <div
-                      className="mt-1"
-                      style={{
-                        height: "3px",
-                        borderRadius: "999px",
-                        backgroundColor: "#198754",
-                      }}
-                    />
-                  )}
-                </button>
-              ))}
-            </div>
-
-            <div className="text-center text-muted small mb-3">
-              {segmentHoursText(selectedSegment)}
-            </div>
-
             <div className="mb-4">
-              {(() => {
-                const { row1, row2 } = getSegmentHours(selectedSegment);
-                return (
-                  <>
-                    {renderTimelineRow(row1)}
-                    {renderTimelineRow(row2)}
-                  </>
-                );
-              })()}
+              <div
+  style={{
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: "12px",
+  }}
+>
+  {allSlots.map((slot) => {
+    const hour = Math.floor(slot.startMin / 60) % 24;
+    const slotKey24 = `${hour.toString().padStart(2, "0")}:00`;
+
+    const isBooked = bookedSlotSet.has(slotKey24);
+
+    const disabled =
+      (isToday && slot.startMin <= nowMinutes) ||
+      isBooked;
+
+    const selected = isSlotSelected(slot);
+
+    return (
+      <button
+        key={slot.startMin}
+        className={`btn ${
+          isBooked
+            ? "btn-danger"
+            : disabled
+            ? "btn-secondary"
+            : selected
+            ? "btn-success"
+            : "btn-outline-success"
+        }`}
+        disabled={disabled}
+        onClick={() => toggleSlot(slot)}
+        style={{
+          width: "100%",
+          borderRadius: "12px",
+          padding: "10px 6px",
+          fontSize: "14px",
+        }}
+      >
+        {slot.startLabel} – {slot.endLabel}
+      </button>
+    );
+  })}
+</div>
             </div>
 
             <div className="border-top pt-3 mt-2 text-center">

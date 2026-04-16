@@ -7,6 +7,7 @@ import pickleImg from "../../../assets/PickleImg.png";
 
 export interface SlotBooking {
   id: string;
+  bookingId?: string;
   turfId: string;
   date: string;
   bookedSportsName: string;
@@ -100,6 +101,7 @@ const active = raw.filter((b: any) => {
         console.table(
   grouped.map(b => ({
     id: b.id,
+    bookingId: b.bookingId,
     sport: b.bookedSportsName,
     totalPaid: b.totalPaid,
     totalUnpaid: b.totalUnpaid,
@@ -810,124 +812,298 @@ const totalUnpaid = bookings.reduce(
           )}
 
           {!loading && bookings.length > 0 && (
-            <div className="summary-grid">
-              <div className="summary-card">
-                <span className="summary-label">Total Bookings</span>
-                <h3 className="summary-value">{bookings.length}</h3>
+            <div
+  style={{
+    maxWidth: "1200px",
+    margin: "auto",
+    padding: "0 16px"
+  }}
+>
+
+  {/* 🔹 SUMMARY CARDS */}
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: "repeat(3, 1fr)",
+      gap: "12px",
+      marginBottom: "1.5rem",
+    }}
+  >
+    <div
+      style={{
+        padding: "1rem",
+        borderRadius: "16px",
+        background: "linear-gradient(135deg, #7F00FF, #E100FF)",
+        color: "#fff",
+        textAlign: "center",
+      }}
+    >
+      <h4>{bookings.length}</h4>
+      <small>Total Bookings</small>
+    </div>
+
+    <div
+      style={{
+        padding: "1rem",
+        borderRadius: "16px",
+        background: "linear-gradient(135deg, #36D1DC, #5B86E5)",
+        color: "#fff",
+        textAlign: "center",
+      }}
+    >
+      <h4>
+        {bookings.reduce((sum, b) => sum + (b.slots?.length || 0), 0)}
+      </h4>
+      <small>Total Slots</small>
+    </div>
+
+    <div
+      style={{
+        padding: "1rem",
+        borderRadius: "16px",
+        background: "linear-gradient(135deg, #F7971E, #FFD200)",
+        color: "#fff",
+        textAlign: "center",
+      }}
+    >
+      <h4>₹{totalPaid + totalUnpaid}</h4>
+      <small>Revenue</small>
+    </div>
+  </div>
+
+  {/* 🔹 TODAY HEADER */}
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: "1rem",
+    }}
+  >
+    <h5 style={{ margin: 0 }}>Today's Bookings</h5>
+
+    <span
+      style={{
+        background: "#e8f5e9",
+        padding: "6px 12px",
+        borderRadius: "20px",
+        fontSize: "12px",
+      }}
+    >
+      {bookings.length} items
+    </span>
+  </div>
+
+  {/* 🔹 BOOKINGS LIST */}
+  <div
+  style={{
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))",
+    gap: "20px"
+  }}
+>
+{!loading &&
+  bookings.map((booking, index) => {
+    const firstLetter =
+      booking.bookingUsername?.charAt(0).toUpperCase() || "U";
+
+    return (
+      <div
+        key={`${booking.id}-${index}`}
+        style={{
+          borderRadius: "20px",
+          overflow: "hidden",
+          marginBottom: "1.5rem",
+          boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
+        }}
+      >
+        {/* 🔥 HEADER (GRADIENT) */}
+        <div
+          style={{
+            background: "linear-gradient(135deg, #c2f0ec, #e0f7fa)",
+            padding: "1rem",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+            }}
+          >
+            <span
+              style={{
+                background: "#ff9800",
+                color: "#fff",
+                padding: "4px 10px",
+                borderRadius: "20px",
+                fontSize: "12px",
+              }}
+            >
+              OWNER
+            </span>
+
+            <span
+              style={{
+                background: "#ffa726",
+                color: "#fff",
+                padding: "4px 10px",
+                borderRadius: "20px",
+                fontSize: "12px",
+              }}
+            >
+              {booking.paymentStatus === "paid"
+                ? "PAID"
+                : "UNPAID"}
+            </span>
+          </div>
+
+          <h5 style={{ marginTop: "10px" }}>
+            {booking.bookedSportsName}
+          </h5>
+
+          <div
+            style={{
+              background: "#eee",
+              display: "inline-block",
+              padding: "6px 10px",
+              borderRadius: "8px",
+              fontSize: "12px",
+            }}
+          >
+            ID: {booking.bookingId || booking.id}
+          </div>
+        </div>
+
+        {/* 🔹 BODY */}
+        <div style={{ padding: "1rem" }}>
+          {/* USER */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "1rem",
+            }}
+          >
+            <div
+              style={{
+                width: 45,
+                height: 45,
+                borderRadius: "50%",
+                background: "#198754",
+                color: "#fff",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: "bold",
+              }}
+            >
+              {firstLetter}
+            </div>
+
+            <div>
+              <div>{booking.bookingUsername}</div>
+              <small style={{ color: "#198754" }}>
+                {booking.bookingUserMobile}
+              </small>
+            </div>
+          </div>
+
+          {/* COURT */}
+          <div
+            style={{
+              marginTop: "10px",
+              padding: "10px",
+              borderRadius: "12px",
+              background: "#f5f5f5",
+              textAlign: "center",
+            }}
+          >
+            court {booking.court}
+          </div>
+
+          {/* 🔹 SLOTS */}
+          <div style={{ textAlign: "center", marginTop: "1rem" }}>
+            <div style={{ color: "#888", marginBottom: "8px" }}>
+              Booked Slots
+            </div>
+
+            {(booking.slots || []).map((slot, i) => (
+              <div
+                key={i}
+                style={{
+                  border: "2px solid #26a69a",
+                  borderRadius: "15px",
+                  padding: "10px",
+                  margin: "6px auto",
+                  width: "fit-content",
+                  minWidth: "220px",
+                  color: "#26a69a",
+                  fontWeight: 600,
+                }}
+              >
+                ⏱ {slot}
               </div>
-              <div className="summary-card">
-                <span className="summary-label">Total Paid</span>
-                <h3 className="summary-value success">₹{totalPaid}</h3>
+            ))}
+          </div>
+
+          {/* 🔹 PAYMENT */}
+          <div
+            style={{
+              background: "#fff3e0",
+              borderRadius: "20px",
+              padding: "1rem",
+              marginTop: "1rem",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-around",
+                textAlign: "center",
+              }}
+            >
+              <div>
+                <small>Total</small>
+                <div>₹{booking.totalAmount}</div>
               </div>
-              <div className="summary-card">
-                <span className="summary-label">Total Balance</span>
-                <h3 className="summary-value danger">₹{totalUnpaid}</h3>
+
+              <div>
+                <small style={{ color: "green" }}>Paid</small>
+                <div>₹{booking.totalPaid}</div>
+              </div>
+
+              <div>
+                <small style={{ color: "red" }}>Balance</small>
+                <div>₹{booking.totalUnpaid}</div>
               </div>
             </div>
-          )}
 
-          {!loading &&
-            bookings.map((booking, index) => {
-              // ✅ Use values directly from grouped booking - NO CALCULATION
-              const paidAmount = booking.totalPaid;
-              const balanceAmount = booking.totalUnpaid;
-              const totalAmount = booking.totalAmount;
-
-              const firstLetter = booking.bookingUsername?.charAt(0).toUpperCase() || "U";
-              const sportImage = getSportImage(booking.bookedSportsName ?? "Unknown Sport");
-
-              return (
-                <div key={`${booking.id}-${index}`} className="booking-card">
-                  <div className="booking-header">
-                    <div className="booking-user-section">
-                      <div className="profile-icon-wrapper">
-                        {firstLetter}
-                      </div>
-                      <div className="booking-user-info">
-                        <h6>{booking.bookingUsername}</h6>
-                        <div className="booking-mobile">
-                          <span>{booking.bookingUserMobile}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <span
-                      className={`booking-status-badge ${
-                        booking.paymentStatus === "paid"
-                          ? "badge-paid"
-                          : "badge-advance"
-                      }`}
-                    >
-                      {booking.paymentStatus === "paid" ? "PAID" : "ADVANCE"}
-                      {booking.createdBy && ` (${booking.createdBy})`}
-                    </span>
-                  </div>
-
-                  <div className="sport-section">
-                    <img
-                      src={sportImage}
-                      alt={booking.bookedSportsName}
-                      className="sport-image"
-                    />
-                    <div className="sport-details">
-                      <div className="sport-name">
-                        {booking.bookedSportsName || "Unknown Sport"}
-                      </div>
-                      <div className="court-name">
-                        Court: {booking.court}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="booking-details">
-                    <div className="detail-item">
-                      <span className="detail-label">Date</span>
-                      <span className="detail-value">{booking.date}</span>
-                    </div>
-                  </div>
-
-                  {booking.slots && booking.slots.length > 0 && (
-                    <div className="slots-section">
-                      <span className="slots-label">Booked Slots ({booking.slots.length})</span>
-                      <div className="slots-container">
-                        {booking.slots.map((slot: string, i: number) => (
-                          <span key={i} className="slot-badge">
-                            {slot}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="payment-summary">
-                    <div className="payment-grid">
-                      <div className="payment-item">
-  <span className="payment-label">Total</span>
-  <span className="payment-value total">₹{Number(totalAmount || 0)}</span>
-</div>
-<div className="payment-item">
-  <span className="payment-label">Paid</span>
-  <span className="payment-value paid">₹{Number(paidAmount || 0)}</span>
-</div>
-<div className="payment-item">
-  <span className="payment-label">Balance</span>
-  <span className="payment-value balance">₹{Number(balanceAmount || 0)}</span>
-</div>
-                    </div>
-                  </div>
-
-                  {balanceAmount > 0 && (
-                    <button
-                      className="mark-paid-button"
-                      onClick={() => handleMarkPaid(booking)}
-                      disabled={loading}
-                    >
-                      <span>💳</span>
-                      <span>Mark as Fully Paid</span>
-                    </button>
-                  )}
-                </div>
-              );
-            })}
+            {booking.totalUnpaid > 0 && (
+              <button
+                onClick={() => handleMarkPaid(booking)}
+                style={{
+                  width: "100%",
+                  marginTop: "15px",
+                  padding: "14px",
+                  background: "#009688",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "12px",
+                  fontSize: "16px",
+                  fontWeight: "bold",
+                }}
+              >
+                ✔ Mark as Fully Paid
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  })}
+  </div>
+          </div>
+        )}
         </div>
       </div>
     </>
