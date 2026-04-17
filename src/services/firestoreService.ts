@@ -11,6 +11,7 @@ import {
   updateDoc,
   deleteDoc,
   addDoc,
+  serverTimestamp
 } from "firebase/firestore";
 
 import {
@@ -331,6 +332,76 @@ export const deleteTurf = async (turfId: string) => {
   } catch (error) {
     console.error("Error deleting turf:", error);
     throw error;
+  }
+};
+
+export const safeDeleteTurf = async (
+  turfId: string,
+  options?: {
+    userId?: string;
+    role?: string;
+    reason?: "CHANNEL_PARTNER_DELETE" | "ADMIN_DELETE" | "AUTO_DELETE";
+  }
+) => {
+  try {
+    console.log("🧨 DELETE TRIGGERED >>>", {
+      turfId,
+      userId: options?.userId || "UNKNOWN",
+      role: options?.role || "UNKNOWN",
+      reason: options?.reason || "UNKNOWN",
+      url: window.location.href,
+      time: new Date().toISOString(),
+    });
+
+    const turfRef = doc(db, "environment", "testing", "turfs", turfId);
+    const turfSnap = await getDoc(turfRef);
+
+    if (!turfSnap.exists()) {
+      console.warn("⚠️ Turf not found:", turfId);
+      return;
+    }
+
+    const turfData = turfSnap.data();
+
+    const deleteReason = options?.reason ?? "UNKNOWN";
+
+    // ✅ Store backup
+    await setDoc(
+      doc(
+        collection(
+          db,
+          "environment",
+          "testing",
+          "deleted_turfs",
+          turfId,
+          "history"
+        )
+      ),
+      {
+        originalTurfId: turfId,
+        turfData,
+        deletedAt: serverTimestamp(),
+        deletedAtReadable: new Date().toISOString(),
+        deletedBy: options?.role || "UNKNOWN",
+        deletedById: options?.userId || "UNKNOWN",
+        reason: deleteReason,
+        triggeredFrom: window.location.href,
+      }
+    );
+
+    // 🚫 TEMP: Block auto deletion
+    if (options?.reason === "AUTO_DELETE") {
+      console.warn("🚫 AUTO DELETE BLOCKED:", turfId);
+      return;
+    }
+
+    // ✅ Delete original
+    await deleteDoc(turfRef);
+
+    console.log("✅ Turf deleted & archived:", turfId);
+
+  } catch (error) {
+    console.error("❌ Error in safeDeleteTurf:", error);
   }
 };
 

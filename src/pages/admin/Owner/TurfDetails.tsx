@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "../../../firebase";
-import { getTurfById, getOwnerByOwnerId, deleteTurf } from "../../../services/firestoreService";
+import { getTurfById, getOwnerByOwnerId, safeDeleteTurf } from "../../../services/firestoreService";
 import AdminNavbar from "../Analytics/AdminNavbar";
 import "bootstrap/dist/css/bootstrap.min.css";
 import badmintonImg from "../../../assets/badminton.png";
@@ -48,7 +48,7 @@ const isCurrentlyOpen = (openStr: string, closeStr: string): boolean => {
 
 const TurfDetails: React.FC = () => {
   const { turfId } = useParams<{ turfId: string }>();
-   const { role } = useAuth();
+  const { role } = useAuth();
   const [turf, setTurf] = useState<any>(null);
   const [owner, setOwner] = useState<any>(null);
   const [selectedSport, setSelectedSport] = useState<string | null>(null);
@@ -58,14 +58,16 @@ const TurfDetails: React.FC = () => {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const navigate = useNavigate();
+  const userId = localStorage.getItem("user_id");
+const userRole = localStorage.getItem("user_role");
 
   const hasBoxFootball = turf
-  ? Object.keys(turf.sport_specific_timing || {}).some((sport) =>
+    ? Object.keys(turf.sport_specific_timing || {}).some((sport) =>
       sport.toLowerCase().includes("boxcricket") ||
       sport.toLowerCase().includes("football") ||
       sport.toLowerCase().includes("cricket & football")
     )
-  : false;
+    : false;
 
   const currentDay = new Date().toLocaleDateString("en-US", { weekday: "long" }).toLowerCase();
 
@@ -112,10 +114,19 @@ const TurfDetails: React.FC = () => {
 
   const handleDeleteTurf = async () => {
     if (!turfId) return;
-    
+
     setIsDeleting(true);
     try {
-      await deleteTurf(turfId);
+      await safeDeleteTurf(turfId, {
+  userId: userId || "UNKNOWN",
+  role: userRole  || "UNKNOWN",
+  reason:
+    userRole === "super_admin"
+      ? "ADMIN_DELETE"
+      : userRole  === "channel_partner"
+      ? "CHANNEL_PARTNER_DELETE"
+      : "AUTO_DELETE",
+});
       alert("Turf deleted successfully!");
       setShowDeleteModal(false);
       navigate("/dashboard/turfs");
@@ -166,16 +177,16 @@ const TurfDetails: React.FC = () => {
   };
 
   const getMaxPlayers = () => {
-  if (!turf) return null;
+    if (!turf) return null;
 
-  const sport =
-    selectedSport ||
-    turf.available_sports_list?.[0];
+    const sport =
+      selectedSport ||
+      turf.available_sports_list?.[0];
 
-  return turf.sports_specific_person_count?.[sport] || null;
-};
+    return turf.sports_specific_person_count?.[sport] || null;
+  };
 
-const maxPlayers = getMaxPlayers();
+  const maxPlayers = getMaxPlayers();
   return (
     <div style={{ fontFamily: "Poppins, sans-serif", backgroundColor: "#f8f9fa" }}>
       <AdminNavbar />
@@ -259,42 +270,41 @@ const maxPlayers = getMaxPlayers();
 
           {/* Buttons - Stack on mobile, row on larger screens */}
           <div className="d-flex flex-column flex-sm-row justify-content-center gap-2 gap-sm-3">
-            <button 
+            <button
               className="btn btn-outline-light btn-sm btn-md-lg px-3 px-md-4"
               onClick={() => setShowOwnerModal(true)}
               style={{ fontSize: "clamp(0.875rem, 2vw, 1rem)" }}
             >
               Owner Details
             </button>
-            
-{(role === "edit" || role === "super_admin") ? (
-  <button
-    className="btn btn-outline-warning btn-lg px-5 py-3 fw-semibold"
-    onClick={() => navigate(`/dashboard/owners/${turf.owner_id}/turfs/${turfId}/edit`)}
-  >
-    Edit Turf
-  </button>
-) : null}
+
+            {(role === "edit" || role === "super_admin") ? (
+              <button
+                className="btn btn-outline-warning btn-lg px-5 py-3 fw-semibold"
+                onClick={() => navigate(`/dashboard/owners/${turf.owner_id}/turfs/${turfId}/edit`)}
+              >
+                Edit Turf
+              </button>
+            ) : null}
 
             {role === "super_admin" && (
               <button
-              className={`btn btn-lg px-5 py-3 fw-bold ${
-                turf.turf_active_status ? "btn-success" : "btn-danger"
-              }`}
-              onClick={handleApproveTurf}
-              disabled={turf.turf_active_status}
-            >
-              {turf.turf_active_status ? "Approved" : "Approve Turf"}
-            </button>
+                className={`btn btn-lg px-5 py-3 fw-bold ${turf.turf_active_status ? "btn-success" : "btn-danger"
+                  }`}
+                onClick={handleApproveTurf}
+                disabled={turf.turf_active_status}
+              >
+                {turf.turf_active_status ? "Approved" : "Approve Turf"}
+              </button>
             )}
-            
+
             {role === "super_admin" && (
-            <button
-              className="btn btn-outline-danger btn-lg px-5 py-3 fw-semibold"
-              onClick={() => setShowDeleteModal(true)}
-            >
-               Delete Turf
-            </button>
+              <button
+                className="btn btn-outline-danger btn-lg px-5 py-3 fw-semibold"
+                onClick={() => setShowDeleteModal(true)}
+              >
+                Delete Turf
+              </button>
             )}
           </div>
         </div>
@@ -336,17 +346,17 @@ const maxPlayers = getMaxPlayers();
           <div className="col-12 col-sm-6 col-md-4">
             <div className="card shadow-sm p-3 h-100">
               <h6 className="text-muted mb-1" style={{ fontSize: "clamp(0.75rem, 2vw, 0.875rem)" }}>Timings</h6>
-<div className="flex-grow-1">
-{firstTiming ? (
-  <>
-    <h5 className="fw-bold mb-1">
-      {firstTiming.opening_time} – {firstTiming.closing_time}
-    </h5>
-  </>
-) : (
-  <h5 className="fw-bold mb-0">Timing not available</h5>
-)}
-</div>
+              <div className="flex-grow-1">
+                {firstTiming ? (
+                  <>
+                    <h5 className="fw-bold mb-1">
+                      {firstTiming.opening_time} – {firstTiming.closing_time}
+                    </h5>
+                  </>
+                ) : (
+                  <h5 className="fw-bold mb-0">Timing not available</h5>
+                )}
+              </div>
             </div>
           </div>
           <div className="col-12 col-sm-12 col-md-4">
@@ -391,9 +401,8 @@ const maxPlayers = getMaxPlayers();
                             </p>
                           </div>
                           <span
-                            className={`badge px-2 px-md-3 py-1 flex-shrink-0 ${
-                              timing.sport_available ? "bg-success" : "bg-danger"
-                            }`}
+                            className={`badge px-2 px-md-3 py-1 flex-shrink-0 ${timing.sport_available ? "bg-success" : "bg-danger"
+                              }`}
                             style={{ fontSize: "clamp(0.75rem, 1.5vw, 0.875rem)" }}
                           >
                             {/* {timing.sport_available ? "Available" : "Closed"} */}
@@ -531,8 +540,8 @@ const maxPlayers = getMaxPlayers();
                         const isAvailable = timing.sport_available !== false;
 
                         return (
-                          <div 
-                            key={day} 
+                          <div
+                            key={day}
                             className={`card mb-3 ${day === currentDay ? "border-success" : ""}`}
                           >
                             <div className={`card-header ${day === currentDay ? "bg-success-subtle" : "bg-light"}`}>
@@ -621,9 +630,8 @@ const maxPlayers = getMaxPlayers();
                                 <td style={{ fontSize: "clamp(0.875rem, 1.5vw, 1rem)" }}>{nightStart} – {nightEnd}</td>
                                 <td>
                                   <span
-                                    className={`badge px-2 px-md-3 py-2 ${
-                                      isAvailable ? "bg-success" : "bg-danger"
-                                    }`}
+                                    className={`badge px-2 px-md-3 py-2 ${isAvailable ? "bg-success" : "bg-danger"
+                                      }`}
                                     style={{ fontSize: "clamp(0.75rem, 1.5vw, 0.875rem)" }}
                                   >
                                     {isAvailable ? "Available" : "Closed"}
@@ -784,15 +792,15 @@ const maxPlayers = getMaxPlayers();
                   </div>
                 </div>
                 <div className="modal-footer bg-light">
-                  <button 
-                    className="btn btn-secondary px-3 px-md-4" 
+                  <button
+                    className="btn btn-secondary px-3 px-md-4"
                     onClick={() => setShowDeleteModal(false)}
                     disabled={isDeleting}
                   >
                     Cancel
                   </button>
-                  <button 
-                    className="btn btn-danger px-3 px-md-4 d-flex align-items-center gap-2" 
+                  <button
+                    className="btn btn-danger px-3 px-md-4 d-flex align-items-center gap-2"
                     onClick={handleDeleteTurf}
                     disabled={isDeleting}
                   >
