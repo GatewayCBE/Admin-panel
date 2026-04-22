@@ -11,7 +11,8 @@ import {
   updateDoc,
   deleteDoc,
   addDoc,
-  serverTimestamp
+  serverTimestamp,
+  onSnapshot 
 } from "firebase/firestore";
 
 import {
@@ -214,6 +215,21 @@ export const getUserDocByMobile = async (mobile: string) => {
     docId: snap.docs[0].id,
     ...snap.docs[0].data(),
   };
+};
+
+export const getUsers = async () => {
+  try {
+    const usersRef = collection(db, "environment", "testing", "users");
+    const userDocs = await getDocs(usersRef);
+
+    return userDocs.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    return [];
+  }
 };
 
 // Get all turf details
@@ -473,6 +489,48 @@ export const getUserByUserId = async (
     console.error("Error fetching user profile:", error);
     return null;
   }
+};
+
+export const subscribeToCounts = (
+  env: string,
+  callbacks: {
+    onUsers?: (count: number) => void;
+    onOwners?: (count: number) => void;
+    onTurfs?: (count: number) => void;
+  }
+) => {
+  console.log("📡 Subscribing to counts...");
+
+  const unsubUsers = onSnapshot(
+    collection(db, "environment", "testing", "users"),
+    (snapshot) => {
+      console.log("👤 Users:", snapshot.size);
+      callbacks.onUsers?.(snapshot.size);
+    }
+  );
+
+  const unsubOwners = onSnapshot(
+    collection(db, "environment", "testing", "owners"),
+    (snapshot) => {
+      console.log("🤝 Owners:", snapshot.size);
+      callbacks.onOwners?.(snapshot.size);
+    }
+  );
+
+  const unsubTurfs = onSnapshot(
+    collection(db, "environment", "testing", "turfs"),
+    (snapshot) => {
+      console.log("🏟️ Turfs:", snapshot.size);
+      callbacks.onTurfs?.(snapshot.size);
+    }
+  );
+
+  // ✅ Return cleanup
+  return () => {
+    unsubUsers();
+    unsubOwners();
+    unsubTurfs();
+  };
 };
 
 export const to12HourFormate = (time24: string) => {

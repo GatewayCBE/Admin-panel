@@ -45,3 +45,16 @@
 .modal-backdrop {
   z-index: 9998 !important;
 }
+
+.stat-card {
+  transition: all 0.25s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 25px rgba(0, 0, 0, 0.12);
+}
+
+body {
+  overflow-x: hidden;
+}

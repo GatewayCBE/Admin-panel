@@ -104,8 +104,8 @@ const ManageTurf: React.FC = () => {
       'Turf Mobile': turf.turf_mobile_number || '',
       
       // Timing
-      'Opening Hour': turf.turf_opening_hour || '',
-      'Closing Hour': turf.turf_closing_hour || '',
+      'Opening Hour': turf.turf_opening_time || '',
+      'Closing Hour': turf.turf_closing_time || '',
       
       // Dimensions
       'Length': turf.turf_length || '',

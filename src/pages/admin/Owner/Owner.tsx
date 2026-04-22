@@ -16,6 +16,37 @@ const Owner: React.FC = () => {
       owner.owner_id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const downloadCSV = () => {
+  if (!ownersList || ownersList.length === 0) {
+    alert("No data to export");
+    return;
+  }
+
+  const headers = ["Name", "Email", "Mobile"];
+
+  const rows = ownersList.map((owner) => [
+    owner.owner_name,
+    owner.owner_email,
+    owner.owner_mobile_number,
+  ]);
+
+  const csvContent =
+    "data:text/csv;charset=utf-8," +
+    [headers, ...rows]
+      .map((row) => row.map((item) => `"${item}"`).join(","))
+      .join("\n");
+
+  const encodedUri = encodeURI(csvContent);
+
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", "channel_partners.csv");
+  document.body.appendChild(link);
+
+  link.click();
+  document.body.removeChild(link);
+};
+
   return (
     <div className="admin-page-container">
       <AdminNavbar />
@@ -26,31 +57,46 @@ const Owner: React.FC = () => {
           Channel Partner List
         </h2>
 
-        {/* SEARCH BAR */}
-        <div className="row justify-content-center mb-4">
-          <div className="col-12 col-sm-10 col-md-8 col-lg-6">
-            <div className="position-relative">
-              <input
-                type="text"
-                className="form-control form-control-lg shadow-sm"
-                placeholder="Search by name, email, mobile..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                style={{ paddingRight: "45px" }}
-              />
-              <span
-                className="position-absolute top-50 end-0 translate-middle-y me-3 text-muted"
-                style={{ pointerEvents: "none" }}
-              >
-                🔍
-              </span>
-            </div>
-          </div>
-          <button className="btn btn-success btn-lg w-50">
-              Total Channel Partners: {ownersList.length}
-            </button>
-        </div>
+<div className="row justify-content-center align-items-center mb-4 g-2">
 
+  {/* SEARCH */}
+  <div className="col-12 col-md-6">
+    <div className="position-relative">
+      <input
+        type="text"
+        className="form-control form-control-lg shadow-sm"
+        placeholder="Search by name, email, mobile..."
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        style={{ paddingRight: "45px" }}
+      />
+      <span
+        className="position-absolute top-50 end-0 translate-middle-y me-3 text-muted"
+        style={{ pointerEvents: "none" }}
+      >
+        🔍
+      </span>
+    </div>
+  </div>
+
+  {/* COUNT */}
+  <div className="col-6 col-md-3">
+    <button className="btn btn-success w-100">
+      Total: {ownersList.length}
+    </button>
+  </div>
+
+  {/* DOWNLOAD CSV */}
+  <div className="col-6 col-md-3">
+    <button
+      className="btn btn-outline-success w-100 d-flex align-items-center justify-content-center gap-2"
+      onClick={downloadCSV}
+    >
+      ⬇️ Download
+    </button>
+  </div>
+
+</div>
         {/* OWNER LIST */}
         {filteredOwners.length === 0 ? (
           <p className="text-center text-muted">

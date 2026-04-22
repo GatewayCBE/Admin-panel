@@ -9,8 +9,8 @@ export interface Turf {
   owner_name: string;
   owner_mobile_number: string;
   owner_email: string;
-  turf_closing_hour: string;
-  turf_opening_hour: string;
+  turf_closing_time: string;
+  turf_opening_time: string;
 
   turf_image_url?: string | null;
   turf_images?: string[] | null;

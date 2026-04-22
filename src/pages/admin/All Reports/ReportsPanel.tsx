@@ -3,6 +3,7 @@ import { Tabs, Tab } from "react-bootstrap";
 import { fetchAllBookings } from "../../../services/firestoreService";
 import AdminNavbar from "../Analytics/AdminNavbar";
 import AllReports from "./Allreports";
+import CountsSummary from "./CountsSummary";
 
 const ReportsPanel: React.FC = () => {
   const [bookings, setBookings] = useState<any[]>([]);
@@ -76,6 +77,9 @@ const ReportsPanel: React.FC = () => {
           <Tab eventKey="overview" title="📊 Comprehensive Reports">
             <AllReports bookings={bookings} />
           </Tab>
+          <Tab eventKey="counts" title="📊 Counts Summary">
+    <CountsSummary />
+  </Tab>
         </Tabs>
       </div>
     </div>
