@@ -28,7 +28,7 @@ const FooterInfo = () => {
             </h2>
 
             <p style={{ fontSize: "14px", lineHeight: "1.7", marginBottom: "18px", opacity: 0.92 }}>
-              BookYourTurf is a complete digital platform designed to simplify turf management
+              BookYourTurf is a complete digital platform designed to simplify sports venues
               and player booking with real-time availability, seamless payments and automation.
             </p>
 
@@ -69,7 +69,6 @@ const FooterInfo = () => {
                 <ul style={{ listStyle: "none", padding: 0, margin: 0, fontSize: "14px", lineHeight: "1.85" }}>
                   <li>nottaminfotech@gmail.com</li>
                   <li>bookyourturfindia@gmail.com</li>
-                  <li>bookyourturfmdu@gmail.com</li>
                 </ul>
               </div>
 
@@ -102,19 +101,18 @@ const FooterInfo = () => {
 
             <div style={{ fontSize: "14px", lineHeight: "1.75" }}>
               <p style={{ marginBottom: "14px" }}>
-                <strong>Head office Chennai</strong><br />
+                <strong>Head office</strong><br />
                 Old No 57/62, New No 111,<br />
-                1st Floor, Above KFC,<br />
-                Wallahjah Rd, Ellis Puram,<br />
-                Anna Salai, Triplicane,<br />
-                Chennai, Tamil Nadu - 600002
+                1st Floor, upstairs KFC,<br />
+                Mount Road,<br />
+                <strong>Chennai, Tamil Nadu - 600002</strong>
               </p>
 
               <p style={{ marginBottom: 0 }}>
-                <strong>Corporate Office Madurai</strong><br />
-                Plot no: 200 Old LIG Colony<br />
-                KK Nagar, Madurai<br />
-                Tamil Nadu - 625020
+                <strong>Corporate Office</strong><br />
+                Plot no: 200, Nottam Square<br />
+                Old LIG Colony, KK Nagar,<br />
+                <strong>Madurai, Tamil Nadu - 625020</strong>
               </p>
             </div>
           </div>
