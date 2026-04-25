@@ -23,11 +23,11 @@ const FooterInfo = () => {
 
           {/* COL 1 — ABOUT + QUICK LINKS */}
           <div>
-            <h2 style={{ fontSize: "22px", fontWeight: 700, marginBottom: "10px" }}>
+            <h2 style={{ fontSize: "22px", fontWeight: 700, marginBottom: "20px" }}>
               BookYourTurf
             </h2>
 
-            <p style={{ fontSize: "14px", lineHeight: "1.7", marginBottom: "18px", opacity: 0.92 }}>
+            <p style={{ fontSize: "14px", lineHeight: "1.7", marginBottom: "35px", opacity: 0.92 }}>
               BookYourTurf is a complete digital platform designed to simplify sports venues
               and player booking with real-time availability, seamless payments and automation.
             </p>
@@ -36,7 +36,7 @@ const FooterInfo = () => {
               Quick Links
             </h3>
 
-            <ul style={{ listStyle: "none", padding: 0, margin: 0, fontSize: "13.5px" }}>
+            <ul style={{ listStyle: "none", padding: 0, margin: 0, fontSize: "13.5px", display: "flex", flexDirection: "row", gap: "25px" }}>
               {[
                 { label: "Home", href: "/" },
                 { label: "About", href: "/about" },
@@ -68,7 +68,6 @@ const FooterInfo = () => {
                 </h5>
                 <ul style={{ listStyle: "none", padding: 0, margin: 0, fontSize: "14px", lineHeight: "1.85" }}>
                   <li>nottaminfotech@gmail.com</li>
-                  <li>bookyourturfindia@gmail.com</li>
                 </ul>
               </div>
 
@@ -77,7 +76,7 @@ const FooterInfo = () => {
                 {[
                   { label: "Customer Care", phone: "+91 9940663099", email: "contact@bookyourturf.net" },
                   { label: "Support",       phone: "+91 9566001173", email: "support@bookyourturf.net" },
-                  { label: "Admin",         phone: "+91 9940990688", email: "accounts@bookyourturf.net" },
+                  { label: "Admin",         phone: "+91 9940990688", email: "admin@bookyourturf.net" },
                 ].map(({ label, phone, email }) => (
                   <div key={label} style={{ marginBottom: "10px", lineHeight: "1.6" }}>
                     <strong style={{ display: "block" }}>{label}</strong>
@@ -96,7 +95,7 @@ const FooterInfo = () => {
           {/* COL 3 — OFFICES */}
           <div>
             <h2 style={{ fontSize: "22px", fontWeight: 700, marginBottom: "14px" }}>
-              Offices
+              Office
             </h2>
 
             <div style={{ fontSize: "14px", lineHeight: "1.75" }}>
