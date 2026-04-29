@@ -113,7 +113,10 @@ const userRole = localStorage.getItem("user_role");
   };
 
   const handleDeleteTurf = async () => {
-    if (!turfId) return;
+    if (!turfId || !userId || !userRole) {
+    alert("User session not loaded. Please wait.");
+    return;
+  }
 
     setIsDeleting(true);
     try {

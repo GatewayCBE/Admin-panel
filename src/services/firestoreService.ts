@@ -340,17 +340,6 @@ export const updateTurf = async (turfId: string, updatedData: any) => {
 /**
  * Delete a turf document
  */
-export const deleteTurf = async (turfId: string) => {
-  try {
-    const docRef = doc(db, "environment", "testing", "turfs", turfId);
-    await deleteDoc(docRef);
-    return true;
-  } catch (error) {
-    console.error("Error deleting turf:", error);
-    throw error;
-  }
-};
-
 export const safeDeleteTurf = async (
   turfId: string,
   options?: {

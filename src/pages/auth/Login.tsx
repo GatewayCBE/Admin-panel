@@ -42,8 +42,8 @@ const decryptAES = async (encrypted: string) => {
 // ✅ Admin email → role map (single source of truth, same as AdminLogin.tsx)
 const ADMIN_MAP: Record<string, string> = {
   "admin@bookyourturf.net": "super_admin",
-  "admin@balaji.com": "accounting",
-  "admin@azhagar.com": "edit",
+  "accounts@bookyourturf.net": "accounting",
+  "edit@bookyourturf.net": "edit",
 };
 
 const Login: React.FC = () => {

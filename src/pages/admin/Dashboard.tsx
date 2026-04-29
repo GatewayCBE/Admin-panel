@@ -72,32 +72,6 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Manage Turfs — super_admin only */}
-          <div
-            className="col-12 col-md-6 col-lg-5"
-            onClick={() => handleAccess(["super_admin"], "/dashboard/manageturf")}
-            style={{ cursor: "pointer" }}
-          >
-            <div
-              className="card border-0 shadow-lg h-100 text-white"
-              style={{
-                background: "linear-gradient(135deg, #67a521ff 0%, #5a8f1c 100%)",
-                borderRadius: "16px",
-                minHeight: "220px",
-              }}
-            >
-              <div className="card-body d-flex flex-column p-4 p-md-5">
-                <h3 className="card-title fw-bold mb-3">Manage Turfs</h3>
-                <p className="lead mb-4">Edit • Delete • Control</p>
-                <div className="mt-auto">
-                  <span className="btn btn-light text-dark px-4 py-2 rounded-pill">
-                    Manage →
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
           {/* Channel Partners — super_admin only */}
           <div
             className="col-12 col-md-6 col-lg-5"

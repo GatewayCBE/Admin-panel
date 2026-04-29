@@ -21,9 +21,9 @@ async function setAdmin(uid, role) {
 }
 
 const ADMIN_UID = [
-  {uid: "coGUbxu4mLZVpJhDmAl2aqG8zsj2", role: "super_admin"},
-  {uid: "bVvLILbnsSPJBQEhUiztgMQ5Cre2", role: "accounting"},
-  {uid: "zGWf5MR0k6bCgFE7zWoK8Gtu0lI3", role: "edit"},
+  {uid: "OPuLEAEfkiUA0LVoholLaenj0OU2", role: "super_admin"},
+  {uid: "0BAmu3b2CEYbWzLWfLBAq0LFd1V2", role: "accounting"},
+  {uid: "74C4TR8mrpdoHGZHRCFJyUSJQff1", role: "edit"},
 ];
 
 async function makeAllAdmins() {

@@ -22,7 +22,6 @@ import SlotDetails from "../pages/user/SlotDetails";
 import AddTurfForm from "../pages/admin/Owner/AddTurf";
 import AdminLogin from "../pages/auth/AdminLogin";
 import UGames from "../pages/user/UGames";
-import ManageTurf from "../pages/admin/Turf/ManageTurf";
 import AdvancePayment from "../pages/user/AdvancePayment";
 import RazorpayPage from "../pages/user/Razorpay";
 import AllTurfs from "../pages/admin/Turf/AllTurfs";
@@ -104,7 +103,6 @@ const AppRoutes: React.FC = () => {
 >
   <Route path="/dashboard" element={<Dashboard />} />
   <Route path="/dashboard/turfs" element={<AllTurfs />} />
-  <Route path="/dashboard/manageturf" element={<ManageTurf />} />
   <Route path="/dashboard/owners" element={<Owner />} />
   <Route path="/dashboard/owners/:ownerId" element={<Turfowner />} />
   <Route path="/dashboard/owners/:ownerId/turfs/:turfId" element={<TurfDetails />} />

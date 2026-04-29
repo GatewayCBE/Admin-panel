@@ -668,6 +668,24 @@ const UserBookings: React.FC = () => {
                   {getTimeDisplay(selectedBooking)}
                 </Badge>
               </div>
+              <div>
+                <p
+                  className="text-muted mb-1 text-end"
+                  style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600 }}>User Name</p>
+                    {selectedBooking.user_name || selectedBooking.userName || "—"}
+              </div>
+              <div>
+                <p
+                  className="text-muted mb-1 text-end"
+                  style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600 }}>User Phone Number</p>
+                    {selectedBooking.user_phone || selectedBooking.userPhone || "—"}
+              </div>
+              <div>
+                <p
+                  className="text-muted mb-1 text-end"
+                  style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600 }}>User Email</p>
+                    {selectedBooking.user_email || selectedBooking.userEmail || "—"}
+              </div>
             </div>
 
             {/* Amount Summary */}
@@ -707,7 +725,7 @@ const UserBookings: React.FC = () => {
                 <p className="fw-bold mb-0 fs-5 text-danger">
                   ₹
                   {Number(
-                    selectedBooking.unpaid_amount || selectedBooking.unpaidAmount || 0
+                    selectedBooking.unpaid_amount || selectedBooking.unpaidAmount || selectedBooking.balanceAmount || 0
                   ).toLocaleString("en-IN")}
                 </p>
               </div>

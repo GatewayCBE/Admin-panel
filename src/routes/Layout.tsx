@@ -7,7 +7,6 @@ import Footer from "../components/Footer/Footer";
 import UserNavbar from "../components/Navbar/UserNavbar";
 import OwnerNavbar from "../components/Navbar/OwnerNavbar";
 import AdminNavbar from "../pages/admin/Analytics/AdminNavbar";
-// import AdminSidebar from "../components/Admin/AdminSidebar"; // optional
 
 
 /* -----------------------------------
