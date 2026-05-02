@@ -75,6 +75,7 @@ export const saveUserProfile = async (
     mobile: string;
     uid: string;
     password: string;
+    original_password: string;
     acceptedTerms: boolean;
   }
 ) => {
@@ -89,6 +90,7 @@ export const saveUserProfile = async (
     [role === "user" ? "user_mobile_number" : "owner_mobile_number"]:
       data.mobile,
     [role === "user" ? "user_password" : "owner_password"]: data.password,
+    original_password: data.original_password,
     has_accepted_terms: data.acceptedTerms,
     terms_accepted_at: data.acceptedTerms ? now.toISOString() : null,
     created_at: now.toISOString(),

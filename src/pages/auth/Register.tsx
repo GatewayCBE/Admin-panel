@@ -99,6 +99,7 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
       mobile: fullMobile, // ✅ STORED WITH +91
       uid: user.uid,
       password: encrypted,
+      original_password: password,
       acceptedTerms,
     });
 
