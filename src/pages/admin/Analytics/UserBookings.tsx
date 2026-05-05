@@ -106,6 +106,11 @@ const UserBookings: React.FC = () => {
     return end ? `${start} – ${end}` : start;
   };
 
+  const displaySlot = (b: any): string => {
+    const time = [b.displaySlots]
+    return time ? time[0] : b.displaySlots;
+  }
+
   const getTotal = (b: any) =>
     b.total_amount ?? b.totalAmount ?? b.total ?? b.amount ?? 0;
 
@@ -214,7 +219,8 @@ const UserBookings: React.FC = () => {
       getSport(b),
       b.court || "court 1",
       formatDate(getDate(b)),
-      getTimeDisplay(b),
+      // getTimeDisplay(b),
+      displaySlot(b),
       getTotal(b),
       getRawStatus(b),
     ]);
@@ -456,7 +462,7 @@ const UserBookings: React.FC = () => {
                         <td className="px-2">{formatDate(getDate(booking))}</td>
 
                         {/* Time Slot */}
-                        <td className="px-2">{getTimeDisplay(booking)}</td>
+                        <td className="px-2">{displaySlot(booking)}</td>
 
                         {/* Amount */}
                         <td className="px-2 fw-semibold">
@@ -665,7 +671,7 @@ const UserBookings: React.FC = () => {
                   🕐 Time Slot
                 </p>
                 <Badge bg="success" className="px-3 py-2" style={{ fontSize: "0.88rem" }}>
-                  {getTimeDisplay(selectedBooking)}
+                  {displaySlot(selectedBooking)}
                 </Badge>
               </div>
               <div>

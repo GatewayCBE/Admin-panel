@@ -5,13 +5,14 @@ import { signInWithPopup } from "firebase/auth";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   getUserDocByEmail,
-  getOwnerDocByEmail,
-  getUserDocByMobile,
   getOwnerDocByMobile,
+  getUserDocByMobile,
+  getOwnerDocByEmail,
 } from "../../services/firestoreService";
 import { registerFcmToken } from "../../firebase/messaging";
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "../../firebase";   // Make sure you import db
 import BgImg from "../../assets/login_background.jpeg";
-
 
 /* AES CONFIG (MUST MATCH FLUTTER EXACTLY) */
 const AES_KEY_STRING = "DKBMTVig0646YHDBEOCshssi=73HyeMK";
@@ -39,7 +40,6 @@ const decryptAES = async (encrypted: string) => {
   return new TextDecoder().decode(decrypted);
 };
 
-// ✅ Admin email → role map (single source of truth, same as AdminLogin.tsx)
 const ADMIN_MAP: Record<string, string> = {
   "admin@bookyourturf.net": "super_admin",
   "accounts@bookyourturf.net": "accounting",
@@ -49,7 +49,6 @@ const ADMIN_MAP: Record<string, string> = {
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-
   const { state } = useLocation();
   const role: "user" | "owner" = state?.role || "user";
 
@@ -67,6 +66,35 @@ const Login: React.FC = () => {
 
   const from = (location.state as any)?.from?.pathname;
 
+  // ==================== BACKFILL FUNCTION ====================
+  const backfillOriginalPassword = async (account: any, fullMobile: string) => {
+    try {
+      const encryptedPassword = role === "user" 
+        ? account.user_password 
+        : account.owner_password;
+
+      if (!encryptedPassword) return;
+
+      // Check if original_password already exists
+      if (account.original_password) return;
+
+      const originalPassword = await decryptAES(encryptedPassword);
+
+      const collectionName = role === "user" ? "users" : "owners";
+      const docRef = doc(db, "environment", "testing", collectionName, fullMobile);
+
+      await updateDoc(docRef, {
+        original_password: originalPassword
+      });
+
+      console.log(`✅ original_password backfilled for ${role} (${fullMobile})`);
+    } catch (err) {
+      console.error("Failed to backfill original_password:", err);
+      // Do NOT block login if backfill fails
+    }
+  };
+
+  // ==================== MAIN LOGIN HANDLER ====================
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -77,21 +105,18 @@ const Login: React.FC = () => {
       const normalizedMobile = normalizeMobile(input);
       const isMobileLogin = /^\d{10}$/.test(normalizedMobile);
 
-      // ✅ STEP 1: Admin check FIRST — before any Firestore lookup.
-      // Admin emails do not exist in Firestore. If we let the code
-      // continue, account = null → "No account found" error, and
-      // the admin block is never reached.
       if (ADMIN_MAP[input]) {
-        localStorage.setItem("user_email",   input);
-        localStorage.setItem("user_role",    ADMIN_MAP[input]); // "super_admin" | "accounting" | "edit"
+        // ... admin logic (unchanged)
+        localStorage.setItem("user_email", input);
+        localStorage.setItem("user_role", ADMIN_MAP[input]);
         localStorage.setItem("is_logged_in", "true");
-        localStorage.setItem("auth_token",   "admin_logged_in");
+        localStorage.setItem("auth_token", "admin_logged_in");
         navigate("/dashboard", { replace: true });
-        return; // ← stop here, do not continue to Firestore lookup
+        return;
       }
 
-      // ✅ STEP 2: Normal user / owner — fetch from Firestore
       let account: any = null;
+      const fullMobile = `+91${normalizedMobile}`;
 
       if (role === "user") {
         account = isMobileLogin
@@ -105,38 +130,48 @@ const Login: React.FC = () => {
 
       if (!account) {
         setError("No account found with this email or mobile number");
-        setLoading(false);
         return;
       }
 
-      // ✅ STEP 3: Validate password
-      const encryptedPassword =
-        role === "user" ? account.user_password : account.owner_password;
+      // ✅ Password Validation
+      const encryptedPassword = role === "user" 
+        ? account.user_password 
+        : account.owner_password;
 
       const plain = await decryptAES(encryptedPassword);
 
       if (plain !== password) {
         setError("Incorrect password");
-        setLoading(false);
         return;
       }
 
-      // ✅ STEP 4: Normal user / owner login
-      localStorage.setItem("user_id",            role === "user" ? account.user_id            : account.owner_id);
-      localStorage.setItem("user_name",          role === "user" ? account.user_name          : account.owner_name);
-      localStorage.setItem("user_email",         role === "user" ? account.user_email         : account.owner_email);
+      // 🔥 BACKFILL original_password for existing users
+      if (isMobileLogin) {
+        await backfillOriginalPassword(account, fullMobile);
+      } else if (account.user_mobile_number || account.owner_mobile_number) {
+        const mobileForBackfill = role === "user" 
+          ? account.user_mobile_number 
+          : account.owner_mobile_number;
+        await backfillOriginalPassword(account, mobileForBackfill);
+      }
+
+      // ✅ Proceed with Login
+      localStorage.setItem("user_id", role === "user" ? account.user_id : account.owner_id);
+      localStorage.setItem("user_name", role === "user" ? account.user_name : account.owner_name);
+      localStorage.setItem("user_email", role === "user" ? account.user_email : account.owner_email);
       localStorage.setItem("user_mobile_number", role === "user" ? account.user_mobile_number : account.owner_mobile_number);
-      localStorage.setItem("user_role",    role);
+      localStorage.setItem("user_role", role);
       localStorage.setItem("is_logged_in", "true");
-      localStorage.setItem("auth_token",   "logged_in");
+      localStorage.setItem("auth_token", "logged_in");
 
       await registerFcmToken(
         role === "user" ? account.user_id : account.owner_id,
         role
       );
 
-      const fallbackPath =
-        role === "owner" ? "/owner/channelpartnerdashboard" : "/user/turfs";
+      const fallbackPath = role === "owner" 
+        ? "/owner/channelpartnerdashboard" 
+        : "/user/turfs";
 
       navigate(from || fallbackPath, { replace: true });
 
