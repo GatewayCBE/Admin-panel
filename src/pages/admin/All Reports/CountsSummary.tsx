@@ -21,29 +21,91 @@ const turfsCount = turfs.length;
   const avgTurfsPerOwner =
     ownersCount > 0 ? (turfsCount / ownersCount).toFixed(1) : "0";
 
-    const downloadCSV = (data: any[], filename: string) => {
+    const flattenObject = (obj: any, prefix = ""): any => {
+  let result: any = {};
+
+  for (const key in obj) {
+    const value = obj[key];
+    const newKey = prefix ? `${prefix}.${key}` : key;
+
+    if (
+      value &&
+      typeof value === "object" &&
+      !Array.isArray(value)
+    ) {
+      result = {
+        ...result,
+        ...flattenObject(value, newKey),
+      };
+    } else if (Array.isArray(value)) {
+      result[newKey] = value.join(" | ");
+    } else {
+      result[newKey] = value ?? "";
+    }
+  }
+
+  return result;
+};
+
+const downloadCSV = (data: any[], filename: string) => {
   if (!data || data.length === 0) {
     alert("No data available");
     return;
   }
 
-  const headers = Object.keys(data[0]);
+  // ✅ Flatten all documents
+  const flattenedData = data.map((item) => flattenObject(item));
 
-  const rows = data.map((item) =>
-    headers.map((key) => `"${item[key] ?? ""}"`).join(",")
+  // ✅ Get ALL unique headers from ALL docs
+  const headerSet = new Set<string>();
+
+flattenedData.forEach((item) => {
+  Object.keys(item).forEach((key) => {
+    headerSet.add(key);
+  });
+});
+
+const headers = Array.from(headerSet);
+
+console.log("ALL CSV HEADERS:", headers);
+
+  // ✅ Create rows
+  const rows = flattenedData.map((item) =>
+    headers
+      .map((header) => {
+        const value = item[header] ?? "";
+        return `"${String(value).replace(/"/g, '""')}"`;
+      })
+      .join(",")
   );
 
-  const csv =
-    "data:text/csv;charset=utf-8," +
-    [headers.join(","), ...rows].join("\n");
+  // ✅ Build CSV
+  const csvContent = [
+    headers.join(","),
+    ...rows,
+  ].join("\n");
+
+  // ✅ UTF-8 BOM Fix for Excel
+  const blob = new Blob(
+    ["\uFEFF" + csvContent],
+    {
+      type: "text/csv;charset=utf-8;",
+    }
+  );
 
   const link = document.createElement("a");
-  link.href = encodeURI(csv);
-  link.download = `${filename}_${new Date().toISOString().split("T")[0]}.csv`;
+  const url = URL.createObjectURL(blob);
+
+  link.href = url;
+  link.download = `${filename}_${
+    new Date().toISOString().split("T")[0]
+  }.csv`;
 
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+
+  URL.revokeObjectURL(url);
 };
 
 const handleDownloadUsers = async () => {
@@ -55,6 +117,7 @@ const handleDownloadUsers = async () => {
 const handleDownloadOwners = async () => {
   console.log("📥 Downloading Channel Partners...");
   const data = await getOwners();
+   console.log("OWNERS DATA:", data);
   downloadCSV(data, "channel_partners");
 };
 

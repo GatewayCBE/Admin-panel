@@ -48,37 +48,37 @@ const Footer: React.FC = () => {
           {/* Right: Social Icons */}
           <div className="d-flex gap-3">
             <a
-              href="https://facebook.com"
+              href="https://www.facebook.com/share/14UcTjyHTqS/"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-white fs-5"
+              className="text-white fs-3"
             >
               <i className="fab fa-facebook"></i>
             </a>
-            <a
+            {/* <a
               href="https://twitter.com"
               target="_blank"
               rel="noopener noreferrer"
               className="text-white fs-5"
             >
               <i className="fab fa-twitter"></i>
-            </a>
+            </a> */}
             <a
-              href="https://instagram.com"
+              href="https://www.instagram.com/book_your_turf?igsh=MW96d2c4bjh6Y3E3dw=="
               target="_blank"
               rel="noopener noreferrer"
-              className="text-white fs-5"
+              className="text-white fs-3"
             >
               <i className="fab fa-instagram"></i>
             </a>
-            <a
+            {/* <a
               href="https://linkedin.com"
               target="_blank"
               rel="noopener noreferrer"
               className="text-white fs-5"
             >
               <i className="fab fa-linkedin"></i>
-            </a>
+            </a> */}
           </div>
         </div>
       </footer>

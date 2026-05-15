@@ -40,7 +40,7 @@ const FooterInfo = () => {
               {[
                 { label: "Home", href: "/" },
                 { label: "About", href: "/about" },
-                { label: "Admin Panel", href: "/dashboard" },
+                { label: "Admin Panel", href: "/admin" },
                 { label: "Login", href: "/auth" },
               ].map(({ label, href }) => (
                 <li key={label} style={{ lineHeight: "1.9" }}>
