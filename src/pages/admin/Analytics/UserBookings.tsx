@@ -3,6 +3,8 @@ import {
   getUserBookings,
   cancelBooking,
   canCancelBooking,
+  getTurfById,
+  getOwnerById,
 } from "../../../services/firestoreService";
 import { auth } from "../../../firebase";
 import { format } from "date-fns";
@@ -26,6 +28,8 @@ const UserBookings: React.FC = () => {
   const [selectedBooking, setSelectedBooking] = useState<any | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [showToast, setShowToast] = useState(false);
+  const [turfDetailsMap, setTurfDetailsMap] = useState<Record<string, any>>({});
+  const [ownerDetailsMap, setOwnerDetailsMap] = useState<Record<string, any>>({});
   const [toastMessage, setToastMessage] = useState("");
   const [toastVariant, setToastVariant] = useState<"success" | "danger">("success");
 
@@ -52,6 +56,88 @@ const UserBookings: React.FC = () => {
     };
     fetchBookings();
   }, [authLoading, isAdmin]);
+
+  useEffect(() => {
+    const loadTurfDetails = async () => {
+      const turfIds = Array.from(
+        new Set(
+          rawBookings
+            .map((b) => b.turfId || b.turf_id || b.turfId_ || b.venueId || b.turf)
+            .filter((id) => typeof id === "string" && id.trim())
+        )
+      );
+
+      const missingIds = turfIds.filter((id) => !turfDetailsMap[id]);
+      if (!missingIds.length) return;
+
+      try {
+        const fetched = await Promise.all(
+          missingIds.map(async (turfId) => {
+            const turf = await getTurfById(turfId);
+            return [turfId, turf] as const;
+          })
+        );
+
+        const nextMap: Record<string, any> = {};
+        fetched.forEach(([turfId, turf]) => {
+          if (turf) {
+            nextMap[turfId] = turf;
+          }
+        });
+
+        if (Object.keys(nextMap).length) {
+          setTurfDetailsMap((prev) => ({ ...prev, ...nextMap }));
+        }
+      } catch (err) {
+        console.error("Failed to load turf details for bookings:", err);
+      }
+    };
+
+    if (rawBookings.length > 0) {
+      loadTurfDetails();
+    }
+  }, [rawBookings, turfDetailsMap]);
+
+  useEffect(() => {
+    const loadOwnerDetails = async () => {
+      const ownerIds = Array.from(
+        new Set(
+          Object.values(turfDetailsMap)
+            .map((turf: any) => turf?.owner_id || turf?.ownerId)
+            .filter((id) => typeof id === "string" && id.trim())
+        )
+      );
+
+      const missingOwnerIds = ownerIds.filter((id) => !ownerDetailsMap[id]);
+      if (!missingOwnerIds.length) return;
+
+      try {
+        const fetched = await Promise.all(
+          missingOwnerIds.map(async (ownerId) => {
+            const owner = await getOwnerById(ownerId);
+            return [ownerId, owner] as const;
+          })
+        );
+
+        const nextOwnerMap: Record<string, any> = {};
+        fetched.forEach(([ownerId, owner]) => {
+          if (owner) {
+            nextOwnerMap[ownerId] = owner;
+          }
+        });
+
+        if (Object.keys(nextOwnerMap).length) {
+          setOwnerDetailsMap((prev) => ({ ...prev, ...nextOwnerMap }));
+        }
+      } catch (err) {
+        console.error("Failed to load owner details for bookings:", err);
+      }
+    };
+
+    if (Object.keys(turfDetailsMap).length > 0) {
+      loadOwnerDetails();
+    }
+  }, [turfDetailsMap, ownerDetailsMap]);
 
   // ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -87,9 +173,57 @@ const UserBookings: React.FC = () => {
     [b.date, b.selectedDate, b.selecteddated, b.bookingDate, b.selected_date]
       .find((v) => v && typeof v === "string" && v.trim()) || "—";
 
+  const getBookingTurfId = (b: any): string | undefined =>
+    b.turfId || b.turf_id || b.turfId_ || b.venueId || undefined;
+
   const getTurfName = (b: any): string =>
     [b.turf_name, b.turfName, b.turf, b.turfName_, b.venueName]
       .find((v) => v && typeof v === "string" && v.trim()) || "Unknown Turf";
+
+  const getVenueAddress = (b: any): string => {
+    const turfId = getBookingTurfId(b);
+    const turf = turfId ? turfDetailsMap[turfId] : null;
+    return [
+      b.turf_location,
+      b.venueAddress,
+      b.venue_address,
+      b.address,
+      b.location,
+      b.turfLocation,
+      b.city,
+      turf?.turf_location,
+      turf?.turfLocation,
+    ]
+      .find((v) => v && typeof v === "string" && v.trim()) || "—";
+  };
+
+  const getChannelPartnerMobile = (b: any): string => {
+    const turfId = getBookingTurfId(b);
+    const turf = turfId ? turfDetailsMap[turfId] : null;
+    const ownerId = turf?.owner_id || turf?.ownerId;
+    const owner = ownerId ? ownerDetailsMap[ownerId] : null;
+
+    return [
+      b.bookingUserMobile,
+      b.booking_user_mobile,
+      b.partnerPhone,
+      b.partner_phone,
+      b.partnerMobile,
+      b.partner_mobile,
+      b.channelPartnerMobile,
+      b.channel_partner_mobile,
+      b.channelPartnerPhone,
+      b.channel_partner_phone,
+      b.bookingPartnerMobile,
+      b.bookingPartnerPhone,
+      b.booking_mobile,
+      b.partner_mobile,
+      owner?.owner_mobile_number,
+      turf?.owner_mobile_number,
+      turf?.turf_mobile_number,
+    ]
+      .find((v) => v && typeof v === "string" && v.trim()) || "—";
+  };
 
   const getSport = (b: any): string =>
     [b.booked_sports_name, b.bookedSportsName, b.sport, b.sportsName, b.booked_sport]
@@ -658,39 +792,90 @@ const UserBookings: React.FC = () => {
               </div>
             </div>
 
-            {/* Slot row */}
-            <div
-              className="d-flex align-items-center justify-content-between rounded p-3 mb-3"
-              style={{ background: "#f0faf5" }}
-            >
-              <div>
-                <p
-                  className="text-muted mb-1"
-                  style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600 }}
-                >
-                  🕐 Time Slot
-                </p>
-                <Badge bg="success" className="px-3 py-2" style={{ fontSize: "0.88rem" }}>
-                  {displaySlot(selectedBooking)}
-                </Badge>
+            <div className="row g-3 mb-3">
+              <div className="col-md-3">
+                <div className="bg-light rounded p-3 h-100">
+                  <p
+                    className="text-muted mb-1"
+                    style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600 }}
+                  >
+                    🕐 Time Slot
+                  </p>
+                  <Badge bg="success" className="px-3 py-2" style={{ fontSize: "0.88rem" }}>
+                    {displaySlot(selectedBooking)}
+                  </Badge>
+                </div>
               </div>
-              <div>
-                <p
-                  className="text-muted mb-1 text-end"
-                  style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600 }}>User Name</p>
-                    {selectedBooking.user_name || selectedBooking.userName || "—"}
+              <div className="col-md-3">
+                <div className="bg-light rounded p-3 h-100">
+                  <p
+                    className="text-muted mb-1"
+                    style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600 }}
+                  >
+                    User Name
+                  </p>
+                  <div className="fw-semibold">{selectedBooking.user_name || selectedBooking.userName || "—"}</div>
+                </div>
               </div>
-              <div>
-                <p
-                  className="text-muted mb-1 text-end"
-                  style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600 }}>User Phone Number</p>
-                    {selectedBooking.user_phone || selectedBooking.userPhone || "—"}
+              <div className="col-md-3">
+                <div className="bg-light rounded p-3 h-100">
+                  <p
+                    className="text-muted mb-1"
+                    style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600 }}
+                  >
+                    User Phone
+                  </p>
+                  <div className="fw-semibold">{selectedBooking.user_phone || selectedBooking.userPhone || "—"}</div>
+                </div>
               </div>
-              <div>
-                <p
-                  className="text-muted mb-1 text-end"
-                  style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600 }}>User Email</p>
-                    {selectedBooking.user_email || selectedBooking.userEmail || "—"}
+              <div className="col-md-3">
+                <div className="bg-light rounded p-3 h-100">
+                  <p
+                    className="text-muted mb-1"
+                    style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600 }}
+                  >
+                    User Email
+                  </p>
+                  <div className="fw-semibold text-break">{selectedBooking.user_email || selectedBooking.userEmail || "—"}</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="row g-3 mb-3">
+              <div className="col-md-4">
+                <div className="bg-light rounded p-3 h-100">
+                  <p
+                    className="text-muted mb-1"
+                    style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600 }}
+                  >
+                    📞 Channel Partner Mobile
+                  </p>
+                  <div className="fw-semibold">{getChannelPartnerMobile(selectedBooking)}</div>
+                </div>
+              </div>
+              <div className="col-md-4">
+                <div className="bg-light rounded p-3 h-100">
+                  <p
+                    className="text-muted mb-1"
+                    style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600 }}
+                  >
+                    🏟️ Venue Name
+                  </p>
+                  <div className="fw-semibold text-capitalize">{getTurfName(selectedBooking)}</div>
+                </div>
+              </div>
+              <div className="col-md-4">
+                <div className="bg-light rounded p-3 h-100">
+                  <p
+                    className="text-muted mb-1"
+                    style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600 }}
+                  >
+                    📍 Address
+                  </p>
+                  <div className="fw-semibold text-break" style={{ whiteSpace: "pre-wrap" }}>
+                    {getVenueAddress(selectedBooking)}
+                  </div>
+                </div>
               </div>
             </div>
 

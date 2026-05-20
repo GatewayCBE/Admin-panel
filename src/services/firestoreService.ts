@@ -12,7 +12,8 @@ import {
   deleteDoc,
   addDoc,
   serverTimestamp,
-  onSnapshot 
+  onSnapshot,
+  collectionGroup 
 } from "firebase/firestore";
 
 import {
@@ -522,6 +523,80 @@ export const subscribeToCounts = (
     unsubOwners();
     unsubTurfs();
   };
+};
+
+export const getDeletedUsers = async () => {
+  try {
+    const ref = collection(
+      db,
+      "environment",
+      "testing",
+      "deleted_users"
+    );
+
+    const snapshot = await getDocs(ref);
+
+    return snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+  } catch (error) {
+    console.error("Error fetching deleted users:", error);
+    return [];
+  }
+};
+
+export const getDeletedOwners = async () => {
+  try {
+    const ref = collection(
+      db,
+      "environment",
+      "testing",
+      "deleted_owners"
+    );
+
+    const snapshot = await getDocs(ref);
+
+    return snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+  } catch (error) {
+    console.error("Error fetching deleted owners:", error);
+    return [];
+  }
+};
+
+export const getDeletedTurfs = async () => {
+  try {
+    const historyQuery = collectionGroup(db, "history");
+
+    const snapshot = await getDocs(historyQuery);
+
+    const deletedTurfs = snapshot.docs
+      .map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }))
+      .filter(
+        (item: any) =>
+          item.originalTurfId || item.turfData
+      );
+
+    console.log(
+      "✅ Deleted turfs fetched:",
+      deletedTurfs.length
+    );
+
+    return deletedTurfs;
+
+  } catch (error) {
+    console.error(
+      "❌ Error fetching deleted turfs:",
+      error
+    );
+    return [];
+  }
 };
 
 export const to12HourFormate = (time24: string) => {

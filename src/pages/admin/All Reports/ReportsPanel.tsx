@@ -4,6 +4,7 @@ import { fetchAllBookings } from "../../../services/firestoreService";
 import AdminNavbar from "../Analytics/AdminNavbar";
 import AllReports from "./Allreports";
 import CountsSummary from "./CountsSummary";
+import DeletedCountsSummary from "./DeletedCountsSummary";
 
 const ReportsPanel: React.FC = () => {
   const [bookings, setBookings] = useState<any[]>([]);
@@ -78,8 +79,11 @@ const ReportsPanel: React.FC = () => {
             <AllReports bookings={bookings} />
           </Tab>
           <Tab eventKey="counts" title="📊 Counts Summary">
-    <CountsSummary />
-  </Tab>
+            <CountsSummary />
+          </Tab>
+          <Tab eventKey="deleted" title="🗑️ Deleted Records">
+            <DeletedCountsSummary />
+          </Tab>
         </Tabs>
       </div>
     </div>
