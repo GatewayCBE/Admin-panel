@@ -825,7 +825,7 @@ const UserBookings: React.FC = () => {
                   >
                     User Phone
                   </p>
-                  <div className="fw-semibold">{selectedBooking.user_phone || selectedBooking.userPhone || "—"}</div>
+                  <div className="fw-semibold">{selectedBooking.user_phone || selectedBooking.userPhone || selectedBooking.userMobile || "—"}</div>
                 </div>
               </div>
               <div className="col-md-3">
