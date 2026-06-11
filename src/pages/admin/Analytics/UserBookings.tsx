@@ -225,6 +225,42 @@ const UserBookings: React.FC = () => {
       .find((v) => v && typeof v === "string" && v.trim()) || "—";
   };
 
+  const getUserName = (b: any): string =>
+    [
+      b.user_name,
+      b.userName,
+      b.bookingUsername,
+      b.booking_username,
+      b.customerName,
+      b.customer_name,
+      b.name,
+    ].find((v) => v && typeof v === "string" && v.trim()) || "—";
+
+  const getUserPhone = (b: any): string =>
+    [
+      b.user_phone,
+      b.userPhone,
+      b.userMobile,
+      b.user_mobile,
+      b.bookingUserMobile,
+      b.booking_user_mobile,
+      b.customerPhone,
+      b.customer_phone,
+      b.mobile,
+      b.phone,
+    ].find((v) => v && typeof v === "string" && v.trim()) || "—";
+
+  const getUserEmail = (b: any): string =>
+    [
+      b.user_email,
+      b.userEmail,
+      b.bookingUserEmail,
+      b.booking_user_email,
+      b.customerEmail,
+      b.customer_email,
+      b.email,
+    ].find((v) => v && typeof v === "string" && v.trim()) || "—";
+
   const getSport = (b: any): string =>
     [b.booked_sports_name, b.bookedSportsName, b.sport, b.sportsName, b.booked_sport]
       .find((v) => v && typeof v === "string" && v.trim()) || "—";
@@ -246,7 +282,19 @@ const UserBookings: React.FC = () => {
   }
 
   const getTotal = (b: any) =>
-    b.total_amount ?? b.totalAmount ?? b.total ?? b.amount ?? 0;
+    Number(
+      b.total_amount ?? b.totalAmount ?? b.total ?? b.amount ?? b.price ?? 0
+    );
+
+  const getPaidAmount = (b: any) =>
+    Number(
+      b.paid_amount ?? b.paidAmount ?? b.paid ?? 0
+    );
+
+  const getUnpaidAmount = (b: any) =>
+    Number(
+      b.unpaid_amount ?? b.unpaidAmount ?? b.balanceAmount ?? b.balance_amount ?? b.balance ?? 0
+    );
 
   const getRawStatus = (b: any): string => {
     const s = (
@@ -600,17 +648,21 @@ const UserBookings: React.FC = () => {
 
                         {/* Amount */}
                         <td className="px-2 fw-semibold">
-                          ₹{getTotal(booking)}
-                          {booking.unpaid_amount > 0 && (
+                          ₹{getTotal(booking).toLocaleString("en-IN")}
+                          {getUnpaidAmount(booking) > 0 && (
                             <small className="text-danger d-block">
-                              ₹{booking.unpaid_amount} pending
+                              ₹{getUnpaidAmount(booking).toLocaleString("en-IN")} pending
                             </small>
                           )}
                         </td>
 
                         {/* Paid Amount */}
                         <td className="px-2 fw-semibold">
-                          ₹{booking.paidAmount || "—"}
+                          {getPaidAmount(booking) > 0 ? (
+                            <>₹{getPaidAmount(booking).toLocaleString("en-IN")}</>
+                          ) : (
+                            <>—</>
+                          )}
                         </td>
 
                         {/* Status */}
@@ -814,7 +866,7 @@ const UserBookings: React.FC = () => {
                   >
                     User Name
                   </p>
-                  <div className="fw-semibold">{selectedBooking.user_name || selectedBooking.userName || "—"}</div>
+                  <div className="fw-semibold">{getUserName(selectedBooking)}</div>
                 </div>
               </div>
               <div className="col-md-3">
@@ -825,7 +877,7 @@ const UserBookings: React.FC = () => {
                   >
                     User Phone
                   </p>
-                  <div className="fw-semibold">{selectedBooking.user_phone || selectedBooking.userPhone || selectedBooking.userMobile || "—"}</div>
+                  <div className="fw-semibold">{getUserPhone(selectedBooking)}</div>
                 </div>
               </div>
               <div className="col-md-3">
@@ -836,7 +888,7 @@ const UserBookings: React.FC = () => {
                   >
                     User Email
                   </p>
-                  <div className="fw-semibold text-break">{selectedBooking.user_email || selectedBooking.userEmail || "—"}</div>
+                  <div className="fw-semibold text-break">{getUserEmail(selectedBooking)}</div>
                 </div>
               </div>
             </div>
@@ -900,10 +952,7 @@ const UserBookings: React.FC = () => {
                   Paid
                 </p>
                 <p className="fw-bold mb-0 fs-5 text-success">
-                  ₹
-                  {Number(
-                    selectedBooking.paid_amount || selectedBooking.paidAmount || getTotal(selectedBooking)
-                  ).toLocaleString("en-IN")}
+                  ₹{getPaidAmount(selectedBooking).toLocaleString("en-IN")}
                 </p>
               </div>
               <div className="col-4 text-center p-3">
@@ -914,10 +963,7 @@ const UserBookings: React.FC = () => {
                   Balance
                 </p>
                 <p className="fw-bold mb-0 fs-5 text-danger">
-                  ₹
-                  {Number(
-                    selectedBooking.unpaid_amount || selectedBooking.unpaidAmount || selectedBooking.balanceAmount || 0
-                  ).toLocaleString("en-IN")}
+                  ₹{getUnpaidAmount(selectedBooking).toLocaleString("en-IN")}
                 </p>
               </div>
             </div>

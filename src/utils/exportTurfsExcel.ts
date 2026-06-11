@@ -78,6 +78,7 @@ export const exportTurfsExcel = (turfs: any[]) => {
         timingData.push({
           TurfName: turf.turf_name,
           Sport: sport,
+          PersonCount: turf.sports_specific_person_count?.[sport] ?? "",
           Opening: time.opening_time,
           Closing: time.closing_time,
           DayStart: time.day_start_time,

@@ -42,7 +42,7 @@ const decryptAES = async (encrypted: string) => {
 
 const ADMIN_MAP: Record<string, string> = {
   "admin@bookyourturf.net": "super_admin",
-  "accounts@bookyourturf.net": "accounting",
+  "account@bookyourturf.net": "accounting",
   "edit@bookyourturf.net": "edit",
 };
 

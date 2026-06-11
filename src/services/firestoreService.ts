@@ -4,6 +4,11 @@ import {
   query,
   where,
   getDocs,
+  getCountFromServer,
+  documentId,
+  orderBy,
+  limit,
+  startAfter,
   doc,
   getDoc,
   setDoc,
@@ -12,7 +17,6 @@ import {
   deleteDoc,
   addDoc,
   serverTimestamp,
-  onSnapshot,
   collectionGroup 
 } from "firebase/firestore";
 
@@ -491,37 +495,33 @@ export const subscribeToCounts = (
     onTurfs?: (count: number) => void;
   }
 ) => {
-  console.log("📡 Subscribing to counts...");
+  console.log("📊 Fetching counts...");
+  let cancelled = false;
 
-  const unsubUsers = onSnapshot(
-    collection(db, "environment", "testing", "users"),
-    (snapshot) => {
-      console.log("👤 Users:", snapshot.size);
-      callbacks.onUsers?.(snapshot.size);
+  const loadCount = async (
+    path: "users" | "owners" | "turfs",
+    callback?: (count: number) => void
+  ) => {
+    if (!callback) return;
+
+    try {
+      const snapshot = await getCountFromServer(
+        collection(db, "environment", env || "testing", path)
+      );
+      if (!cancelled) {
+        callback(snapshot.data().count);
+      }
+    } catch (error) {
+      console.error(`Error fetching ${path} count:`, error);
     }
-  );
+  };
 
-  const unsubOwners = onSnapshot(
-    collection(db, "environment", "testing", "owners"),
-    (snapshot) => {
-      console.log("🤝 Owners:", snapshot.size);
-      callbacks.onOwners?.(snapshot.size);
-    }
-  );
+  loadCount("users", callbacks.onUsers);
+  loadCount("owners", callbacks.onOwners);
+  loadCount("turfs", callbacks.onTurfs);
 
-  const unsubTurfs = onSnapshot(
-    collection(db, "environment", "testing", "turfs"),
-    (snapshot) => {
-      console.log("🏟️ Turfs:", snapshot.size);
-      callbacks.onTurfs?.(snapshot.size);
-    }
-  );
-
-  // ✅ Return cleanup
   return () => {
-    unsubUsers();
-    unsubOwners();
-    unsubTurfs();
+    cancelled = true;
   };
 };
 
@@ -787,10 +787,43 @@ export const fetchAllBookings = async (environment: string = "testing") => {
     
     const bookings: any[] = [];
     snapshot.forEach((doc) => {
-      bookings.push({
-        id: doc.id,
-        ...doc.data()
-      });
+      const data = doc.data();
+
+bookings.push({
+  id: doc.id,
+
+  ...data,
+
+  paidAmount: Number(
+    data.paidAmount ??
+    data.paid_amount ??
+    0
+  ),
+
+  unpaidAmount: Number(
+    data.unpaidAmount ??
+    data.unpaid_amount ??
+    data.balanceAmount ??
+    0
+  ),
+
+  totalAmount: Number(
+    data.totalAmount ??
+    data.total_amount ??
+    0
+  ),
+
+  userMobile:
+    data.userMobile ??
+    data.userPhone ??
+    "",
+
+  bookingUserMobile:
+    data.bookingUserMobile ??
+    data.userPhone ??
+    data.userMobile ??
+    "",
+});
     });
     
     console.log(`Fetched ${bookings.length} bookings from ${environment} environment`);
@@ -848,10 +881,43 @@ export const fetchBookingsWithFilters = async (
     
     const bookings: any[] = [];
     snapshot.forEach((doc) => {
-      bookings.push({
-        id: doc.id,
-        ...doc.data()
-      });
+      const data = doc.data();
+
+bookings.push({
+  id: doc.id,
+
+  ...data,
+
+  paidAmount: Number(
+    data.paidAmount ??
+    data.paid_amount ??
+    0
+  ),
+
+  unpaidAmount: Number(
+    data.unpaidAmount ??
+    data.unpaid_amount ??
+    data.balanceAmount ??
+    0
+  ),
+
+  totalAmount: Number(
+    data.totalAmount ??
+    data.total_amount ??
+    0
+  ),
+
+  userMobile:
+    data.userMobile ??
+    data.userPhone ??
+    "",
+
+  bookingUserMobile:
+    data.bookingUserMobile ??
+    data.userPhone ??
+    data.userMobile ??
+    "",
+});
     });
     
     console.log(`Fetched ${bookings.length} filtered bookings`);
@@ -2090,25 +2156,164 @@ export const getCurrentUserId = (): string | null => {
 // Fetch all bookings for the current user
 export const getUserBookings = async (): Promise<Booking[]> => {
   const bookingsRef = collection(db, "environments", "testing", "bookings");
+  const userBookingPrefix = "BYT_U_";
+  const q = query(
+    bookingsRef,
+    where(documentId(), ">=", userBookingPrefix),
+    where(documentId(), "<", `${userBookingPrefix}\uf8ff`)
+  );
 
-  // No where() clause at all — get everything
-  const q = query(bookingsRef);
-
-  console.log("[ADMIN] Fetching ALL bookings (no filters)");
+  console.log("[ADMIN] Fetching user bookings by document ID prefix");
 
   try {
     const querySnapshot = await getDocs(q);
     
-    console.log("[ADMIN] Total raw documents fetched:", querySnapshot.size);
-    console.log("[ADMIN] All booking IDs:", querySnapshot.docs.map(d => d.id));
+    console.log("[ADMIN] BYT_U_ documents fetched:", querySnapshot.size);
 
     const bookings: Booking[] = querySnapshot.docs
-      // Optional: filter only user bookings (BYT_U_ prefix) client-side
-      .filter(doc => doc.id.startsWith("BYT_U_"))
-      .map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      } as Booking));
+  .map((doc) => {
+    const data = doc.data();
+
+    return {
+  id: doc.id,
+  ...data,
+
+  // ✅ REQUIRED BOOKING FIELDS
+  bookingId: data.bookingId || doc.id,
+
+  turfId: data.turfId || "",
+  turfName: data.turfName || "",
+
+  bookingUsername:
+    data.bookingUsername ||
+    data.booking_username ||
+    data.userName ||
+    data.user_name ||
+    "",
+
+  bookingUserMobile:
+    data.bookingUserMobile ??
+    data.booking_user_mobile ??
+    data.userPhone ??
+    data.user_phone ??
+    data.userMobile ??
+    data.user_mobile ??
+    "",
+
+  userName:
+    data.userName ||
+    data.user_name ||
+    data.bookingUsername ||
+    data.booking_username ||
+    "",
+
+  user_name:
+    data.user_name ||
+    data.userName ||
+    data.bookingUsername ||
+    data.booking_username ||
+    "",
+
+  userPhone:
+    data.userPhone ||
+    data.user_phone ||
+    data.userMobile ||
+    data.user_mobile ||
+    data.bookingUserMobile ||
+    data.booking_user_mobile ||
+    "",
+
+  user_phone:
+    data.user_phone ||
+    data.userPhone ||
+    data.userMobile ||
+    data.user_mobile ||
+    data.bookingUserMobile ||
+    data.booking_user_mobile ||
+    "",
+
+  userMobile:
+    data.userMobile ||
+    data.user_mobile ||
+    data.userPhone ||
+    data.user_phone ||
+    data.bookingUserMobile ||
+    data.booking_user_mobile ||
+    "",
+
+  userEmail:
+    data.userEmail ||
+    data.user_email ||
+    data.email ||
+    data.bookingUserEmail ||
+    data.booking_user_email ||
+    "",
+
+  user_email:
+    data.user_email ||
+    data.userEmail ||
+    data.email ||
+    data.bookingUserEmail ||
+    data.booking_user_email ||
+    "",
+
+  bookedSportsName:
+    data.bookedSportsName || "",
+
+  court: data.court || "",
+
+  date:
+    data.date ||
+    data.selectedDate ||
+    "",
+
+  slotStartTime:
+    data.slotStartTime || "",
+
+  slotEndTime:
+    data.slotEndTime || "",
+
+  allSlotsString:
+    data.allSlotsString ||
+    data.displaySlots ||
+    "",
+
+  // ✅ PAYMENT NORMALIZATION
+  paidAmount: Number(
+    data.paidAmount ??
+    data.paid_amount ??
+    0
+  ),
+
+  unpaidAmount: Number(
+    data.unpaidAmount ??
+    data.unpaid_amount ??
+    data.balanceAmount ??
+    0
+  ),
+
+  totalAmount: Number(
+    data.totalAmount ??
+    data.total_amount ??
+    0
+  ),
+
+  paymentStatus:
+    data.paymentStatus ??
+    data.payment_status ??
+    "UNPAID",
+
+  userId:
+    data.userId || "",
+
+  createdBy:
+    data.createdBy || "USER",
+
+  createdAt:
+    data.createdAt || null,
+
+} as Booking;
+  });
 
     console.log("[ADMIN] Filtered BYT_U_ count:", bookings.length);
 
@@ -2163,26 +2368,60 @@ export const getUserBookings = async (): Promise<Booking[]> => {
  * Works for both user dashboard and admin panel
  */
 
-export const getChannelPartnerBookings = async (): Promise<Booking[]> => {
+export interface PaginatedBookingsResult {
+  bookings: Booking[];
+  lastDoc: any | null;
+  hasMore: boolean;
+}
+
+export const getChannelPartnerBookings = async (
+  options: {
+    pageSize?: number;
+    cursor?: any | null;
+  } = {}
+): Promise<PaginatedBookingsResult> => {
   const bookingsRef = collection(db, "environments", "testing", "bookings");
+  const channelBookingPrefix = "BYT_P_";
+  const pageSize = options.pageSize ?? 50;
+  const batchSize = Math.max(pageSize * 3, 100);
+  const maxDocsToScan = Math.max(pageSize * 10, 500);
 
-  // Fetch everything — no where() clause
-  const q = query(bookingsRef);
-
-  console.log("[getChannelPartnerBookings] Starting unrestricted fetch for BYT_P_...");
+  console.log("[getChannelPartnerBookings] Fetching recent bookings and selecting BYT_P_...");
 
   try {
-    const querySnapshot = await getDocs(q);
+    const channelBookings: Booking[] = [];
+    let scanCursor = options.cursor ?? null;
+    let nextCursor: any | null = null;
+    let hasMoreSourceDocs = true;
+    let scannedCount = 0;
 
-    console.log("[getChannelPartnerBookings] Raw fetch count:", querySnapshot.size);
-    console.log("[getChannelPartnerBookings] All fetched IDs:", querySnapshot.docs.map(d => d.id));
+    while (channelBookings.length < pageSize && hasMoreSourceDocs && scannedCount < maxDocsToScan) {
+      const q = query(
+        bookingsRef,
+        orderBy("createdAt", "desc"),
+        ...(scanCursor ? [startAfter(scanCursor)] : []),
+        limit(batchSize)
+      );
 
-    // Filter client-side for channel partner bookings only
-    const channelBookings = querySnapshot.docs
-      .filter(doc => doc.id.startsWith("BYT_P_"))
-      .map((doc) => {
+      const querySnapshot = await getDocs(q);
+      scannedCount += querySnapshot.size;
+
+      if (querySnapshot.empty) {
+        hasMoreSourceDocs = false;
+        break;
+      }
+
+      nextCursor = querySnapshot.docs[querySnapshot.docs.length - 1] ?? null;
+      scanCursor = nextCursor;
+      hasMoreSourceDocs = querySnapshot.size === batchSize;
+
+      querySnapshot.docs.forEach((doc) => {
+        if (channelBookings.length >= pageSize || !doc.id.startsWith(channelBookingPrefix)) {
+          return;
+        }
+
         const data = doc.data();
-        return {
+        channelBookings.push({
           id: doc.id,
     bookingId: data.bookingId || doc.id,
 
@@ -2203,7 +2442,11 @@ export const getChannelPartnerBookings = async (): Promise<Booking[]> => {
 
     totalAmount: data.totalAmount ?? data.total_amount ?? 0,
     paidAmount: data.paidAmount ?? data.paid_amount ?? 0,
-    unpaidAmount: data.unpaidAmount ?? data.unpaid_amount ?? 0,
+    unpaidAmount:
+  data.unpaidAmount ??
+  data.unpaid_amount ??
+  data.balanceAmount ??
+  0,
 
     paymentStatus: data.paymentStatus || data.payment_status || "UNPAID",
 
@@ -2211,13 +2454,30 @@ export const getChannelPartnerBookings = async (): Promise<Booking[]> => {
     createdBy: data.createdBy || "OWNER",
 
     createdAt: data.createdAt,
-        } as Booking;
+        } as Booking);
       });
+    }
 
-    console.log("[getChannelPartnerBookings] Filtered BYT_P_ count:", channelBookings.length);
+    console.log(
+      "[getChannelPartnerBookings] Source docs scanned:",
+      scannedCount,
+      "BYT_P_ returned:",
+      channelBookings.length
+    );
 
     // Sort newest first
     channelBookings.sort((a, b) => {
+      const getCreatedAtMs = (value: any): number => {
+        if (!value) return 0;
+        if (typeof value.toMillis === "function") return value.toMillis();
+        if (typeof value.seconds === "number") return value.seconds * 1000;
+        const parsed = new Date(value).getTime();
+        return Number.isNaN(parsed) ? 0 : parsed;
+      };
+
+      const createdAtDiff = getCreatedAtMs(b.createdAt) - getCreatedAtMs(a.createdAt);
+      if (createdAtDiff !== 0) return createdAtDiff;
+
       const parseDate = (dateStr: string = ""): Date => {
         if (!dateStr.trim()) return new Date(0);
         try {
@@ -2255,7 +2515,11 @@ export const getChannelPartnerBookings = async (): Promise<Booking[]> => {
       return dateB.getTime() - dateA.getTime();
     });
 
-    return channelBookings;
+    return {
+      bookings: channelBookings,
+      lastDoc: nextCursor,
+      hasMore: hasMoreSourceDocs,
+    };
   } catch (err) {
     console.error("[getChannelPartnerBookings] Fetch error:", err);
     throw err;

@@ -14,7 +14,7 @@ import BgImg from "../../assets/BgImg.jpeg";
 // ✅ UID → role map
 const ADMIN_UID_MAP: Record<string, string> = {
   "OPuLEAEfkiUA0LVoholLaenj0OU2": "super_admin",
-  "0BAmu3b2CEYbWzLWfLBAq0LFd1V2": "accounting",
+  "9tGTpi6BENP0CyRrQlbuPVNKxIi2": "accounting",
   "74C4TR8mrpdoHGZHRCFJyUSJQff1": "edit",
 };
 

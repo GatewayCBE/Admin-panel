@@ -16,18 +16,25 @@ const TurfBookingsPage: React.FC = () => {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [toastVariant, setToastVariant] = useState<"success" | "danger">("success");
+  const [lastDoc, setLastDoc] = useState<any | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const rowsPerPage = 50;
 
   useEffect(() => {
     const fetchBookings = async () => {
       setLoading(true);
       try {
-        const channelBookings = await getChannelPartnerBookings();
+        const result = await getChannelPartnerBookings({ pageSize: rowsPerPage });
+        const channelBookings = result.bookings;
         const filtered = turfId 
           ? channelBookings.filter(
   (b) => b.turfId === turfId
 )
           : channelBookings;
         setRawBookings(filtered);
+        setLastDoc(result.lastDoc);
+        setHasMore(result.hasMore);
       } catch (err) {
         console.error("Failed to load channel bookings:", err);
         setToastMessage("Failed to load bookings");
@@ -39,6 +46,31 @@ const TurfBookingsPage: React.FC = () => {
     };
     fetchBookings();
   }, [turfId]);
+
+  const handleLoadMore = async () => {
+    if (!hasMore || !lastDoc || loadingMore) return;
+
+    try {
+      setLoadingMore(true);
+      const result = await getChannelPartnerBookings({
+        pageSize: rowsPerPage,
+        cursor: lastDoc,
+      });
+      const nextBookings = turfId
+        ? result.bookings.filter((b) => b.turfId === turfId)
+        : result.bookings;
+      setRawBookings((prev) => [...prev, ...nextBookings]);
+      setLastDoc(result.lastDoc);
+      setHasMore(result.hasMore);
+    } catch (err) {
+      console.error("Failed to load more channel bookings:", err);
+      setToastMessage("Failed to load more bookings");
+      setToastVariant("danger");
+      setShowToast(true);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const parseDate = (str: string): Date | null => {
     if (!str) return null;
@@ -218,6 +250,18 @@ const TurfBookingsPage: React.FC = () => {
             ))}
           </tbody>
         </Table>
+      )}
+
+      {hasMore && (
+        <div className="d-flex justify-content-center my-4">
+          <Button
+            variant="outline-success"
+            onClick={handleLoadMore}
+            disabled={loadingMore}
+          >
+            {loadingMore ? "Loading..." : "Load More"}
+          </Button>
+        </div>
       )}
 
       {/* Details Modal */}

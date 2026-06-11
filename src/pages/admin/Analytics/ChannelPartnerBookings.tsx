@@ -14,13 +14,19 @@ const ChannelPartnerBookings: React.FC = () => {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [toastVariant, setToastVariant] = useState<"success" | "danger">("success");
+  const [lastDoc, setLastDoc] = useState<any | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const rowsPerPage = 50;
 
   useEffect(() => {
     const fetchBookings = async () => {
       setLoading(true);
       try {
-        const channelBookings = await getChannelPartnerBookings();
-        setRawBookings(channelBookings);
+        const result = await getChannelPartnerBookings({ pageSize: rowsPerPage });
+        setRawBookings(result.bookings);
+        setLastDoc(result.lastDoc);
+        setHasMore(result.hasMore);
       } catch (err) {
         console.error("Failed to load channel bookings:", err);
         setToastMessage("Failed to load bookings");
@@ -32,6 +38,28 @@ const ChannelPartnerBookings: React.FC = () => {
     };
     fetchBookings();
   }, []);
+
+  const handleLoadMore = async () => {
+    if (!hasMore || !lastDoc || loadingMore) return;
+
+    try {
+      setLoadingMore(true);
+      const result = await getChannelPartnerBookings({
+        pageSize: rowsPerPage,
+        cursor: lastDoc,
+      });
+      setRawBookings((prev) => [...prev, ...result.bookings]);
+      setLastDoc(result.lastDoc);
+      setHasMore(result.hasMore);
+    } catch (err) {
+      console.error("Failed to load more channel bookings:", err);
+      setToastMessage("Failed to load more bookings");
+      setToastVariant("danger");
+      setShowToast(true);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const parseDate = (str: string): Date | null => {
     if (!str) return null;
@@ -406,11 +434,23 @@ const ChannelPartnerBookings: React.FC = () => {
                 Showing <strong>{displayedBookings.length}</strong> booking
                 {displayedBookings.length !== 1 ? "s" : ""}
               </span>
-              {(fromDate || toDate) && (
-                <span className="badge bg-light text-muted border" style={{ fontSize: "0.76rem" }}>
-                  Filtered view
-                </span>
-              )}
+              <div className="d-flex align-items-center gap-2">
+                {(fromDate || toDate) && (
+                  <span className="badge bg-light text-muted border" style={{ fontSize: "0.76rem" }}>
+                    Filtered view
+                  </span>
+                )}
+                {hasMore && (
+                  <Button
+                    variant="outline-success"
+                    size="sm"
+                    onClick={handleLoadMore}
+                    disabled={loadingMore}
+                  >
+                    {loadingMore ? "Loading..." : "Load More"}
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         )}

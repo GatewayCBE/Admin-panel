@@ -69,6 +69,15 @@ const normalizeSlotTime = (slot: string): string => {
 export const createWebRazorpayOrder = onRequest(
   { region: "asia-south1" },
   async (req, res) => {
+    // Quick preflight response to ensure CORS headers are present for OPTIONS
+    if (req.method === "OPTIONS") {
+      res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*");
+      res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+      res.status(204).send("");
+      return;
+    }
+
     corsHandler(req, res, async () => {
       try {
         if (req.method !== "POST") {
@@ -155,6 +164,15 @@ export const createWebRazorpayOrder = onRequest(
 export const verifyWebRazorpayPayment = onRequest(
   { region: "asia-south1" },
   async (req, res) => {
+    // Quick preflight response to ensure CORS headers are present for OPTIONS
+    if (req.method === "OPTIONS") {
+      res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*");
+      res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+      res.status(204).send("");
+      return;
+    }
+
     corsHandler(req, res, async () => {
       try {
         console.log("🔔 verifyWebRazorpayPayment called");
@@ -318,7 +336,7 @@ export const verifyWebRazorpayPayment = onRequest(
 
             totalAmount,
             paidAmount,
-            unpaidAmount: balanceAmount,
+            balanceAmount: balanceAmount,
 
             paymentId: razorpay_payment_id,
             paymentMethod: "Razorpay",
@@ -338,7 +356,7 @@ export const verifyWebRazorpayPayment = onRequest(
             slotCount: slots.length,
             totalAmount,
             paidAmount,
-            unpaidAmount: balanceAmount,
+            balanceAmount: balanceAmount,
             paymentStatus: "PAID",
             bookingType: payment_type === "advance" ? "ADVANCE" : "FULL",
             userName: user_name,

@@ -199,11 +199,24 @@ if (start && end) {
   let startMin = toMinutes(start);
   let endMin = toMinutes(end);
 
-  if (endMin <= startMin) endMin += 1440;
+  // ✅ MOBILE APP FIX
+  // If start and end are same, treat it as 1-hour slot
+  if (endMin === startMin) {
+    endMin = startMin + 60;
+  }
+
+  // ✅ Overnight booking handling
+  else if (endMin < startMin) {
+    endMin += 1440;
+  }
 
   for (let min = startMin; min < endMin; min += 60) {
     const hour = Math.floor(min / 60) % 24;
-    const key = `${hour.toString().padStart(2, "0")}:00`;
+
+    const key = `${hour
+      .toString()
+      .padStart(2, "0")}:00`;
+
     set.add(key);
   }
 }

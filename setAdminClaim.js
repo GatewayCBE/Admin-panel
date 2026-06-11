@@ -22,7 +22,7 @@ async function setAdmin(uid, role) {
 
 const ADMIN_UID = [
   {uid: "OPuLEAEfkiUA0LVoholLaenj0OU2", role: "super_admin"},
-  {uid: "0BAmu3b2CEYbWzLWfLBAq0LFd1V2", role: "accounting"},
+  {uid: "9tGTpi6BENP0CyRrQlbuPVNKxIi2", role: "accounting"},
   {uid: "74C4TR8mrpdoHGZHRCFJyUSJQff1", role: "edit"},
 ];
 

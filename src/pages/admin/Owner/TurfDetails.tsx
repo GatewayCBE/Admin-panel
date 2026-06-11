@@ -48,7 +48,7 @@ const isCurrentlyOpen = (openStr: string, closeStr: string): boolean => {
 
 const TurfDetails: React.FC = () => {
   const { turfId } = useParams<{ turfId: string }>();
-  const { role } = useAuth();
+  const { user, loading: authLoading, role } = useAuth();
   const [turf, setTurf] = useState<any>(null);
   const [owner, setOwner] = useState<any>(null);
   const [selectedSport, setSelectedSport] = useState<string | null>(null);
@@ -58,8 +58,6 @@ const TurfDetails: React.FC = () => {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const navigate = useNavigate();
-  const userId = localStorage.getItem("user_id");
-const userRole = localStorage.getItem("user_role");
 
   const hasBoxFootball = turf
     ? Object.keys(turf.sport_specific_timing || {}).some((sport) =>
@@ -113,20 +111,34 @@ const userRole = localStorage.getItem("user_role");
   };
 
   const handleDeleteTurf = async () => {
-    if (!turfId || !userId || !userRole) {
-    alert("User session not loaded. Please wait.");
-    return;
-  }
+    const sessionRole = role || localStorage.getItem("user_role");
+    const sessionUserId =
+      localStorage.getItem("user_id") ||
+      localStorage.getItem("user_uid") ||
+      user?.uid ||
+      localStorage.getItem("user_email") ||
+      user?.email ||
+      "UNKNOWN_ADMIN";
+
+    if (authLoading) {
+      alert("User session is still loading. Please try again in a moment.");
+      return;
+    }
+
+    if (!turfId || !sessionRole) {
+      alert("User session not loaded. Please login again.");
+      return;
+    }
 
     setIsDeleting(true);
     try {
       await safeDeleteTurf(turfId, {
-  userId: userId || "UNKNOWN",
-  role: userRole  || "UNKNOWN",
+  userId: sessionUserId,
+  role: sessionRole,
   reason:
-    userRole === "super_admin"
+    sessionRole === "super_admin"
       ? "ADMIN_DELETE"
-      : userRole  === "channel_partner"
+      : sessionRole  === "channel_partner"
       ? "CHANNEL_PARTNER_DELETE"
       : "AUTO_DELETE",
 });
