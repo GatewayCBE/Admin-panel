@@ -204,8 +204,6 @@ const UserBookings: React.FC = () => {
     const owner = ownerId ? ownerDetailsMap[ownerId] : null;
 
     return [
-      b.bookingUserMobile,
-      b.booking_user_mobile,
       b.partnerPhone,
       b.partner_phone,
       b.partnerMobile,
