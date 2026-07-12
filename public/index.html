@@ -1,65 +1,106 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BookYourTurf - Under Maintenance</title>
-  <style>
-    * {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-body {
-  font-family: Arial, Helvetica, sans-serif;
-  background: #f5f7fa;
-
-  display: flex;
-  justify-content: center;
-  align-items: center;
-
-  min-height: 100vh;
-}
-
-.container {
-  text-align: center;
-  max-width: 700px;
-  padding: 20px;
-}
-
-.logo {
-  width: 320px;
-  max-width: 100%;
-  margin-bottom: 20px;
-}
-
-h1 {
-  font-size: 58px;
-  color: #222;
-  margin-bottom: 15px;
-}
-
-h2 {
-  font-size: 42px;
-  color: #2c3e50;
-  margin-bottom: 25px;
-}
-
-pre {
-  font-size: 32px;
-  color: #666;
-  line-height: 1.8;
-}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Book Your Turf</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<style>
+html,body{margin:0;padding:0;font-family:Arial,sans-serif;background:#111;color:#fff;scroll-behavior:smooth}
+.hero{height:100vh;position:relative;display:flex;align-items:center;justify-content:center;text-align:center;background-size:cover;background-position:center;transition:background-image 1.5s ease}
+.overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.35),rgba(0,0,0,.65),rgba(0,0,0,.85))}
+.content{position:relative;z-index:2;padding:20px;animation:fadeUp 1s}
+h1{font-size:clamp(3rem,8vw,5rem);font-weight:800}
+.tagline{font-size:clamp(1.2rem,3vw,2rem);margin:20px 0 35px}
+.blue{color:#1d4ed8}.green{color:#74d39b}
+.store-links{display:flex;gap:20px;justify-content:center;flex-wrap:wrap}
+.store-links img{height:64px;transition:.3s}
+.store-links img:hover{transform:translateY(-6px) scale(1.05)}
+.scroll{position:absolute;bottom:40px;left:50%;transform:translateX(-50%);z-index:2}
+.mouse{width:30px;height:52px;border:2px solid #fff8;border-radius:20px;display:flex;justify-content:center;padding-top:8px}
+.wheel{width:6px;height:10px;background:#52b788;border-radius:3px;animation:scroll 1.5s infinite}
+.info{background:linear-gradient(135deg,#0f8a43,#0b6d35);padding:60px 8%}
+.grid{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:40px}
+.info h2{font-size:26px;margin-bottom:18px}
+.info a{color:#fff;text-decoration:none}
+.quick{display:flex;gap:20px;flex-wrap:wrap;padding:0;list-style:none}
+.bottom{background:#1b4332;padding:15px 8%;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap}
+.social a{color:#fff;font-size:26px;margin-left:18px}
+@media(max-width:900px){.grid{grid-template-columns:1fr}.bottom{flex-direction:column;gap:15px;text-align:center}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:translateY(0)}}
+@keyframes scroll{0%{opacity:0;transform:translateY(0)}50%{opacity:1}100%{opacity:0;transform:translateY(15px)}}
+</style>
 </head>
 <body>
-  <div class="container">
-    <img src="logo-192.png" width="250px" height="250px">
-    <h1>Book Your Turf</h1>
-    <h2>🚧 Under Maintenance 🚧</h2>
-    <pre>We will be back soon.
-Thank you for your patience.</pre>
-  </div>
+<section id="hero" class="hero">
+<div class="overlay"></div>
+<div class="content">
+<h1>Book Your Turf</h1>
+<div class="tagline"><span class="blue">SPORTS</span> <span class="green">MADE SMART</span></div>
+<div class="store-links">
+<a href="https://play.google.com/store/apps/details?id=com.bookyourturf.app" target="_blank">
+<img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" alt="Google Play">
+</a>
+<a href="https://apps.apple.com/app/in/app/bookyourturf/id6756934347" target="_blank">
+<img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="App Store">
+</a>
+</div>
+</div>
+<div class="scroll"><div class="mouse"><div class="wheel"></div></div></div>
+</section>
+
+<section class="info">
+<div class="grid">
+<div>
+<h2>BookYourTurf</h2>
+<p>BookYourTurf is a complete digital platform designed to simplify sports venue booking with real-time availability, seamless payments and automation.</p>
+<!-- <h4>Quick Links</h4>
+<ul class="quick">
+<li><a href="#">Home</a></li>
+<li><a href="#">About</a></li>
+<li><a href="#">Admin Panel</a></li>
+<li><a href="#">Login</a></li>
+</ul> -->
+</div>
+
+<div>
+<h2>Contact</h2>
+<p><b>Email</b><br>nottaminfotech@gmail.com<br><br></p>
+<p><b>Customer Care</b><br>+91 9940663099<br>contact@bookyourturf.net</p>
+<p><b>Support</b><br>+91 9566001173<br>support@bookyourturf.net</p>
+<p><b>Admin</b><br>+91 9940990688<br>admin@bookyourturf.net</p>
+</div>
+
+<div>
+<h2>Office</h2>
+<p><b>Head Office</b><br>Old No 57/62, New No 111,<br>1st Floor, upstairs KFC,<br>Mount Road,<br>Chennai - 600002</p>
+<p><b>Corporate Office</b><br>Plot No:200, Nottam Square,<br>Old LIG Colony, KK Nagar,<br>Madurai - 625020</p>
+</div>
+</div>
+</section>
+
+<footer class="bottom">
+<div>
+© <span id="yr"></span> <b>NOTTAM INFOTECH PRIVATE LIMITED</b> All rights reserved.
+|
+<a style="color:#fff" href="#">Terms & Conditions</a>
+|
+<a style="color:#fff" href="#">Privacy Policy</a>
+</div>
+<div class="social">
+<a href="https://www.facebook.com/share/14UcTjyHTqS/" target="_blank"><i class="fab fa-facebook"></i></a>
+<a href="https://www.instagram.com/book_your_turf?igsh=MW96d2c4bjh6Y3E3dw==" target="_blank"><i class="fab fa-instagram"></i></a>
+</div>
+</footer>
+
+<script>
+document.getElementById("yr").textContent=new Date().getFullYear();
+const imgs=["assets/BgImg3.jpg","assets/BgImg1.jpg","assets/BgImg4.jpg","assets/BgImg2.jpg"];
+let i=0;
+const hero=document.getElementById("hero");
+function change(){hero.style.backgroundImage=`url('${imgs[i]}')`;i=(i+1)%imgs.length;}
+change();setInterval(change,3000);
+</script>
 </body>
 </html>

@@ -1,14 +1,14 @@
-import React from "react";
-import { BrowserRouter } from "react-router-dom";
-import AppRoutes from "./routes/AppRoutes";
-import "./charts/chartSetup";
+// import React from "react";
+// import { BrowserRouter } from "react-router-dom";
+// import AppRoutes from "./routes/AppRoutes";
+// import "./charts/chartSetup";
 
-const App: React.FC = () => {
-  return (
-    <BrowserRouter>
-      <AppRoutes />
-    </BrowserRouter>
-  );
-};
+// const App: React.FC = () => {
+//   return (
+//     <BrowserRouter>
+//       <AppRoutes />
+//     </BrowserRouter>
+//   );
+// };
 
-export default App;
+// export default App;
